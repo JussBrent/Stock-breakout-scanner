@@ -1,19 +1,14 @@
-import Navbar from '@/components/landing/Navbar'
-import Hero from '@/components/landing/Hero'
-import FeatureCards from '@/components/landing/FeatureCards'
-import SplitSection from '@/components/landing/SplitSection'
-import PricingPreview from '@/components/landing/PricingPreview'
-import Footer from '@/components/landing/Footer'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import LandingPage from '@/pages/LandingPage'
+import LoginPage from '@/pages/LoginPage'
 
-export default function LandingPage() {
+export default function App() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <Navbar />
-      <Hero />
-      <FeatureCards />
-      <SplitSection />
-      <PricingPreview />
-      <Footer />
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+      </Routes>
+    </BrowserRouter>
   )
 }

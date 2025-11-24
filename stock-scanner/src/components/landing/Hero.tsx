@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
 
 const heroContainer = {
   hidden: { opacity: 0, y: 20 },
@@ -102,8 +103,9 @@ export default function Hero() {
             <Button
               size="lg"
               className="rounded-full bg-white px-10 py-5 text-base font-semibold text-black shadow-2xl hover:bg-white/90"
+              asChild
             >
-              Get Started
+              <Link to="/login">Get Started</Link>
             </Button>
           </motion.div>
 

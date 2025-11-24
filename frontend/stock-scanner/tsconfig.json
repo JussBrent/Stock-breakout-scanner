@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    /* Language and Environment */
+    "target": "ESNext",
+    "useDefineForClassFields": true,
+    "module": "ESNext",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+
+    /* Modules */
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "noEmit": true,
+
+    /* Strictness */
+    "strict": true,
+
+    /* Paths (needed for shadcn/ui) */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* JSX */
+    "jsx": "react-jsx"
+  },
+
+  /* Include your source files */
+  "include": ["src"],
+
+  /* Exclude build output */
+  "exclude": ["node_modules", "dist"]
+}

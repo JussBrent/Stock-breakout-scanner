@@ -1,35 +1,30 @@
 {
   "compilerOptions": {
-    /* Language and Environment */
-    "target": "ESNext",
+    "target": "ES2022",
     "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    "skipLibCheck": true,
 
-    /* Modules */
-    "moduleResolution": "Bundler",
-    "resolveJsonModule": true,
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
+    "moduleDetection": "force",
     "noEmit": true,
+    "jsx": "react-jsx",
 
-    /* Strictness */
+    /* Linting */
     "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
 
-    /* Paths (needed for shadcn/ui) */
+    /* Paths */
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
-    },
-
-    /* JSX */
-    "jsx": "react-jsx"
+    }
   },
-
-  /* Include your source files */
-  "include": ["src"],
-
-  /* Exclude build output */
-  "exclude": ["node_modules", "dist"]
+  "include": ["src"]
 }

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
+import { Link } from 'react-router-dom'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -234,11 +235,11 @@ export default function Navbar() {
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <button className="text-sm text-white/70 transition-colors hover:text-white">
+          <Link to="/login" className="text-sm text-white/70 transition-colors hover:text-white">
             Log in
-          </button>
-          <Button size="sm" className="rounded-full px-6 font-medium shadow-lg bg-white text-black hover:bg-white/90">
-            Get Started
+          </Link>
+          <Button size="sm" className="rounded-full px-6 font-medium shadow-lg bg-white text-black hover:bg-white/90" asChild>
+            <Link to="/login">Get Started</Link>
           </Button>
         </motion.div>
       </div>
