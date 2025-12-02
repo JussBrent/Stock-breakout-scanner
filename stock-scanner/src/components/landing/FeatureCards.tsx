@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useSpring,
+} from "framer-motion";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 
 type Feature = {
@@ -46,8 +51,15 @@ const features: Feature[] = [
 export default function FeatureCards() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [typedText, setTypedText] = useState("");
-  const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
   const [hoverLabel, setHoverLabel] = useState<string | null>(null);
+
+  // --- Smooth cursor trail for hover pill ---
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+
+  // tweak stiffness/damping for more / less lag
+  const smoothX = useSpring(rawX, { stiffness: 95, damping: 16 });
+  const smoothY = useSpring(rawY, { stiffness: 95, damping: 16 });
 
   const len = features.length;
   const clampIndex = (index: number) => (index + len) % len;
@@ -81,7 +93,7 @@ export default function FeatureCards() {
     const opacity = isCenter ? 1 : 0.75;
     const scale = isCenter ? 1 : 0.92;
 
-    // 👇 center card bright, side cards dimmed
+    // center bright, side cards dimmed
     const brightness = isCenter ? 1 : 0.6;
 
     return {
@@ -163,7 +175,9 @@ export default function FeatureCards() {
                 style={getCardStyle(i)}
                 onMouseMove={(e) => {
                   if (!isSide) return;
-                  setCursorPos({ x: e.clientX, y: e.clientY });
+                  // position raw cursor; spring will lag behind
+                  rawX.set(e.clientX + 16);
+                  rawY.set(e.clientY + 16);
                   setHoverLabel(position === 1 ? "Next" : "Previous");
                 }}
                 onMouseLeave={() => {
@@ -183,21 +197,17 @@ export default function FeatureCards() {
           })}
         </div>
 
-        {/* Floating pill (white, follows cursor, fades in/out) */}
+        {/* Floating pill (white, follows cursor, delayed & smooth) */}
         <AnimatePresence>
           {hoverLabel && (
             <motion.div
               key="hover-pill"
-              className="fixed pointer-events-none z-50"
+              className="fixed pointer-events-none z-[999]"
+              style={{ left: smoothX, top: smoothY }}
               initial={{ opacity: 0, scale: 0.9 }}
-              animate={{
-                opacity: 1,
-                scale: 1,
-                x: cursorPos.x + 16,
-                y: cursorPos.y + 16,
-              }}
+              animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
+              transition={{ duration: 0.18, ease: "easeOut" }}
             >
               <span className="rounded-full border border-black/20 bg-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-black shadow-xl backdrop-blur-md">
                 {hoverLabel}

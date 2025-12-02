@@ -1,152 +1,199 @@
-export default function SplitSection() {
+"use client"
+
+import { TextRoll } from "@/components/ui/text-roll"
+import React from "react"
+import { motion } from "framer-motion"
+
+const comparisonFeatures = [
+  {
+    without: {
+      title: "Manual Chart Analysis",
+      description: "Spend 1-2 hours every night manually reviewing charts to identify breakout patterns",
+    },
+    with: {
+      title: "AI Pattern Recognition",
+      description: "Automated scanning identifies 8 EMA breakouts across 2,000+ stocks in under 30 seconds",
+    },
+  },
+  {
+    without: {
+      title: "No Quality Scoring",
+      description: "Difficult to objectively rank which setups have the highest probability of success",
+    },
+    with: {
+      title: "AI Strength Scoring",
+      description: "Every setup gets an institutional-grade quality score based on multiple technical factors",
+    },
+  },
+  {
+    without: {
+      title: "Limited Market Coverage",
+      description: "Humanly impossible to scan more than 100-200 stocks with consistent quality",
+    },
+    with: {
+      title: "Complete Market Scan",
+      description: "Automated coverage of entire U.S. equity universe with consistent analysis quality",
+    },
+  },
+  {
+    without: {
+      title: "Inconsistent Results",
+      description: "Fatigue and human error lead to missed opportunities and varying analysis quality",
+    },
+    with: {
+      title: "100% Consistency",
+      description: "Same rigorous criteria applied to every stock, every night, without fatigue or bias",
+    },
+  },
+]
+
+const sectionVariants = {
+  hidden: { opacity: 0, y: 40 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.7,
+      ease: [0.22, 0.61, 0.36, 1],
+    },
+  },
+}
+
+const headerVariants = {
+  hidden: { opacity: 0, y: 24 },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.8, 0.25, 1],
+    },
+  },
+}
+
+const gridVariants = {
+  hidden: {},
+  show: {
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 24, scale: 0.98 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.45,
+      ease: [0.22, 0.61, 0.36, 1],
+    },
+  },
+}
+
+export default function ComparisonSection() {
   return (
-    <>
-      {/* Section A: Image left, content right */}
-      <section className="relative overflow-hidden py-32">
-        <div className="mx-auto max-w-7xl px-6 sm:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            {/* Image */}
-            <div className="order-2 lg:order-1">
-              <div className="overflow-hidden rounded-3xl border border-border/60 bg-muted/30 shadow-2xl">
-                <img
-                  src="/stock-chart-with-breakout-patterns-and-technical-i.jpg"
-                  alt="Scanning System"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            </div>
+    <motion.section
+      className="relative overflow-hidden bg-black py-24 sm:py-32"
+      variants={sectionVariants}
+      initial="hidden"
+      whileInView="show"
+      viewport={{ once: true, amount: 0.25 }}
+    >
+      <div className="mx-auto max-w-7xl px-6 sm:px-8">
+        {/* Header */}
+        <motion.div className="mb-20 text-center" variants={headerVariants}>
+          <h2 className="mb-6 font-serif text-5xl font-bold leading-[1.1] tracking-tight text-white sm:text-6xl lg:text-7xl">
+            <TextRoll className="inline-block">Turn hours of stock scanning</TextRoll>
+            <br />
+            <span className="text-white">into seconds.</span>
+          </h2>
+          <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400 sm:text-xl">
+            Stop wasting time on manual chart analysis. StockBreakout Scanner automates your entire scanning workflow
+            with AI-powered pattern recognition.
+          </p>
+        </motion.div>
 
-            {/* Content */}
-            <div className="order-1 lg:order-2">
-              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Intelligent Automation
-              </p>
-              <h2 className="mb-6 font-serif text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-                Turn hours of stock scanning{' '}
-                <span className="text-muted-foreground">into seconds.</span>
-              </h2>
-              <p className="mb-6 text-base leading-relaxed text-muted-foreground">
-                StockBreakout Scanner automates your coach's 8 EMA breakout
-                playbook—scanning U.S. equities, ranking setups by AI strength
-                score, and building a Focus List you can trade from in minutes.
-              </p>
-              <p className="text-base leading-relaxed text-muted-foreground">
-                What used to take 1–2 hours of manual chart analysis each night
-                now happens automatically. Spend less time scanning, more time
-                trading.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <div className="rounded-xl border border-border/60 bg-card/50 px-6 py-4">
-                  <p className="font-serif text-2xl font-semibold">2,000+</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Stocks scanned nightly
-                  </p>
+        {/* Comparison Grid */}
+        <motion.div className="grid gap-4 lg:grid-cols-2 lg:gap-6" variants={gridVariants}>
+          {comparisonFeatures.map((feature, index) => (
+            <React.Fragment key={index}>
+              {/* Without Card */}
+              <motion.div
+                variants={cardVariants}
+                whileHover={{
+                  y: -4,
+                  scale: 1.01,
+                  transition: { duration: 0.18, ease: "easeOut" },
+                }}
+                className="group relative overflow-hidden rounded-xl border border-red-900/30 bg-red-950/10 p-8 backdrop-blur-sm transition-colors hover:border-red-800/50 hover:bg-red-950/20"
+              >
+                <div className="flex items-start gap-4">
+                  {/* X Icon */}
+                  <div className="shrink-0">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5 text-red-500"
+                    >
+                      <path d="M18 6 6 18" />
+                      <path d="m6 6 12 12" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="mb-3 text-xl font-semibold text-white">{feature.without.title}</h3>
+                    <p className="text-base leading-relaxed text-gray-400">{feature.without.description}</p>
+                  </div>
                 </div>
-                <div className="rounded-xl border border-border/60 bg-card/50 px-6 py-4">
-                  <p className="font-serif text-2xl font-semibold">&lt;30s</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Average scan time
-                  </p>
+              </motion.div>
+
+              {/* With Card */}
+              <motion.div
+                variants={cardVariants}
+                whileHover={{
+                  y: -4,
+                  scale: 1.02,
+                  transition: { duration: 0.18, ease: "easeOut" },
+                }}
+                className="group relative overflow-hidden rounded-xl border border-emerald-900/30 bg-emerald-950/10 p-8 backdrop-blur-sm transition-colors hover:border-emerald-800/50 hover:bg-emerald-950/20"
+              >
+                {/* subtle glow accent */}
+                <div className="pointer-events-none absolute inset-0 opacity-0 mix-blend-screen blur-3xl transition-opacity duration-300 group-hover:opacity-100">
+                  <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-emerald-400/5 to-transparent" />
                 </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Section B: Content left, image right */}
-      <section className="relative overflow-hidden border-t border-border/60 bg-muted/30 py-32">
-        <div className="mx-auto max-w-7xl px-6 sm:px-8">
-          <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-            {/* Content */}
-            <div>
-              <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                Advanced Customization
-              </p>
-              <h2 className="mb-6 font-serif text-4xl font-semibold leading-tight tracking-tight sm:text-5xl">
-                Build scans that match{' '}
-                <span className="text-muted-foreground">your strategy.</span>
-              </h2>
-              <p className="mb-6 text-base leading-relaxed text-muted-foreground">
-                Beyond our default coach methodology, create custom scan
-                profiles tailored to your exact trading approach. Filter by
-                price range, volume patterns, technical indicators, and more.
-              </p>
-              <ul className="space-y-4">
-                <li className="flex gap-3">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 shrink-0 text-foreground"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold">Custom Technical Filters</p>
-                    <p className="text-sm text-muted-foreground">
-                      RSI, MACD, moving averages, and 50+ indicators
-                    </p>
+                <div className="relative flex items-start gap-4">
+                  {/* Checkmark Icon */}
+                  <div className="shrink-0">
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-5 w-5 text-emerald-500"
+                    >
+                      <path d="M20 6 9 17l-5-5" />
+                    </svg>
                   </div>
-                </li>
-                <li className="flex gap-3">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 shrink-0 text-foreground"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold">Volume & Price Criteria</p>
-                    <p className="text-sm text-muted-foreground">
-                      Set minimum volume, price range, and liquidity thresholds
-                    </p>
+                  <div className="flex-1">
+                    <h3 className="mb-3 text-xl font-semibold text-white">{feature.with.title}</h3>
+                    <p className="text-base leading-relaxed text-gray-400">{feature.with.description}</p>
                   </div>
-                </li>
-                <li className="flex gap-3">
-                  <svg
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="h-6 w-6 shrink-0 text-foreground"
-                  >
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  <div>
-                    <p className="font-semibold">Save & Reuse Profiles</p>
-                    <p className="text-sm text-muted-foreground">
-                      Create unlimited scan profiles for different market
-                      conditions
-                    </p>
-                  </div>
-                </li>
-              </ul>
-            </div>
-
-            {/* Image */}
-            <div>
-              <div className="overflow-hidden rounded-3xl border border-border/60 bg-muted/30 shadow-2xl">
-                <img
-                  src="/advanced-trading-filters-interface-with-custom-par.jpg"
-                  alt="Custom Scan Builder"
-                  className="h-full w-full object-cover"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-    </>
+                </div>
+              </motion.div>
+            </React.Fragment>
+          ))}
+        </motion.div>
+      </div>
+    </motion.section>
   )
 }
