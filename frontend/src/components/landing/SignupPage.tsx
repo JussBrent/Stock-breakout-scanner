@@ -1,4 +1,6 @@
 "use client"
+import { useAuth } from '@/hooks/useAuth'
+import { useNavigate } from 'react-router-dom'
 
 import React, { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
@@ -34,16 +36,22 @@ function MiniNavbar() {
 
 export const SignUpPage: React.FC<SignUpPageProps> = ({ className }) => {
   const [formData, setFormData] = useState({
-    fullName: "",
-    email: "",
-    phoneNumber: "",
-    password: "",
-    confirmPassword: "",
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [step, setStep] = useState<"signup" | "success">("signup")
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  fullName: "",
+  email: "",
+  phoneNumber: "",
+  password: "",
+  confirmPassword: "",
+})
+const [errors, setErrors] = useState<Record<string, string>>({})
+const [step, setStep] = useState<"signup" | "success">("signup")
+const [showPassword, setShowPassword] = useState(false)
+const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+
+  // Auth hooks
+  const { signUp } = useAuth()
+  const navigate = useNavigate()
+
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -78,15 +86,25 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({ className }) => {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (validateForm()) {
-      // Simulate account creation
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault()
+  if (validateForm()) {
+    // Call Supabase signup
+    const { error } = await signUp(formData.email, formData.password, formData.fullName)
+    
+    if (error) {
+      setErrors({ email: error.message })
+    } else {
+      // Show success step
+      setStep("success")
+      
+      // Redirect after 3 seconds
       setTimeout(() => {
-        setStep("success")
-      }, 500)
+        navigate('/login')
+      }, 3000)
     }
   }
+}
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
