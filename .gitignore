@@ -1,5 +1,16 @@
 node_modules
 .env
+.env.*
+frontend/.env
+frontend/.env.*
+backend/.env
+backend/.env.*
+# Build outputs
+frontend/dist
+frontend/tsconfig.tsbuildinfo
+# Local tooling
+# Ensure editor/OS cruft stays out
+.DS_Store
 # Python virtual environments
 .venv/
 backend/.venv/
