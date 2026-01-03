@@ -190,7 +190,7 @@ function InteractiveStarfield({
 
 // --- PRICING COMPONENT LOGIC ---
 
-interface PricingPlan {
+export interface PricingPlan {
   name: string
   price: string
   yearlyPrice: string

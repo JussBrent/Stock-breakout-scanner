@@ -16,6 +16,10 @@ redis==5.0.1
 
 # Async HTTP
 httpx==0.25.2
+aiohttp==3.9.1
+
+# Supabase
+supabase==2.3.5
 
 # Testing
 pytest==7.4.3

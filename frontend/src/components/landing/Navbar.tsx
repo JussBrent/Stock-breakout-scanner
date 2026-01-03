@@ -269,6 +269,19 @@ export default function Navbar() {
           >
             Pricing
           </motion.button>
+
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.6 }}
+          >
+            <Link
+              to="/dashboard"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-white/80 transition-colors hover:border-white/30 hover:text-white"
+            >
+              Dashboard
+            </Link>
+          </motion.div>
         </nav>
 
         {/* AUTH BUTTONS */}
@@ -371,6 +384,14 @@ export default function Navbar() {
               >
                 Pricing
               </button>
+
+              <Link
+                to="/dashboard"
+                className="block w-full text-left text-white/70 hover:text-white transition-colors py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Dashboard
+              </Link>
 
               <div className="pt-4 border-t border-white/10 space-y-3">
                 <Link

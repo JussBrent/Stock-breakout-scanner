@@ -3,8 +3,8 @@ import { createClient } from "@supabase/supabase-js"
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_SUPABASE_URL: string
-  readonly VITE_SUPABASE_ANON_KEY: string
+  readonly VITE_SUPABASE_URL?: string
+  readonly VITE_SUPABASE_ANON_KEY?: string
   // add other env variables here if needed
 }
 
@@ -15,8 +15,19 @@ interface ImportMeta {
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+function createMockClient() {
+  return {
+    auth: {
+      async getUser() {
+        return { data: { user: null }, error: new Error("Supabase not configured") }
+      },
+      onAuthStateChange(callback: any) {
+        return { data: { subscription: { unsubscribe() {} } } }
+      },
+    },
+  } as any
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createMockClient()
