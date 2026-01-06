@@ -1,12 +1,13 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { mockFocusListItems, FocusListItem } from "@/lib/mock-data"
-import { Heart, X, Plus, TrendingUp, TrendingDown, Target, Calendar } from "lucide-react"
+import { Heart, X, Plus, TrendingUp, TrendingDown, Target, Calendar, Star } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 export default function FocusListPage() {
   const [focusItems, setFocusItems] = useState<FocusListItem[]>(mockFocusListItems)
@@ -41,36 +42,51 @@ export default function FocusListPage() {
     <div className="min-h-screen bg-black">
       <Sidebar />
 
-      <div className="ml-64">
+      <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-64 right-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl">
-          <div className="flex h-20 items-center justify-between px-8">
-            <div className="flex items-center gap-4">
-              <div className="p-2.5 rounded-xl bg-pink-500/15">
-                <Heart className="h-6 w-6 text-pink-400" />
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+          <div className="flex h-16 items-center justify-between px-8">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="p-2 rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/20 ring-1 ring-white/10">
+                <Star className="h-5 w-5 text-pink-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-pink-400 to-rose-400 bg-clip-text text-transparent">
-                  Focus List
-                </h1>
-                <p className="text-sm text-white/60 mt-0.5">Stocks you're monitoring daily</p>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Focus List</h1>
+                <p className="text-xs text-neutral-400 font-light">
+                  Your watchlist of monitored stocks
+                </p>
               </div>
-            </div>
+            </motion.div>
 
-            <Button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="bg-pink-600 text-white hover:bg-pink-700"
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
             >
-              <Plus className="h-4 w-4 mr-2" />
-              Add Stock
-            </Button>
+              <Badge className="bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+                <Heart className="h-3.5 w-3.5 mr-1.5" />
+                {focusItems.length} Stocks
+              </Badge>
+              <Button
+                onClick={() => setShowAddForm(!showAddForm)}
+                className="bg-gradient-to-r from-pink-600 to-rose-600 text-white hover:from-pink-700 hover:to-rose-700 shadow-lg"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Stock
+              </Button>
+            </motion.div>
           </div>
         </header>
 
-        <main className="pt-32 p-8">
+        <main className="pt-24 p-8">
           {/* Add Stock Form */}
           {showAddForm && (
-            <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 mb-6 animate-in fade-in slide-in-from-top-2">
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+            <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 mb-6">
               <h3 className="text-lg font-semibold text-white mb-4">Add Stock to Focus List</h3>
               <div className="flex gap-2">
                 <Input
@@ -96,14 +112,20 @@ export default function FocusListPage() {
                 </Button>
               </div>
             </Card>
+            </motion.div>
           )}
 
           {/* Focus List Items */}
           {focusItems.length > 0 ? (
-            <div className="space-y-4">
-              {focusItems.map((item) => (
-                <Card
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
+              {focusItems.map((item, index) => (
+                <motion.div
                   key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 + index * 0.05 }}
+                >
+                <Card
                   className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 transition-all duration-200"
                 >
                   <div className="flex items-start justify-between mb-4">
@@ -182,15 +204,16 @@ export default function FocusListPage() {
 
                   <div className="mt-4 flex items-center justify-between">
                     <p className="text-xs text-white/40">
-                      Added {Math.floor((Date.now() - item.addedDate.getTime()) / (24 * 60 * 60 * 1000))} days ago
+                      Added {Math.floor((new Date().getTime() - item.addedDate.getTime()) / (24 * 60 * 60 * 1000))} days ago
                     </p>
                     <Button variant="outline" size="sm" className="border-white/20 text-white/80 hover:text-white">
                       View Details
                     </Button>
                   </div>
                 </Card>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
           ) : (
             <Card className="bg-white/[0.02] border-white/10 shadow-xl p-12 text-center">
               <Heart className="h-12 w-12 text-white/20 mx-auto mb-4" />

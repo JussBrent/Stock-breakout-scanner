@@ -2,8 +2,9 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { mockTradeHistory, mockSearchHistory } from "@/lib/mock-data"
-import { BarChart3, TrendingUp, TrendingDown, Search, DollarSign, Calendar } from "lucide-react"
+import { BarChart3, TrendingUp, TrendingDown, Search, DollarSign, Calendar, LineChart } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 export default function AnalyticsPage() {
   const totalTrades = mockTradeHistory.length
@@ -41,27 +42,42 @@ export default function AnalyticsPage() {
     <div className="min-h-screen bg-black">
       <Sidebar />
 
-      <div className="ml-64">
+      <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-64 right-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl">
-          <div className="flex h-20 items-center justify-between px-8">
-            <div className="flex items-center gap-4">
-              <div className="p-2.5 rounded-xl bg-orange-500/15">
-                <BarChart3 className="h-6 w-6 text-orange-400" />
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+          <div className="flex h-16 items-center justify-between px-8">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500/20 to-amber-500/20 ring-1 ring-white/10">
+                <LineChart className="h-5 w-5 text-orange-400" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-400 bg-clip-text text-transparent">
-                  Analytics
-                </h1>
-                <p className="text-sm text-white/60 mt-0.5">Track your trades and AI insights usage</p>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Analytics Dashboard</h1>
+                <p className="text-xs text-neutral-400 font-light">
+                  Track trades, performance, and AI insights usage
+                </p>
               </div>
-            </div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-4"
+            >
+              <Badge className="bg-gradient-to-r from-orange-500/20 to-amber-500/20 text-orange-400 border border-orange-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+                <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+                Performance
+              </Badge>
+            </motion.div>
           </div>
         </header>
 
-        <main className="pt-32 p-8 space-y-6">
+        <main className="pt-24 p-8 space-y-6">
           {/* Summary Cards */}
-          <div className="grid grid-cols-4 gap-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-4 gap-4">
             <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
               <div className="flex items-center justify-between mb-2">
                 <p className="text-sm text-white/60">Total Trades</p>
@@ -101,9 +117,9 @@ export default function AnalyticsPage() {
               </p>
               <p className="text-xs text-white/40 mt-2">Closed positions</p>
             </Card>
-          </div>
+          </motion.div>
 
-          <div className="grid grid-cols-2 gap-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="grid grid-cols-2 gap-6">
             {/* Trade History */}
             <div>
               <h2 className="text-lg font-semibold text-white mb-4">Trade History</h2>
@@ -176,9 +192,10 @@ export default function AnalyticsPage() {
                 ))}
               </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* Query Breakdown */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
             <h3 className="text-lg font-semibold text-white mb-6">AI Query Breakdown</h3>
             <div className="grid grid-cols-4 gap-4">
@@ -197,7 +214,8 @@ export default function AnalyticsPage() {
                 </div>
               ))}
             </div>
-          </Card>
+          </Card>          
+          </motion.div>
         </main>
       </div>
     </div>
