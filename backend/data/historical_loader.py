@@ -1,5 +1,3 @@
-# data/historical_loader.py
-
 from typing import Dict, List, Optional
 from data.polygon_client import PolygonClient
 from data.cache_service import CacheService

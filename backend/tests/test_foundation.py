@@ -1,4 +1,8 @@
-# test_foundation.py
+import sys
+import os
+# Add parent directory to path so we can import modules
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 import asyncio
 from data.historical_loader import HistoricalLoader
 
