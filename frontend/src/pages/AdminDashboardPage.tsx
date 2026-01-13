@@ -10,14 +10,14 @@ import { FilterControls, FilterOptions } from "@/components/dashboard/FilterCont
 import { StockDetailPanel } from "@/components/dashboard/StockDetailPanel"
 import { TradingViewWidget } from "@/components/dashboard/TradingViewWidget"
 import { useScanResults, BreakoutScan } from "@/hooks/useScanResults"
-import { useMarketStatus } from "@/hooks/useMarketStatus"
-import { PlayIcon, Crown, RefreshCw, Grid3x3, List, LayoutDashboard } from "lucide-react"
+import { PlayIcon, Crown, RefreshCw, Grid3x3, List, BarChart4, Activity, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 export default function AdminDashboardPage() {
   const { results, loading, error } = useScanResults()
-  const { isOpen: marketOpen } = useMarketStatus()
   const [isScanning, setIsScanning] = useState(false)
+  const [marketOpen] = useState(true)
   const [selectedStock, setSelectedStock] = useState<BreakoutScan | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [focusSymbol, setFocusSymbol] = useState<string | null>(null)
@@ -28,19 +28,6 @@ export default function AdminDashboardPage() {
     setupTypes: new Set(['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']),
     emaAlignedOnly: false,
     minAdr: 0,
-    minPrice: 3,
-    maxPrice: null,
-    minChange: 0,
-    maxChange: null,
-    minMarketCap: 300,
-    maxMarketCap: null,
-    minPE: null,
-    maxPE: null,
-    minVolume: 500000,
-    sector: [],
-    ema21AbovePrice: false,
-    ema50AbovePrice: false,
-    relVolumeMin: 0,
   })
 
   // Apply filters
@@ -101,46 +88,48 @@ export default function AdminDashboardPage() {
       <Sidebar />
 
       {/* Main Content */}
-      <div className="ml-64">
-        <header className="fixed top-0 left-64 right-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl">
-          <div className="flex h-20 items-center justify-between px-8">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600">
-                <LayoutDashboard className="h-5 w-5 text-white" />
+      <div className="ml-[72px]">
+        {/* Header */}
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+          <div className="flex h-16 items-center justify-between px-8">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
+                <BarChart4 className="h-5 w-5 text-blue-400" />
               </div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent tracking-tight">
-                Dashboard
-              </h1>
-            </div>
+              <div>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Admin Dashboard</h1>
+                <p className="text-xs text-neutral-400 font-light">
+                  Real-time breakout scanner & market analysis
+                </p>
+              </div>
+            </motion.div>
 
-            <div className="flex items-center gap-4">
-              <Badge
-                variant={marketOpen ? "default" : "secondary"}
-                className={cn(
-                  "h-7 px-3",
-                  marketOpen ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20" : "bg-white/10 text-white/60 border-white/20",
-                )}
-              >
-                {marketOpen ? (
-                  <>
-                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-                    Market Open
-                  </>
-                ) : (
-                  "Market Closed"
-                )}
-              </Badge>
-
-              <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0">
-                <Crown className="mr-1 h-3 w-3" />
-                Premium
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <Badge className={cn(
+                "h-fit px-3 py-1.5 rounded-lg font-medium",
+                marketOpen 
+                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                  : "bg-red-500/20 text-red-400 border border-red-500/30"
+              )}>
+                <span className={cn(
+                  "mr-2 inline-block h-2 w-2 rounded-full",
+                  marketOpen ? "bg-emerald-400 animate-pulse" : "bg-red-400"
+                )} />
+                {marketOpen ? "Market Open" : "Market Closed"}
               </Badge>
 
               <Button
                 onClick={handleScan}
                 disabled={isScanning || loading}
-                size="lg"
-                className="bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+                className="bg-blue-600 text-white hover:bg-blue-700 shadow-lg"
               >
                 {isScanning || loading ? (
                   <>
@@ -154,46 +143,24 @@ export default function AdminDashboardPage() {
                   </>
                 )}
               </Button>
-            </div>
-          </div>
-
-          <div className="border-t border-white/10 bg-primary/5 px-8 py-3">
-            <div className="flex items-center gap-6 text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-white/60">Timeframe:</span>
-                <span className="text-white font-medium">Daily</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white/60">Volume:</span>
-                <span className="text-white font-medium">&gt; 1M shares</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white/60">Market Cap:</span>
-                <span className="text-white font-medium">&gt; $5B</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white/60">ADR:</span>
-                <span className="text-white font-medium">&gt; 2%</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-white/60">Max Distance:</span>
-                <span className="text-white font-medium">≤ 3%</span>
-              </div>
-            </div>
+            </motion.div>
           </div>
         </header>
 
-        <main className="pt-32 p-8 space-y-8">
+        <main className="pt-24 p-8 space-y-8">
           {/* Filter Controls */}
-          <FilterControls
-            filters={filters}
-            onChange={setFilters}
-            resultCount={filteredResults.length}
-            totalCount={results.length}
-          />
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <FilterControls
+              filters={filters}
+              onChange={setFilters}
+              resultCount={filteredResults.length}
+              totalCount={results.length}
+            />
+          </motion.div>
 
           {/* Trading Desk Panel */}
-          <div className="grid xl:grid-cols-[2fr,1fr] gap-6">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <div className="grid xl:grid-cols-[2fr,1fr] gap-6">
             <Card className="bg-white/[0.03] border-white/10 shadow-xl overflow-hidden">
               <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
                 <div>
@@ -212,13 +179,13 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      className="border-cyan-500/50 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400"
+                      className="border-white/20 text-white hover:bg-white/10"
                       onClick={() => setSelectedStock(focusScan)}
                     >
                       Open detail panel
                     </Button>
                     <Button
-                      className="bg-cyan-500 text-white hover:bg-cyan-600 border-0"
+                      className="bg-primary text-white hover:bg-primary/90"
                       onClick={() => setFocusSymbol(focusScan.symbol)}
                     >
                       Pin symbol
@@ -346,17 +313,21 @@ export default function AdminDashboardPage() {
               </Button>
             </div>
           </div>
+          </motion.div>
 
           {/* Error State */}
           {error && (
-            <Card className="bg-red-500/10 border-red-500/30 p-4">
-              <p className="text-red-400">Error loading scan results: {error}</p>
-            </Card>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <Card className="bg-red-500/10 border-red-500/30 p-4">
+                <p className="text-red-400">Error loading scan results: {error}</p>
+              </Card>
+            </motion.div>
           )}
 
           {/* Cards View - Default */}
           {viewMode === 'cards' && (
-            <div>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+              <div>
               {loading ? (
                 <div className="p-12 text-center">
                   <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin mx-auto mb-4" />
@@ -375,10 +346,12 @@ export default function AdminDashboardPage() {
                 </Card>
               )}
             </div>
+            </motion.div>
           )}
 
           {/* Table View */}
           {viewMode === 'table' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
             <Card className="bg-white/[0.02] border-white/10 shadow-xl overflow-hidden">
               <div className="p-6 border-b border-white/10">
                 <div className="flex items-center justify-between">
@@ -408,6 +381,7 @@ export default function AdminDashboardPage() {
                 />
               )}
             </Card>
+            </motion.div>
           )}
         </main>
       </div>

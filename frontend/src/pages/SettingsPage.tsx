@@ -13,8 +13,10 @@ import {
   Save,
   ChevronRight,
   Eye,
+  Sliders,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { motion } from "framer-motion"
 
 interface SettingsTab {
   id: string
@@ -100,30 +102,45 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-black">
       <Sidebar />
 
-      <div className="ml-64">
+      <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-64 right-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl">
-          <div className="flex h-20 items-center justify-between px-8">
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
-                Settings
-              </h1>
-              <p className="text-sm text-white/60 mt-0.5">Manage your account and preferences</p>
-            </div>
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+          <div className="flex h-16 items-center justify-between px-8">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-3"
+            >
+              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-indigo-500/20 ring-1 ring-white/10">
+                <Sliders className="h-5 w-5 text-purple-400" />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Settings</h1>
+                <p className="text-xs text-neutral-400 font-light">
+                  Manage your account and preferences
+                </p>
+              </div>
+            </motion.div>
 
-            {isSaved && (
-              <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/50 animate-in fade-in">
-                ✓ Settings saved
-              </Badge>
-            )}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="flex items-center gap-4"
+            >
+              {isSaved && (
+                <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 animate-in fade-in">
+                  ✓ Settings saved
+                </Badge>
+              )}
+            </motion.div>
           </div>
         </header>
 
-        <main className="pt-32 p-8">
+        <main className="pt-24 p-8">
           <div className="grid grid-cols-4 gap-6">
             {/* Settings Navigation */}
-            <div className="col-span-1">
-              <nav className="space-y-1 sticky top-32">
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="col-span-1">
+              <nav className="space-y-1 sticky top-24">
                 {settingsTabs.map((tab) => (
                   <button
                     key={tab.id}
@@ -141,12 +158,13 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </nav>
-            </div>
+            </motion.div>
 
             {/* Settings Content */}
             <div className="col-span-3 space-y-6">
               {/* General Settings */}
               {activeTab === "general" && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">General Settings</h2>
 
@@ -212,10 +230,12 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </Card>
+                </motion.div>
               )}
 
               {/* Notifications Settings */}
               {activeTab === "notifications" && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Notification Preferences</h2>
 
@@ -280,10 +300,12 @@ export default function SettingsPage() {
                     Save Preferences
                   </Button>
                 </Card>
+                </motion.div>
               )}
 
               {/* Security Settings */}
               {activeTab === "security" && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Security Settings</h2>
 
@@ -345,10 +367,12 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </Card>
+              </motion.div>
               )}
 
               {/* Preferences Settings */}
               {activeTab === "preferences" && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Trading Preferences</h2>
 
@@ -448,8 +472,7 @@ export default function SettingsPage() {
                       Save Preferences
                     </Button>
                   </div>
-                </Card>
-              )}
+                </Card>              </motion.div>              )}
             </div>
           </div>
         </main>

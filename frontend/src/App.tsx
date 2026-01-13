@@ -25,19 +25,21 @@ function AppContent() {
 
   const isAuthPage = location.pathname === "/login" || location.pathname === "/signup"
   const isDemoPage = location.pathname === "/demo"
-  const isDashboardPage = location.pathname.startsWith("/dashboard") || 
-                          location.pathname.startsWith("/admin") ||
-                          location.pathname.startsWith("/scanner") ||
-                          location.pathname.startsWith("/ai-insights") ||
-                          location.pathname.startsWith("/analytics") ||
-                          location.pathname.startsWith("/focus-list") ||
-                          location.pathname.startsWith("/stock-momentum") ||
-                          location.pathname.startsWith("/settings")
+  const isAppShellPage = [
+    "/admin",
+    "/dashboard",
+    "/ai-insights",
+    "/scanner",
+    "/stock-momentum",
+    "/analytics",
+    "/focus-list",
+    "/settings",
+  ].some((path) => location.pathname.startsWith(path))
 
   return (
     <div className="min-h-screen bg-background text-foreground">
-      {/* Global navbar: hide only on full-screen auth (login) */}
-      {!isAuthPage && <Navbar />}
+      {/* Marketing navbar only on landing/marketing pages */}
+      {!isAuthPage && !isAppShellPage && <Navbar />}
 
       <Routes>
         <Route
@@ -66,7 +68,7 @@ function AppContent() {
       </Routes>
 
       {/* Footer only on the main marketing page */}
-      {!isAuthPage && !isDemoPage && !isDashboardPage && <Footer />}
+      {!isAuthPage && !isDemoPage && !isAppShellPage && <Footer />}
     </div>
   )
 }
