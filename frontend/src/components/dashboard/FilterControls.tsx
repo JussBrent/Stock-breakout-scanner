@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 
 export interface FilterOptions {
   minScore: number
@@ -6,6 +7,19 @@ export interface FilterOptions {
   setupTypes: Set<string>
   emaAlignedOnly: boolean
   minAdr: number
+  minPrice: number
+  maxPrice: number | null
+  minChange: number
+  maxChange: number | null
+  minMarketCap: number
+  maxMarketCap: number | null
+  minPE: number | null
+  maxPE: number | null
+  minVolume: number
+  sector: string[]
+  ema21AbovePrice: boolean
+  ema50AbovePrice: boolean
+  relVolumeMin: number
 }
 
 interface FilterControlsProps {
@@ -16,6 +30,7 @@ interface FilterControlsProps {
 }
 
 const SETUP_TYPES = ['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']
+const SECTORS = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer', 'Industrial', 'Materials', 'Utilities']
 
 export function FilterControls({ filters, onChange, resultCount, totalCount }: FilterControlsProps) {
   const [isExpanded, setIsExpanded] = useState(true)
@@ -136,6 +151,148 @@ export function FilterControls({ filters, onChange, resultCount, totalCount }: F
               <span className="text-sm text-zinc-300">Only show aligned EMAs</span>
             </label>
             <p className="text-xs text-zinc-500">Price {'>'} EMA21 {'>'} EMA50 {'>'} EMA200</p>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Filters */}
+      {isExpanded && (
+        <div className="mt-6 pt-6 border-t border-zinc-800">
+          <h4 className="text-sm font-semibold text-zinc-300 mb-4">Advanced Filters</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Price Range */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Min Price (USD)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={filters.minPrice}
+                onChange={(e) => onChange({ ...filters, minPrice: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="3"
+              />
+            </div>
+
+            {/* Change % */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Min Change %
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={filters.minChange}
+                onChange={(e) => onChange({ ...filters, minChange: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="0.01"
+              />
+            </div>
+
+            {/* Market Cap (Millions) */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Min Market Cap (M)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={filters.minMarketCap}
+                onChange={(e) => onChange({ ...filters, minMarketCap: parseFloat(e.target.value) || 0 })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="300"
+              />
+            </div>
+
+            {/* Min Volume */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Min Avg Volume (K)
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="100"
+                value={filters.minVolume / 1000}
+                onChange={(e) => onChange({ ...filters, minVolume: (parseFloat(e.target.value) || 0) * 1000 })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="500"
+              />
+            </div>
+
+            {/* Relative Volume */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
+                Relative Volume
+                <span className="text-cyan-400 font-semibold">{filters.relVolumeMin.toFixed(1)}x</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="5"
+                step="0.1"
+                value={filters.relVolumeMin}
+                onChange={(e) => onChange({ ...filters, relVolumeMin: parseFloat(e.target.value) })}
+                className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              />
+              <div className="flex justify-between text-xs text-zinc-500">
+                <span>0x</span>
+                <span>5x</span>
+              </div>
+            </div>
+
+            {/* EMA21 vs Price */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">EMA (21) vs Price</label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={filters.ema21AbovePrice}
+                    onChange={(e) => onChange({ ...filters, ema21AbovePrice: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                </div>
+                <span className="text-sm text-zinc-300">EMA21 {'<'} Price</span>
+              </label>
+            </div>
+
+            {/* EMA50 vs Price */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">EMA (50) vs Price</label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={filters.ema50AbovePrice}
+                    onChange={(e) => onChange({ ...filters, ema50AbovePrice: e.target.checked })}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                </div>
+                <span className="text-sm text-zinc-300">EMA50 {'<'} Price</span>
+              </label>
+            </div>
+
+            {/* P/E Ratio */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-300">
+                Max P/E Ratio
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="5"
+                value={filters.maxPE ?? ''}
+                onChange={(e) => onChange({ ...filters, maxPE: e.target.value ? parseFloat(e.target.value) : null })}
+                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                placeholder="Any"
+              />
+            </div>
           </div>
         </div>
       )}

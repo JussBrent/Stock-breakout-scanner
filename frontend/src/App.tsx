@@ -25,6 +25,14 @@ function AppContent() {
 
   const isAuthPage = location.pathname === "/login" || location.pathname === "/signup"
   const isDemoPage = location.pathname === "/demo"
+  const isDashboardPage = location.pathname.startsWith("/dashboard") || 
+                          location.pathname.startsWith("/admin") ||
+                          location.pathname.startsWith("/scanner") ||
+                          location.pathname.startsWith("/ai-insights") ||
+                          location.pathname.startsWith("/analytics") ||
+                          location.pathname.startsWith("/focus-list") ||
+                          location.pathname.startsWith("/stock-momentum") ||
+                          location.pathname.startsWith("/settings")
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -58,7 +66,7 @@ function AppContent() {
       </Routes>
 
       {/* Footer only on the main marketing page */}
-      {!isAuthPage && !isDemoPage && <Footer />}
+      {!isAuthPage && !isDemoPage && !isDashboardPage && <Footer />}
     </div>
   )
 }

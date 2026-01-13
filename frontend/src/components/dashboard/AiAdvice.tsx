@@ -2,15 +2,63 @@ import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { mockChatMessages, ChatMessage } from "@/lib/mock-data"
-import { Brain, Send, Loader } from "lucide-react"
+import { Brain, Send, Loader, AlertCircle, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { callOpenAI, AIModel, getModelInfo } from "@/lib/openai"
 
-export function AiAdvice() {
-  const [messages, setMessages] = useState<ChatMessage[]>(mockChatMessages)
+interface ChatMessage {
+  id: string
+  role: "user" | "assistant"
+  content: string
+  timestamp: Date
+}
+
+interface AiAdviceProps {
+  selectedModel: AIModel
+}
+
+const STORAGE_KEY = 'ai-chat-history'
+
+export function AiAdvice({ selectedModel }: AiAdviceProps) {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const savedMessages = localStorage.getItem(STORAGE_KEY)
+    if (savedMessages) {
+      try {
+        const parsed = JSON.parse(savedMessages)
+        // Convert timestamp strings back to Date objects
+        const messagesWithDates = parsed.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp),
+        }))
+        setMessages(messagesWithDates)
+      } catch (err) {
+        console.error('Failed to load chat history:', err)
+      }
+    } else {
+      // Show welcome message for new users
+      const welcomeMessage: ChatMessage = {
+        id: '0',
+        role: 'assistant',
+        content: `Hello! I'm ${getModelInfo(selectedModel).name}, your AI stock trading advisor. I specialize in breakout patterns, EMA analysis, and technical indicators. How can I help you today?`,
+        timestamp: new Date(),
+      }
+      setMessages([welcomeMessage])
+    }
+  }, [])
+
+  // Save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(messages))
+    }
+  }, [messages])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -34,41 +82,81 @@ export function AiAdvice() {
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
+    setError(null)
 
-    // Simulate API call
-    setTimeout(() => {
-      const responses = [
-        "That's an excellent observation. Based on current market conditions and the technical pattern you mentioned, here's my analysis...",
-        "I'm analyzing that data now. The indicators suggest a potential breakout setup. Let me break down the key factors for you.",
-        "Great question! This aligns with the recent momentum in the sector. Here's what the technical and fundamental data reveals...",
-        "I can see strong signals in what you're describing. The volume confirmation combined with the price action indicates a bullish setup.",
-      ]
+    try {
+      // Convert messages to OpenAI format
+      const conversationHistory = messages.slice(-10).map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }))
 
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+      // Add current user message
+      conversationHistory.push({ role: 'user', content: input })
+
+      // Call OpenAI API
+      const response = await callOpenAI(conversationHistory, selectedModel)
 
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: randomResponse,
+        content: response,
         timestamp: new Date(),
       }
 
       setMessages((prev) => [...prev, assistantMessage])
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get AI response')
+      console.error('AI Error:', err)
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
+  }
+
+  const handleClearChat = () => {
+    if (confirm('Are you sure you want to clear all chat history?')) {
+      localStorage.removeItem(STORAGE_KEY)
+      const welcomeMessage: ChatMessage = {
+        id: '0',
+        role: 'assistant',
+        content: `Hello! I'm ${getModelInfo(selectedModel).name}, your AI stock trading advisor. I specialize in breakout patterns, EMA analysis, and technical indicators. How can I help you today?`,
+        timestamp: new Date(),
+      }
+      setMessages([welcomeMessage])
+      setError(null)
+    }
   }
 
   return (
     <div className="flex flex-col h-full gap-4">
-      <div className="flex items-center gap-3 mb-4">
-        <div className="p-2.5 rounded-xl bg-blue-500/15">
-          <Brain className="h-5 w-5 text-blue-400" />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-blue-500/15">
+            <Brain className="h-5 w-5 text-blue-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">AI Stock Advisor</h3>
+            <p className="text-xs text-white/60">Powered by {getModelInfo(selectedModel).name}</p>
+          </div>
         </div>
-        <div>
-          <h3 className="font-semibold text-white">AI Stock Advisor</h3>
-          <p className="text-xs text-white/60">Powered by ChatGPT (Mock)</p>
-        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleClearChat}
+          className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+        >
+          <Trash2 className="h-4 w-4 mr-2" />
+          Clear Chat
+        </Button>
       </div>
+
+      {/* Error Display */}
+      {error && (
+        <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg mb-4">
+          <AlertCircle className="h-4 w-4 text-red-400" />
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
 
       {/* Chat Messages */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-2">

@@ -10,13 +10,14 @@ import { FilterControls, FilterOptions } from "@/components/dashboard/FilterCont
 import { StockDetailPanel } from "@/components/dashboard/StockDetailPanel"
 import { TradingViewWidget } from "@/components/dashboard/TradingViewWidget"
 import { useScanResults, BreakoutScan } from "@/hooks/useScanResults"
-import { PlayIcon, Crown, RefreshCw, Grid3x3, List } from "lucide-react"
+import { useMarketStatus } from "@/hooks/useMarketStatus"
+import { PlayIcon, Crown, RefreshCw, Grid3x3, List, LayoutDashboard } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export default function AdminDashboardPage() {
   const { results, loading, error } = useScanResults()
+  const { isOpen: marketOpen } = useMarketStatus()
   const [isScanning, setIsScanning] = useState(false)
-  const [marketOpen] = useState(true)
   const [selectedStock, setSelectedStock] = useState<BreakoutScan | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [focusSymbol, setFocusSymbol] = useState<string | null>(null)
@@ -27,6 +28,19 @@ export default function AdminDashboardPage() {
     setupTypes: new Set(['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']),
     emaAlignedOnly: false,
     minAdr: 0,
+    minPrice: 3,
+    maxPrice: null,
+    minChange: 0,
+    maxChange: null,
+    minMarketCap: 300,
+    maxMarketCap: null,
+    minPE: null,
+    maxPE: null,
+    minVolume: 500000,
+    sector: [],
+    ema21AbovePrice: false,
+    ema50AbovePrice: false,
+    relVolumeMin: 0,
   })
 
   // Apply filters
@@ -90,29 +104,14 @@ export default function AdminDashboardPage() {
       <div className="ml-64">
         <header className="fixed top-0 left-64 right-0 z-50 border-b border-white/10 bg-black/95 backdrop-blur-xl">
           <div className="flex h-20 items-center justify-between px-8">
-            <Link to="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-black">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="h-5 w-5"
-                >
-                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-                </svg>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600">
+                <LayoutDashboard className="h-5 w-5 text-white" />
               </div>
-              <div className="flex flex-col leading-none">
-                <span className="font-serif text-base font-semibold tracking-tight text-white">
-                  StockBreakout
-                </span>
-                <span className="text-[10px] uppercase tracking-widest text-white/60">
-                  Scanner
-                </span>
-              </div>
-            </Link>
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-white via-cyan-200 to-cyan-400 bg-clip-text text-transparent tracking-tight">
+                Dashboard
+              </h1>
+            </div>
 
             <div className="flex items-center gap-4">
               <Badge
@@ -213,13 +212,13 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      className="border-white/20 text-white hover:bg-white/10"
+                      className="border-cyan-500/50 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400"
                       onClick={() => setSelectedStock(focusScan)}
                     >
                       Open detail panel
                     </Button>
                     <Button
-                      className="bg-primary text-white hover:bg-primary/90"
+                      className="bg-cyan-500 text-white hover:bg-cyan-600 border-0"
                       onClick={() => setFocusSymbol(focusScan.symbol)}
                     >
                       Pin symbol

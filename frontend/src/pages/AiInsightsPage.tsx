@@ -4,9 +4,10 @@ import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { AiAdvice } from "@/components/dashboard/AiAdvice"
 import { Brain, Zap } from "lucide-react"
+import { AIModel } from "@/lib/openai"
 
 export default function AiInsightsPage() {
-  const [selectedModel, setSelectedModel] = useState<"gpt-4" | "gpt-3.5-turbo">("gpt-4")
+  const [selectedModel, setSelectedModel] = useState<AIModel>("sean-v1")
 
   return (
     <div className="min-h-screen bg-black">
@@ -33,15 +34,15 @@ export default function AiInsightsPage() {
                 <p className="text-xs text-white/60 mb-1">AI Model</p>
                 <select
                   value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value as "gpt-4" | "gpt-3.5-turbo")}
+                  onChange={(e) => setSelectedModel(e.target.value as AIModel)}
                   className="bg-white/5 border border-white/10 text-white rounded-lg px-3 py-1.5 text-sm hover:bg-white/10 transition-colors"
                 >
-                  <option value="gpt-4">GPT-4 (Recommended)</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  <option value="sean-v1">Sean v1 (Advanced)</option>
+                  <option value="sean-v2">Sean v2 (Fast)</option>
                 </select>
               </div>
 
-              {selectedModel === "gpt-4" && (
+              {selectedModel === "sean-v1" && (
                 <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/50 h-fit">
                   <Zap className="h-3 w-3 mr-1.5" />
                   Premium
@@ -53,28 +54,28 @@ export default function AiInsightsPage() {
 
         <main className="pt-32 p-8">
           <Card className="bg-white/[0.02] border-white/10 shadow-xl h-96">
-            <AiAdvice />
+            <AiAdvice selectedModel={selectedModel} />
           </Card>
 
           {/* Model Info Footer */}
           <div className="grid grid-cols-2 gap-4 mt-6">
             <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-3">GPT-4</h3>
+              <h3 className="text-sm font-semibold text-white mb-3">Sean v1 (GPT-4o Mini)</h3>
               <ul className="text-xs text-white/60 space-y-2">
-                <li>✓ More accurate analysis</li>
-                <li>✓ Better pattern recognition</li>
-                <li>✓ Advanced risk assessment</li>
-                <li>✓ Premium support</li>
+                <li>✓ Deep market analysis</li>
+                <li>✓ Advanced pattern recognition</li>
+                <li>✓ Comprehensive risk assessment</li>
+                <li>✓ Detailed breakout insights</li>
               </ul>
             </Card>
 
             <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-3">GPT-3.5 Turbo</h3>
+              <h3 className="text-sm font-semibold text-white mb-3">Sean v2 (GPT-3.5 Turbo)</h3>
               <ul className="text-xs text-white/60 space-y-2">
-                <li>✓ Faster responses</li>
-                <li>✓ Lower cost</li>
-                <li>✓ Good for quick analysis</li>
-                <li>✓ Real-time suggestions</li>
+                <li>✓ Lightning-fast responses</li>
+                <li>✓ Quick pattern analysis</li>
+                <li>✓ Instant trading signals</li>
+                <li>✓ Real-time market insights</li>
               </ul>
             </Card>
           </div>

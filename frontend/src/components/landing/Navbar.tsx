@@ -74,35 +74,32 @@ export default function Navbar() {
     >
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 sm:px-8">
         {/* Logo */}
-        <motion.div
-          className="flex items-center gap-3"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-black">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="h-5 w-5"
-            >
-              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-            </svg>
-          </div>
+        <Link to="/">
+          <motion.div
+            className="flex items-center gap-3 cursor-pointer hover:opacity-80 transition-opacity"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white text-black">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="h-5 w-5"
+              >
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+            </div>
 
-          <div className="flex flex-col leading-none">
-            <span className="font-serif text-base font-semibold tracking-tight text-white">
-              StockBreakout
+            <span className="font-serif text-xl font-bold tracking-tight text-white">
+              Stock Breakout
             </span>
-            <span className="text-[10px] uppercase tracking-widest text-white/60">
-              Scanner
-            </span>
-          </div>
-        </motion.div>
+          </motion.div>
+        </Link>
 
         {/* Nav Links */}
         <nav className="hidden items-center gap-8 text-sm md:flex">
