@@ -10,14 +10,15 @@ import { FilterControls, FilterOptions } from "@/components/dashboard/FilterCont
 import { StockDetailPanel } from "@/components/dashboard/StockDetailPanel"
 import { TradingViewWidget } from "@/components/dashboard/TradingViewWidget"
 import { useScanResults, BreakoutScan } from "@/hooks/useScanResults"
+import { useMarketStatus } from "@/hooks/useMarketStatus"
 import { PlayIcon, Crown, RefreshCw, Grid3x3, List, BarChart4, Activity, ArrowLeft } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
 
 export default function AdminDashboardPage() {
   const { results, loading, error } = useScanResults()
+  const { isOpen: marketOpen } = useMarketStatus()
   const [isScanning, setIsScanning] = useState(false)
-  const [marketOpen] = useState(true)
   const [selectedStock, setSelectedStock] = useState<BreakoutScan | null>(null)
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
   const [focusSymbol, setFocusSymbol] = useState<string | null>(null)
@@ -28,6 +29,19 @@ export default function AdminDashboardPage() {
     setupTypes: new Set(['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']),
     emaAlignedOnly: false,
     minAdr: 0,
+    minPrice: 3,
+    maxPrice: null,
+    minChange: 0,
+    maxChange: null,
+    minMarketCap: 300,
+    maxMarketCap: null,
+    minPE: null,
+    maxPE: null,
+    minVolume: 500000,
+    sector: [],
+    ema21AbovePrice: false,
+    ema50AbovePrice: false,
+    relVolumeMin: 0,
   })
 
   // Apply filters
@@ -179,13 +193,13 @@ export default function AdminDashboardPage() {
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
-                      className="border-white/20 text-white hover:bg-white/10"
+                      className="border-cyan-500/50 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400"
                       onClick={() => setSelectedStock(focusScan)}
                     >
                       Open detail panel
                     </Button>
                     <Button
-                      className="bg-primary text-white hover:bg-primary/90"
+                      className="bg-cyan-500 text-white hover:bg-cyan-600 border-0"
                       onClick={() => setFocusSymbol(focusScan.symbol)}
                     >
                       Pin symbol

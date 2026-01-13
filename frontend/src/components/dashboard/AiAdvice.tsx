@@ -5,8 +5,9 @@ import type React from "react"
 import { useState, useRef, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { Brain, Send, Loader, Sparkles, TrendingUp, BarChart3, Menu, X, Plus, Trash2, Clock } from "lucide-react"
+import { Brain, Send, Loader, Sparkles, TrendingUp, BarChart3, Menu, X, Plus, Trash2, Clock, AlertCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { callOpenAI, AIModel, getModelInfo } from "@/lib/openai"
 
 interface Message {
   id: string
@@ -34,6 +35,12 @@ interface UseAutoResizeTextareaProps {
   minHeight: number
   maxHeight?: number
 }
+
+interface AiAdviceProps {
+  selectedModel: AIModel
+}
+
+const STORAGE_KEY = 'ai-conversations'
 
 function useAutoResizeTextarea({ minHeight, maxHeight }: UseAutoResizeTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -72,7 +79,7 @@ function useAutoResizeTextarea({ minHeight, maxHeight }: UseAutoResizeTextareaPr
   return { textareaRef, adjustHeight }
 }
 
-export function AiAdvice() {
+export function AiAdvice({ selectedModel }: AiAdviceProps) {
   const [conversations, setConversations] = useState<Conversation[]>([
     {
       id: "default",
@@ -81,7 +88,7 @@ export function AiAdvice() {
         {
           id: "1",
           role: "assistant",
-          content: "Hello! I'm your AI Stock Advisor. Ask me about stocks, patterns, or trading strategies.",
+          content: `Hello! I'm ${getModelInfo(selectedModel).name}, your AI stock trading advisor. I specialize in breakout patterns, EMA analysis, and technical indicators. How can I help you today?`,
           timestamp: new Date(),
         },
       ],
@@ -95,7 +102,7 @@ export function AiAdvice() {
   const [isTyping, setIsTyping] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [activeSuggestion, setActiveSuggestion] = useState<number>(-1)
-  const [selectedModel, setSelectedModel] = useState("GPT-4 Turbo")
+  const [error, setError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const commandPaletteRef = useRef<HTMLDivElement>(null)
 
@@ -127,6 +134,36 @@ export function AiAdvice() {
       prefix: "/strategy",
     },
   ]
+
+  // Load conversations from localStorage on mount
+  useEffect(() => {
+    const savedConversations = localStorage.getItem(STORAGE_KEY)
+    if (savedConversations) {
+      try {
+        const parsed = JSON.parse(savedConversations)
+        const conversationsWithDates = parsed.map((conv: any) => ({
+          ...conv,
+          messages: conv.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp),
+          })),
+          createdAt: new Date(conv.createdAt),
+          updatedAt: new Date(conv.updatedAt),
+        }))
+        setConversations(conversationsWithDates)
+        setCurrentConversationId(conversationsWithDates[0]?.id || "default")
+      } catch (err) {
+        console.error('Failed to load conversations:', err)
+      }
+    }
+  }, [])
+
+  // Save conversations to localStorage whenever they change
+  useEffect(() => {
+    if (conversations.length > 0) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations))
+    }
+  }, [conversations])
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -228,22 +265,26 @@ export function AiAdvice() {
     setShowCommandPalette(false)
     textareaRef.current?.focus()
     setIsTyping(true)
+    setError(null)
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses = [
-        "That's an excellent observation. Based on current market conditions and the technical pattern you mentioned, here's my analysis...",
-        "I'm analyzing that data now. The indicators suggest a potential breakout setup. Let me break down the key factors for you.",
-        "Great question! This aligns with the recent momentum in the sector. Here's what the technical and fundamental data reveals...",
-        "I can see strong signals in what you're describing. The volume confirmation combined with the price action indicates a bullish setup.",
-      ]
+    try {
+      // Get current conversation messages for context
+      const currentConv = conversations.find(c => c.id === currentConversationId)
+      const conversationHistory = (currentConv?.messages || []).slice(-10).map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      }))
 
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]
+      // Add current user message
+      conversationHistory.push({ role: 'user', content: value })
+
+      // Call OpenAI API
+      const response = await callOpenAI(conversationHistory, selectedModel)
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: randomResponse,
+        content: response,
         timestamp: new Date(),
       }
 
@@ -258,8 +299,12 @@ export function AiAdvice() {
             : conv,
         ),
       )
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get AI response')
+      console.error('AI Error:', err)
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   const createNewConversation = () => {
@@ -271,7 +316,7 @@ export function AiAdvice() {
         {
           id: "1",
           role: "assistant",
-          content: "Hello! I'm your AI Stock Advisor. Ask me about stocks, patterns, or trading strategies.",
+          content: `Hello! I'm ${getModelInfo(selectedModel).name}, your AI stock trading advisor. I specialize in breakout patterns, EMA analysis, and technical indicators. How can I help you today?`,
           timestamp: new Date(),
         },
       ],
@@ -404,6 +449,14 @@ export function AiAdvice() {
             </h2>
           </div>
         </div>
+
+        {/* Error Display */}
+        {error && (
+          <div className="mx-6 mt-4 flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+            <AlertCircle className="h-4 w-4 text-red-400" />
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
 
         {/* Chat Messages Area */}
         <div className="flex-1 overflow-hidden px-6 py-8 max-w-5xl mx-auto w-full flex flex-col relative z-10">

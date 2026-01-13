@@ -6,9 +6,10 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { AiAdvice } from "@/components/dashboard/AiAdvice"
 import { Sidebar } from "@/components/dashboard/Sidebar"
+import { AIModel } from "@/lib/openai"
 
 export default function AiInsightsPage() {
-  const [selectedModel, setSelectedModel] = useState<"gpt-4" | "gpt-3.5-turbo">("gpt-4")
+  const [selectedModel, setSelectedModel] = useState<AIModel>("sean-v1")
 
   return (
     <div className="min-h-screen bg-black">
@@ -45,15 +46,15 @@ export default function AiInsightsPage() {
                 </p>
                 <select
                   value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value as "gpt-4" | "gpt-3.5-turbo")}
+                  onChange={(e) => setSelectedModel(e.target.value as AIModel)}
                   className="bg-neutral-900/80 border border-white/10 text-white rounded-lg px-3.5 py-2 text-sm hover:bg-neutral-800/80 hover:border-white/20 transition-all cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500/30 font-medium"
                 >
-                  <option value="gpt-4">GPT-4 (Recommended)</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                  <option value="sean-v1">Sean v1 (Advanced)</option>
+                  <option value="sean-v2">Sean v2 (Fast)</option>
                 </select>
               </div>
 
-              {selectedModel === "gpt-4" && (
+              {selectedModel === "sean-v1" && (
                 <Badge className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 text-amber-400 border border-amber-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
                   <Zap className="h-3.5 w-3.5 mr-1.5" />
                   Premium
@@ -66,7 +67,7 @@ export default function AiInsightsPage() {
         <main className="pt-24 p-8">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
             <Card className="bg-white/[0.02] border-white/10 shadow-xl h-[600px] overflow-hidden">
-              <AiAdvice />
+              <AiAdvice selectedModel={selectedModel} />
             </Card>
           </motion.div>
 
@@ -82,20 +83,20 @@ export default function AiInsightsPage() {
                 <div className="p-1.5 rounded-lg bg-blue-500/15">
                   <Brain className="h-4 w-4 text-blue-400" />
                 </div>
-                <h3 className="text-sm font-semibold text-white">GPT-4</h3>
+                <h3 className="text-sm font-semibold text-white">Sean v1 (GPT-4o Mini)</h3>
               </div>
               <ul className="text-xs text-white/60 space-y-2">
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> More accurate analysis
+                  <span className="text-green-400">✓</span> Deep market analysis
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Better pattern recognition
+                  <span className="text-green-400">✓</span> Advanced pattern recognition
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Advanced risk assessment
+                  <span className="text-green-400">✓</span> Comprehensive risk assessment
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Premium support
+                  <span className="text-green-400">✓</span> Detailed breakout insights
                 </li>
               </ul>
             </Card>
@@ -105,20 +106,20 @@ export default function AiInsightsPage() {
                 <div className="p-1.5 rounded-lg bg-cyan-500/15">
                   <Zap className="h-4 w-4 text-cyan-400" />
                 </div>
-                <h3 className="text-sm font-semibold text-white">GPT-3.5 Turbo</h3>
+                <h3 className="text-sm font-semibold text-white">Sean v2 (GPT-3.5 Turbo)</h3>
               </div>
               <ul className="text-xs text-white/60 space-y-2">
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Faster responses
+                  <span className="text-green-400">✓</span> Lightning-fast responses
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Lower cost
+                  <span className="text-green-400">✓</span> Quick pattern analysis
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Good for quick analysis
+                  <span className="text-green-400">✓</span> Instant trading signals
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="text-green-400">✓</span> Real-time suggestions
+                  <span className="text-green-400">✓</span> Real-time market insights
                 </li>
               </ul>
             </Card>
