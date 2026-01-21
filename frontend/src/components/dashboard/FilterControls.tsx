@@ -1,25 +1,71 @@
 import { useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { 
+  ChevronDown, 
+  ChevronUp, 
+  X, 
+  Filter,
+  TrendingUp,
+  DollarSign,
+  BarChart3,
+  Activity,
+  Calendar,
+  Zap
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 export interface FilterOptions {
+  // Technical Indicators
   minScore: number
   maxDistance: number
   setupTypes: Set<string>
   emaAlignedOnly: boolean
   minAdr: number
+  
+  // Price & Volume
   minPrice: number
-  maxPrice: number | null
-  minChange: number
-  maxChange: number | null
-  minMarketCap: number
-  maxMarketCap: number | null
-  minPE: number | null
-  maxPE: number | null
+  maxPrice: number
   minVolume: number
-  sector: string[]
-  ema21AbovePrice: boolean
-  ema50AbovePrice: boolean
-  relVolumeMin: number
+  minAvgVolume: number
+  minRelVolume: number
+  
+  // Market Data
+  markets: Set<string>
+  watchlists: Set<string>
+  indices: Set<string>
+  sectors: Set<string>
+  
+  // Fundamental Filters
+  minMarketCap: number
+  maxMarketCap: number
+  minPE: number
+  maxPE: number
+  minPEG: number
+  maxPEG: number
+  minROE: number
+  minEPSGrowth: number
+  minRevenueGrowth: number
+  minDivYield: number
+  maxBeta: number
+  
+  // EMA Filters
+  priceAboveEMA21: boolean
+  priceAboveEMA50: boolean
+  priceAboveEMA200: boolean
+  ema21AboveEMA50: boolean
+  ema50AboveEMA200: boolean
+  
+  // Performance
+  minPerfWeek: number
+  minPerfMonth: number
+  minPerfQuarter: number
+  
+  // Analyst & Earnings
+  analystRating: Set<string>
+  hasRecentEarnings: boolean
+  hasUpcomingEarnings: boolean
+  daysUntilEarnings: number
 }
 
 interface FilterControlsProps {
@@ -30,322 +76,678 @@ interface FilterControlsProps {
 }
 
 const SETUP_TYPES = ['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']
-const SECTORS = ['Technology', 'Healthcare', 'Finance', 'Energy', 'Consumer', 'Industrial', 'Materials', 'Utilities']
+const MARKETS = ['NASDAQ', 'NYSE', 'AMEX', 'OTC']
+const INDICES = ['S&P 500', 'DOW 30', 'NASDAQ 100', 'Russell 2000']
+const SECTORS = [
+  'Technology',
+  'Healthcare',
+  'Financial',
+  'Consumer Cyclical',
+  'Consumer Defensive',
+  'Industrials',
+  'Energy',
+  'Materials',
+  'Real Estate',
+  'Utilities',
+  'Communication Services'
+]
+const ANALYST_RATINGS = ['Strong Buy', 'Buy', 'Hold', 'Sell', 'Strong Sell']
+const MARKET_CAP_PRESETS = [
+  { label: 'Mega (>$200B)', min: 200_000_000_000, max: Infinity },
+  { label: 'Large ($10B-$200B)', min: 10_000_000_000, max: 200_000_000_000 },
+  { label: 'Mid ($2B-$10B)', min: 2_000_000_000, max: 10_000_000_000 },
+  { label: 'Small ($300M-$2B)', min: 300_000_000, max: 2_000_000_000 },
+  { label: 'Micro (<$300M)', min: 0, max: 300_000_000 },
+]
 
 export function FilterControls({ filters, onChange, resultCount, totalCount }: FilterControlsProps) {
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(['technical', 'price'])
+  )
+  const [showAllFilters, setShowAllFilters] = useState(false)
 
-  const handleToggleSetupType = (type: string) => {
-    const newTypes = new Set(filters.setupTypes)
-    if (newTypes.has(type)) {
-      newTypes.delete(type)
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections)
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section)
     } else {
-      newTypes.add(type)
+      newExpanded.add(section)
     }
-    onChange({ ...filters, setupTypes: newTypes })
+    setExpandedSections(newExpanded)
   }
 
-  const handleSelectAllSetups = () => {
-    onChange({ ...filters, setupTypes: new Set(SETUP_TYPES) })
+  const resetFilters = () => {
+    onChange({
+      minScore: 0,
+      maxDistance: 10,
+      setupTypes: new Set(SETUP_TYPES),
+      emaAlignedOnly: false,
+      minAdr: 0,
+      minPrice: 0,
+      maxPrice: Infinity,
+      minVolume: 0,
+      minAvgVolume: 0,
+      minRelVolume: 0,
+      markets: new Set(MARKETS),
+      watchlists: new Set(),
+      indices: new Set(),
+      sectors: new Set(SECTORS),
+      minMarketCap: 0,
+      maxMarketCap: Infinity,
+      minPE: 0,
+      maxPE: Infinity,
+      minPEG: 0,
+      maxPEG: Infinity,
+      minROE: 0,
+      minEPSGrowth: 0,
+      minRevenueGrowth: 0,
+      minDivYield: 0,
+      maxBeta: Infinity,
+      priceAboveEMA21: false,
+      priceAboveEMA50: false,
+      priceAboveEMA200: false,
+      ema21AboveEMA50: false,
+      ema50AboveEMA200: false,
+      minPerfWeek: -Infinity,
+      minPerfMonth: -Infinity,
+      minPerfQuarter: -Infinity,
+      analystRating: new Set(ANALYST_RATINGS),
+      hasRecentEarnings: false,
+      hasUpcomingEarnings: false,
+      daysUntilEarnings: 30,
+    })
   }
 
-  const handleDeselectAllSetups = () => {
-    onChange({ ...filters, setupTypes: new Set() })
+  const getActiveFilterCount = () => {
+    let count = 0
+    if (filters.minScore > 0) count++
+    if (filters.maxDistance < 10) count++
+    if (filters.setupTypes.size < SETUP_TYPES.length) count++
+    if (filters.emaAlignedOnly) count++
+    if (filters.minAdr > 0) count++
+    if (filters.minPrice > 0) count++
+    if (filters.maxPrice < Infinity) count++
+    if (filters.minVolume > 0) count++
+    if (filters.markets.size < MARKETS.length) count++
+    if (filters.sectors.size < SECTORS.length) count++
+    if (filters.minMarketCap > 0) count++
+    if (filters.maxMarketCap < Infinity) count++
+    if (filters.priceAboveEMA21 || filters.priceAboveEMA50 || filters.priceAboveEMA200) count++
+    if (filters.minPE > 0 || filters.maxPE < Infinity) count++
+    if (filters.analystRating.size < ANALYST_RATINGS.length) count++
+    return count
   }
+
+  const FilterSection = ({ 
+    title, 
+    icon: Icon, 
+    section, 
+    children 
+  }: { 
+    title: string
+    icon: React.ComponentType<{ className?: string }>
+    section: string
+    children: React.ReactNode 
+  }) => {
+    const isExpanded = expandedSections.has(section)
+    
+    return (
+      <div className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]">
+        <button
+          onClick={() => toggleSection(section)}
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <Icon className="h-4 w-4 text-cyan-400" />
+            <span className="font-medium text-white text-sm">{title}</span>
+          </div>
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4 text-zinc-400" />
+          ) : (
+            <ChevronDown className="h-4 w-4 text-zinc-400" />
+          )}
+        </button>
+        {isExpanded && (
+          <div className="px-4 py-4 border-t border-white/10 space-y-4">
+            {children}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const RangeFilter = ({
+    label,
+    value,
+    min,
+    max,
+    step,
+    suffix = '',
+    onChange: onValueChange
+  }: {
+    label: string
+    value: number
+    min: number
+    max: number
+    step: number
+    suffix?: string
+    onChange: (value: number) => void
+  }) => (
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
+        {label}
+        <span className="text-cyan-400 font-semibold">
+          {value === Infinity ? '∞' : value === -Infinity ? '-∞' : value.toFixed(step < 1 ? 1 : 0)}{suffix}
+        </span>
+      </label>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value === Infinity ? max : value === -Infinity ? min : value}
+        onChange={(e) => onValueChange(parseFloat(e.target.value))}
+        className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+      />
+      <div className="flex justify-between text-xs text-zinc-500">
+        <span>{min}{suffix}</span>
+        <span>{max === Infinity ? '∞' : max}{suffix}</span>
+      </div>
+    </div>
+  )
+
+  const ToggleFilter = ({
+    label,
+    checked,
+    onChange: onValueChange,
+    description
+  }: {
+    label: string
+    checked: boolean
+    onChange: (checked: boolean) => void
+    description?: string
+  }) => (
+    <div className="space-y-1">
+      <label className="flex items-center gap-3 cursor-pointer group">
+        <div className="relative">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => onValueChange(e.target.checked)}
+            className="sr-only peer"
+          />
+          <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-cyan-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+        </div>
+        <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
+      </label>
+      {description && <p className="text-xs text-zinc-500 ml-14">{description}</p>}
+    </div>
+  )
+
+  const MultiSelectFilter = ({
+    label,
+    options,
+    selected,
+    onChange: onValueChange,
+    colorMap
+  }: {
+    label: string
+    options: string[]
+    selected: Set<string>
+    onChange: (selected: Set<string>) => void
+    colorMap?: Record<string, string>
+  }) => {
+    const handleToggle = (option: string) => {
+      const newSelected = new Set(selected)
+      if (newSelected.has(option)) {
+        newSelected.delete(option)
+      } else {
+        newSelected.add(option)
+      }
+      onValueChange(newSelected)
+    }
+
+    const selectAll = () => onValueChange(new Set(options))
+    const clearAll = () => onValueChange(new Set())
+
+    return (
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-sm font-medium text-zinc-300">{label}</label>
+          <div className="flex gap-2 text-xs">
+            <button
+              onClick={selectAll}
+              className="text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              All
+            </button>
+            <span className="text-zinc-600">|</span>
+            <button
+              onClick={clearAll}
+              className="text-cyan-400 hover:text-cyan-300 transition-colors"
+            >
+              None
+            </button>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => {
+            const isSelected = selected.has(option)
+            const colorClass = colorMap?.[option] || 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 hover:bg-cyan-500/30'
+            
+            return (
+              <button
+                key={option}
+                onClick={() => handleToggle(option)}
+                className={cn(
+                  "px-3 py-1.5 text-xs font-medium rounded-lg border transition-all",
+                  isSelected
+                    ? colorClass
+                    : 'bg-zinc-800/50 text-zinc-500 border-zinc-700 hover:bg-zinc-800'
+                )}
+              >
+                {option}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  const setupColorMap: Record<string, string> = {
+    FLAT_TOP: 'bg-blue-500/20 text-blue-300 border-blue-500/50 hover:bg-blue-500/30',
+    WEDGE: 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30',
+    FLAG: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 hover:bg-cyan-500/30',
+    BASE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30',
+    UNKNOWN: 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30',
+  }
+
+  const activeFilterCount = getActiveFilterCount()
 
   return (
-    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6 mb-6">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <h3 className="text-lg font-semibold text-white">Filters</h3>
-          <span className="text-sm text-zinc-400">
-            Showing <span className="text-cyan-400 font-semibold">{resultCount}</span> of {totalCount} setups
-          </span>
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-zinc-900 via-zinc-900/95 to-zinc-900 border border-white/10 rounded-xl p-6 shadow-xl">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-cyan-500/10 rounded-lg">
+                <Filter className="h-5 w-5 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-white">Advanced Filters</h3>
+                <p className="text-sm text-zinc-400 mt-0.5">
+                  Showing <span className="text-cyan-400 font-semibold">{resultCount}</span> of {totalCount} stocks
+                </p>
+              </div>
+            </div>
+            {activeFilterCount > 0 && (
+              <Badge className="bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                {activeFilterCount} active
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={resetFilters}
+              variant="outline"
+              size="sm"
+              className="border-white/10 text-zinc-300 hover:bg-white/5 hover:text-white"
+            >
+              <X className="h-4 w-4 mr-2" />
+              Reset All
+            </Button>
+            <Button
+              onClick={() => setShowAllFilters(!showAllFilters)}
+              size="sm"
+              className="bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 border border-cyan-500/30"
+            >
+              {showAllFilters ? 'Show Less' : 'Show All Filters'}
+              {showAllFilters ? (
+                <ChevronUp className="h-4 w-4 ml-2" />
+              ) : (
+                <ChevronDown className="h-4 w-4 ml-2" />
+              )}
+            </Button>
+          </div>
         </div>
-        <button
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="text-zinc-400 hover:text-white transition-colors"
-        >
-          {isExpanded ? '−' : '+'}
-        </button>
       </div>
 
-      {isExpanded && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Score Filter */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
-              Min Score
-              <span className="text-cyan-400 font-semibold">{filters.minScore}</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
+      {/* Filter Sections */}
+      <div className="grid grid-cols-1 gap-4">
+        {/* Technical Indicators - Always Visible */}
+        <FilterSection title="Technical Indicators" icon={Activity} section="technical">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <RangeFilter
+              label="Min Breakout Score"
               value={filters.minScore}
-              onChange={(e) => onChange({ ...filters, minScore: parseInt(e.target.value) })}
-              className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              min={0}
+              max={100}
+              step={5}
+              onChange={(val) => onChange({ ...filters, minScore: val })}
             />
-            <div className="flex justify-between text-xs text-zinc-500">
-              <span>0</span>
-              <span>100</span>
-            </div>
-          </div>
-
-          {/* Distance Filter */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
-              Max Distance
-              <span className="text-cyan-400 font-semibold">{filters.maxDistance.toFixed(1)}%</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="5"
-              step="0.1"
+            <RangeFilter
+              label="Max Distance to Trigger"
               value={filters.maxDistance}
-              onChange={(e) => onChange({ ...filters, maxDistance: parseFloat(e.target.value) })}
-              className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              min={0}
+              max={10}
+              step={0.1}
+              suffix="%"
+              onChange={(val) => onChange({ ...filters, maxDistance: val })}
             />
-            <div className="flex justify-between text-xs text-zinc-500">
-              <span>0%</span>
-              <span>5%</span>
-            </div>
-          </div>
-
-          {/* ADR Filter */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
-              Min ADR%
-              <span className="text-cyan-400 font-semibold">{filters.minAdr.toFixed(1)}%</span>
-            </label>
-            <input
-              type="range"
-              min="0"
-              max="5"
-              step="0.1"
+            <RangeFilter
+              label="Min ADR (14-day)"
               value={filters.minAdr}
-              onChange={(e) => onChange({ ...filters, minAdr: parseFloat(e.target.value) })}
-              className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
+              min={0}
+              max={10}
+              step={0.1}
+              suffix="%"
+              onChange={(val) => onChange({ ...filters, minAdr: val })}
             />
-            <div className="flex justify-between text-xs text-zinc-500">
-              <span>0%</span>
-              <span>5%</span>
-            </div>
           </div>
+          
+          <MultiSelectFilter
+            label="Setup Types"
+            options={SETUP_TYPES}
+            selected={filters.setupTypes}
+            onChange={(val) => onChange({ ...filters, setupTypes: val })}
+            colorMap={setupColorMap}
+          />
+        </FilterSection>
 
-          {/* EMA Alignment Toggle */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-zinc-300">EMA Alignment</label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <div className="relative">
-                <input
-                  type="checkbox"
-                  checked={filters.emaAlignedOnly}
-                  onChange={(e) => onChange({ ...filters, emaAlignedOnly: e.target.checked })}
-                  className="sr-only peer"
+        {/* Price & Volume - Always Visible */}
+        <FilterSection title="Price & Volume" icon={DollarSign} section="price">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <RangeFilter
+              label="Min Price"
+              value={filters.minPrice}
+              min={0}
+              max={1000}
+              step={10}
+              suffix="$"
+              onChange={(val) => onChange({ ...filters, minPrice: val })}
+            />
+            <RangeFilter
+              label="Max Price"
+              value={filters.maxPrice === Infinity ? 1000 : filters.maxPrice}
+              min={0}
+              max={1000}
+              step={10}
+              suffix="$"
+              onChange={(val) => onChange({ ...filters, maxPrice: val === 1000 ? Infinity : val })}
+            />
+            <RangeFilter
+              label="Min Avg Volume (M)"
+              value={filters.minAvgVolume / 1_000_000}
+              min={0}
+              max={100}
+              step={1}
+              suffix="M"
+              onChange={(val) => onChange({ ...filters, minAvgVolume: val * 1_000_000 })}
+            />
+            <RangeFilter
+              label="Min Relative Volume"
+              value={filters.minRelVolume}
+              min={0}
+              max={5}
+              step={0.1}
+              suffix="x"
+              onChange={(val) => onChange({ ...filters, minRelVolume: val })}
+            />
+          </div>
+        </FilterSection>
+
+        {showAllFilters && (
+          <>
+            {/* EMA Filters */}
+            <FilterSection title="EMA Alignment" icon={TrendingUp} section="ema">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <ToggleFilter
+                  label="Price > EMA(21)"
+                  checked={filters.priceAboveEMA21}
+                  onChange={(val) => onChange({ ...filters, priceAboveEMA21: val })}
+                  description="Price trading above 21-day EMA"
                 />
-                <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                <ToggleFilter
+                  label="Price > EMA(50)"
+                  checked={filters.priceAboveEMA50}
+                  onChange={(val) => onChange({ ...filters, priceAboveEMA50: val })}
+                  description="Price trading above 50-day EMA"
+                />
+                <ToggleFilter
+                  label="Price > EMA(200)"
+                  checked={filters.priceAboveEMA200}
+                  onChange={(val) => onChange({ ...filters, priceAboveEMA200: val })}
+                  description="Price trading above 200-day EMA"
+                />
+                <ToggleFilter
+                  label="EMA(21) > EMA(50)"
+                  checked={filters.ema21AboveEMA50}
+                  onChange={(val) => onChange({ ...filters, ema21AboveEMA50: val })}
+                  description="Short-term above mid-term"
+                />
+                <ToggleFilter
+                  label="EMA(50) > EMA(200)"
+                  checked={filters.ema50AboveEMA200}
+                  onChange={(val) => onChange({ ...filters, ema50AboveEMA200: val })}
+                  description="Mid-term above long-term"
+                />
+                <ToggleFilter
+                  label="Full EMA Alignment"
+                  checked={filters.emaAlignedOnly}
+                  onChange={(val) => onChange({ ...filters, emaAlignedOnly: val })}
+                  description="Price > EMA21 > EMA50 > EMA200"
+                />
               </div>
-              <span className="text-sm text-zinc-300">Only show aligned EMAs</span>
-            </label>
-            <p className="text-xs text-zinc-500">Price {'>'} EMA21 {'>'} EMA50 {'>'} EMA200</p>
-          </div>
-        </div>
-      )}
+            </FilterSection>
 
-      {/* Advanced Filters */}
-      {isExpanded && (
-        <div className="mt-6 pt-6 border-t border-zinc-800">
-          <h4 className="text-sm font-semibold text-zinc-300 mb-4">Advanced Filters</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {/* Price Range */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Min Price (USD)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={filters.minPrice}
-                onChange={(e) => onChange({ ...filters, minPrice: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                placeholder="3"
-              />
-            </div>
-
-            {/* Change % */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Min Change %
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                value={filters.minChange}
-                onChange={(e) => onChange({ ...filters, minChange: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                placeholder="0.01"
-              />
-            </div>
-
-            {/* Market Cap (Millions) */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Min Market Cap (M)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="100"
-                value={filters.minMarketCap}
-                onChange={(e) => onChange({ ...filters, minMarketCap: parseFloat(e.target.value) || 0 })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                placeholder="300"
-              />
-            </div>
-
-            {/* Min Volume */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Min Avg Volume (K)
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="100"
-                value={filters.minVolume / 1000}
-                onChange={(e) => onChange({ ...filters, minVolume: (parseFloat(e.target.value) || 0) * 1000 })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                placeholder="500"
-              />
-            </div>
-
-            {/* Relative Volume */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300 flex items-center justify-between">
-                Relative Volume
-                <span className="text-cyan-400 font-semibold">{filters.relVolumeMin.toFixed(1)}x</span>
-              </label>
-              <input
-                type="range"
-                min="0"
-                max="5"
-                step="0.1"
-                value={filters.relVolumeMin}
-                onChange={(e) => onChange({ ...filters, relVolumeMin: parseFloat(e.target.value) })}
-                className="w-full h-2 bg-zinc-700 rounded-lg appearance-none cursor-pointer accent-cyan-500"
-              />
-              <div className="flex justify-between text-xs text-zinc-500">
-                <span>0x</span>
-                <span>5x</span>
+            {/* Market & Sector */}
+            <FilterSection title="Market & Sector" icon={BarChart3} section="market">
+              <div className="space-y-4">
+                <MultiSelectFilter
+                  label="Markets"
+                  options={MARKETS}
+                  selected={filters.markets}
+                  onChange={(val) => onChange({ ...filters, markets: val })}
+                />
+                <MultiSelectFilter
+                  label="Indices"
+                  options={INDICES}
+                  selected={filters.indices}
+                  onChange={(val) => onChange({ ...filters, indices: val })}
+                />
+                <MultiSelectFilter
+                  label="Sectors"
+                  options={SECTORS}
+                  selected={filters.sectors}
+                  onChange={(val) => onChange({ ...filters, sectors: val })}
+                />
               </div>
-            </div>
+            </FilterSection>
 
-            {/* EMA21 vs Price */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">EMA (21) vs Price</label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={filters.ema21AbovePrice}
-                    onChange={(e) => onChange({ ...filters, ema21AbovePrice: e.target.checked })}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+            {/* Fundamentals */}
+            <FilterSection title="Fundamentals" icon={DollarSign} section="fundamentals">
+              <div className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-zinc-300 mb-2 block">Market Cap Presets</label>
+                  <div className="flex flex-wrap gap-2">
+                    {MARKET_CAP_PRESETS.map((preset) => (
+                      <button
+                        key={preset.label}
+                        onClick={() => onChange({ 
+                          ...filters, 
+                          minMarketCap: preset.min,
+                          maxMarketCap: preset.max 
+                        })}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-medium rounded-lg border transition-all",
+                          filters.minMarketCap === preset.min && filters.maxMarketCap === preset.max
+                            ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                            : 'bg-zinc-800/50 text-zinc-500 border-zinc-700 hover:bg-zinc-800'
+                        )}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <span className="text-sm text-zinc-300">EMA21 {'<'} Price</span>
-              </label>
-            </div>
 
-            {/* EMA50 vs Price */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">EMA (50) vs Price</label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    checked={filters.ema50AbovePrice}
-                    onChange={(e) => onChange({ ...filters, ema50AbovePrice: e.target.checked })}
-                    className="sr-only peer"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <RangeFilter
+                    label="Min P/E Ratio"
+                    value={filters.minPE}
+                    min={0}
+                    max={100}
+                    step={5}
+                    onChange={(val) => onChange({ ...filters, minPE: val })}
                   />
-                  <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-cyan-500"></div>
+                  <RangeFilter
+                    label="Max P/E Ratio"
+                    value={filters.maxPE === Infinity ? 100 : filters.maxPE}
+                    min={0}
+                    max={100}
+                    step={5}
+                    onChange={(val) => onChange({ ...filters, maxPE: val === 100 ? Infinity : val })}
+                  />
+                  <RangeFilter
+                    label="Min PEG Ratio"
+                    value={filters.minPEG}
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    onChange={(val) => onChange({ ...filters, minPEG: val })}
+                  />
+                  <RangeFilter
+                    label="Max PEG Ratio"
+                    value={filters.maxPEG === Infinity ? 5 : filters.maxPEG}
+                    min={0}
+                    max={5}
+                    step={0.1}
+                    onChange={(val) => onChange({ ...filters, maxPEG: val === 5 ? Infinity : val })}
+                  />
+                  <RangeFilter
+                    label="Min ROE"
+                    value={filters.minROE}
+                    min={0}
+                    max={50}
+                    step={1}
+                    suffix="%"
+                    onChange={(val) => onChange({ ...filters, minROE: val })}
+                  />
+                  <RangeFilter
+                    label="Max Beta"
+                    value={filters.maxBeta === Infinity ? 3 : filters.maxBeta}
+                    min={0}
+                    max={3}
+                    step={0.1}
+                    onChange={(val) => onChange({ ...filters, maxBeta: val === 3 ? Infinity : val })}
+                  />
+                  <RangeFilter
+                    label="Min EPS Growth"
+                    value={filters.minEPSGrowth}
+                    min={-50}
+                    max={100}
+                    step={5}
+                    suffix="%"
+                    onChange={(val) => onChange({ ...filters, minEPSGrowth: val })}
+                  />
+                  <RangeFilter
+                    label="Min Revenue Growth"
+                    value={filters.minRevenueGrowth}
+                    min={-50}
+                    max={100}
+                    step={5}
+                    suffix="%"
+                    onChange={(val) => onChange({ ...filters, minRevenueGrowth: val })}
+                  />
+                  <RangeFilter
+                    label="Min Dividend Yield"
+                    value={filters.minDivYield}
+                    min={0}
+                    max={10}
+                    step={0.5}
+                    suffix="%"
+                    onChange={(val) => onChange({ ...filters, minDivYield: val })}
+                  />
                 </div>
-                <span className="text-sm text-zinc-300">EMA50 {'<'} Price</span>
-              </label>
-            </div>
+              </div>
+            </FilterSection>
 
-            {/* P/E Ratio */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-zinc-300">
-                Max P/E Ratio
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="5"
-                value={filters.maxPE ?? ''}
-                onChange={(e) => onChange({ ...filters, maxPE: e.target.value ? parseFloat(e.target.value) : null })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                placeholder="Any"
-              />
-            </div>
-          </div>
-        </div>
-      )}
+            {/* Performance */}
+            <FilterSection title="Performance" icon={TrendingUp} section="performance">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <RangeFilter
+                  label="Min Weekly Performance"
+                  value={filters.minPerfWeek}
+                  min={-50}
+                  max={50}
+                  step={1}
+                  suffix="%"
+                  onChange={(val) => onChange({ ...filters, minPerfWeek: val })}
+                />
+                <RangeFilter
+                  label="Min Monthly Performance"
+                  value={filters.minPerfMonth}
+                  min={-50}
+                  max={100}
+                  step={5}
+                  suffix="%"
+                  onChange={(val) => onChange({ ...filters, minPerfMonth: val })}
+                />
+                <RangeFilter
+                  label="Min Quarterly Performance"
+                  value={filters.minPerfQuarter}
+                  min={-50}
+                  max={200}
+                  step={10}
+                  suffix="%"
+                  onChange={(val) => onChange({ ...filters, minPerfQuarter: val })}
+                />
+              </div>
+            </FilterSection>
 
-      {/* Setup Type Filters */}
-      {isExpanded && (
-        <div className="mt-6 pt-6 border-t border-zinc-800">
-          <div className="flex items-center justify-between mb-3">
-            <label className="text-sm font-medium text-zinc-300">Setup Types</label>
-            <div className="flex gap-2">
-              <button
-                onClick={handleSelectAllSetups}
-                className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Select All
-              </button>
-              <span className="text-zinc-600">|</span>
-              <button
-                onClick={handleDeselectAllSetups}
-                className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
-              >
-                Clear All
-              </button>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {SETUP_TYPES.map((type) => {
-              const isSelected = filters.setupTypes.has(type)
-              const colors: Record<string, string> = {
-                FLAT_TOP: 'bg-blue-500/20 text-blue-300 border-blue-500/50 hover:bg-blue-500/30',
-                WEDGE: 'bg-purple-500/20 text-purple-300 border-purple-500/50 hover:bg-purple-500/30',
-                FLAG: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50 hover:bg-cyan-500/30',
-                BASE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 hover:bg-emerald-500/30',
-                UNKNOWN: 'bg-gray-500/20 text-gray-300 border-gray-500/50 hover:bg-gray-500/30',
-              }
-              
-              return (
-                <button
-                  key={type}
-                  onClick={() => handleToggleSetupType(type)}
-                  className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-all ${
-                    isSelected
-                      ? colors[type]
-                      : 'bg-zinc-800/50 text-zinc-500 border-zinc-700 hover:bg-zinc-800'
-                  } ${isSelected ? 'ring-2 ring-offset-2 ring-offset-zinc-900' : ''}`}
-                >
-                  {type.replace('_', ' ')}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
+            {/* Analyst & Earnings */}
+            <FilterSection title="Analyst Ratings & Earnings" icon={Calendar} section="earnings">
+              <div className="space-y-4">
+                <MultiSelectFilter
+                  label="Analyst Ratings"
+                  options={ANALYST_RATINGS}
+                  selected={filters.analystRating}
+                  onChange={(val) => onChange({ ...filters, analystRating: val })}
+                />
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <ToggleFilter
+                    label="Has Recent Earnings"
+                    checked={filters.hasRecentEarnings}
+                    onChange={(val) => onChange({ ...filters, hasRecentEarnings: val })}
+                    description="Reported earnings in last 30 days"
+                  />
+                  <ToggleFilter
+                    label="Has Upcoming Earnings"
+                    checked={filters.hasUpcomingEarnings}
+                    onChange={(val) => onChange({ ...filters, hasUpcomingEarnings: val })}
+                    description="Earnings scheduled within filter range"
+                  />
+                </div>
+
+                {filters.hasUpcomingEarnings && (
+                  <RangeFilter
+                    label="Days Until Earnings"
+                    value={filters.daysUntilEarnings}
+                    min={1}
+                    max={90}
+                    step={1}
+                    suffix=" days"
+                    onChange={(val) => onChange({ ...filters, daysUntilEarnings: val })}
+                  />
+                )}
+              </div>
+            </FilterSection>
+          </>
+        )}
+      </div>
     </div>
   )
 }
