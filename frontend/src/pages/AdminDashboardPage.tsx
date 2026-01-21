@@ -24,39 +24,80 @@ export default function AdminDashboardPage() {
   const [focusSymbol, setFocusSymbol] = useState<string | null>(null)
   
   const [filters, setFilters] = useState<FilterOptions>({
+    // Technical Indicators
     minScore: 70,
     maxDistance: 5,
     setupTypes: new Set(['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']),
     emaAlignedOnly: false,
     minAdr: 0,
-    minPrice: 3,
-    maxPrice: null,
-    minChange: 0,
-    maxChange: null,
-    minMarketCap: 300,
-    maxMarketCap: null,
-    minPE: null,
-    maxPE: null,
-    minVolume: 500000,
-    sector: [],
-    ema21AbovePrice: false,
-    ema50AbovePrice: false,
-    relVolumeMin: 0,
+
+    // Price & Volume
+    minPrice: 0,
+    maxPrice: Infinity,
+    minVolume: 0,
+    minAvgVolume: 0,
+    minRelVolume: 0,
+
+    // Market Data
+    markets: new Set(['NASDAQ', 'NYSE', 'AMEX', 'OTC']),
+    watchlists: new Set(),
+    indices: new Set(),
+    sectors: new Set([
+      'Technology',
+      'Healthcare',
+      'Financial',
+      'Consumer Cyclical',
+      'Consumer Defensive',
+      'Industrials',
+      'Energy',
+      'Materials',
+      'Real Estate',
+      'Utilities',
+      'Communication Services'
+    ]),
+
+    // Fundamental Filters
+    minMarketCap: 0,
+    maxMarketCap: Infinity,
+    minPE: 0,
+    maxPE: Infinity,
+    minPEG: 0,
+    maxPEG: Infinity,
+    minROE: 0,
+    minEPSGrowth: 0,
+    minRevenueGrowth: 0,
+    minDivYield: 0,
+    maxBeta: Infinity,
+
+    // EMA Filters
+    priceAboveEMA21: false,
+    priceAboveEMA50: false,
+    priceAboveEMA200: false,
+    ema21AboveEMA50: false,
+    ema50AboveEMA200: false,
+
+    // Performance
+    minPerfWeek: -Infinity,
+    minPerfMonth: -Infinity,
+    minPerfQuarter: -Infinity,
+
+    // Analyst & Earnings
+    analystRating: new Set(['Strong Buy', 'Buy', 'Hold', 'Sell', 'Strong Sell']),
+    hasRecentEarnings: false,
+    hasUpcomingEarnings: false,
+    daysUntilEarnings: 30,
   })
 
   // Apply filters
   const filteredResults = useMemo(() => {
     return results.filter((scan) => {
-      // Score filter
+      // Technical Indicators
       if (scan.breakout_score < filters.minScore) return false
-      
-      // Distance filter
       if (scan.distance_pct > filters.maxDistance) return false
-      
-      // Setup type filter
       if (!filters.setupTypes.has(scan.setup_type)) return false
+      if (scan.adr_pct_14 < filters.minAdr) return false
       
-      // EMA alignment filter
+      // Full EMA alignment filter
       if (filters.emaAlignedOnly) {
         const emaAligned = scan.price > scan.ema21 && 
                           scan.ema21 > scan.ema50 && 
@@ -64,8 +105,27 @@ export default function AdminDashboardPage() {
         if (!emaAligned) return false
       }
       
-      // ADR filter
-      if (scan.adr_pct_14 < filters.minAdr) return false
+      // Individual EMA filters
+      if (filters.priceAboveEMA21 && scan.price <= scan.ema21) return false
+      if (filters.priceAboveEMA50 && scan.price <= scan.ema50) return false
+      if (filters.priceAboveEMA200 && scan.price <= scan.ema200) return false
+      if (filters.ema21AboveEMA50 && scan.ema21 <= scan.ema50) return false
+      if (filters.ema50AboveEMA200 && scan.ema50 <= scan.ema200) return false
+      
+      // Price & Volume filters
+      if (scan.price < filters.minPrice) return false
+      if (scan.price > filters.maxPrice) return false
+      if (scan.avg_vol_50 < filters.minAvgVolume) return false
+      
+      // Market Cap filter (when available)
+      if (scan.market_cap) {
+        if (scan.market_cap < filters.minMarketCap) return false
+        if (scan.market_cap > filters.maxMarketCap) return false
+      }
+      
+      // Note: Other filters (P/E, PEG, ROE, sectors, analyst ratings, etc.) 
+      // would require additional data in the BreakoutScan type
+      // For now, we're filtering on available data only
       
       return true
     })
