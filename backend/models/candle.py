@@ -1,4 +1,4 @@
-from typing import List, Literal
+from typing import List, Literal, Optional
 from pydantic import BaseModel
 
 
@@ -25,7 +25,7 @@ class ScanResult(BaseModel):
     ema200: float
 
     avg_vol_50: float
-    market_cap: float | None = None
+    market_cap: Optional[float] = None
 
     setup_type: Literal["FLAT_TOP", "WEDGE", "FLAG", "BASE", "UNKNOWN"]
     breakout_score: int

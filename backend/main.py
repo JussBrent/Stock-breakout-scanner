@@ -1,5 +1,5 @@
 import asyncio
-import os
+import sys
 from dotenv import load_dotenv
 
 # Load environment variables first
@@ -10,7 +10,7 @@ from scan.mock_results import get_mock_results
 from services.save_results import save_scan_results
 
 
-async def main():
+async def run_cli_scan():
     """Run the breakout scanner and save results to Supabase."""
     print("🚀 Starting breakout scanner...")
 
@@ -55,5 +55,29 @@ async def main():
         exit(1)
 
 
+def run_api_server():
+    """Run FastAPI server."""
+    import uvicorn
+    from config import settings
+
+    print("Starting Stock Scanner API server...")
+    print(f"Server will run at http://{settings.API_HOST}:{settings.API_PORT}")
+    print(f"API docs available at http://{settings.API_HOST}:{settings.API_PORT}/docs")
+    print()
+
+    uvicorn.run(
+        "app:app",
+        host=settings.API_HOST,
+        port=settings.API_PORT,
+        reload=True,
+        log_level="info"
+    )
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Check for 'serve' argument to start API server
+    if len(sys.argv) > 1 and sys.argv[1] == "serve":
+        run_api_server()
+    else:
+        # Default: Run CLI scan
+        asyncio.run(run_cli_scan())

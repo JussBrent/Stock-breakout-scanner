@@ -4,7 +4,11 @@ from typing import Optional
 class Settings(BaseSettings):
     # Polygon API
     POLYGON_API_KEY: str
-    
+
+    # Supabase
+    SUPABASE_URL: Optional[str] = None
+    SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
     CACHE_TTL: int = 3600  # 1 hour
