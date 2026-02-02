@@ -1,9 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/dashboard/Sidebar"
+import { useAuth } from "@/hooks/useAuth"
+import { supabase } from "@/lib/supabase"
 import {
   Settings as SettingsIcon,
   Bell,
@@ -14,9 +16,12 @@ import {
   ChevronRight,
   Eye,
   Sliders,
+  LogOut,
+  CheckCircle2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
+import { useNavigate } from "react-router-dom"
 
 interface SettingsTab {
   id: string
@@ -56,11 +61,13 @@ interface SettingsState {
 }
 
 export default function SettingsPage() {
+  const { user, signOut } = useAuth()
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState("general")
   const [settings, setSettings] = useState<SettingsState>({
-    email: "user@example.com",
-    name: "John Trader",
-    phone: "+1 (555) 123-4567",
+    email: user?.email || "",
+    name: user?.user_metadata?.full_name || "",
+    phone: user?.user_metadata?.phone || "",
     notifications: {
       breakoutAlerts: true,
       aiRecommendations: true,
@@ -83,9 +90,47 @@ export default function SettingsPage() {
 
   const [isSaved, setIsSaved] = useState(false)
 
-  const handleSave = () => {
-    setIsSaved(true)
-    setTimeout(() => setIsSaved(false), 3000)
+  // Update settings when user data loads
+  useEffect(() => {
+    if (user) {
+      setSettings(prev => ({
+        ...prev,
+        email: user.email || "",
+        name: user.user_metadata?.full_name || "",
+        phone: user.user_metadata?.phone || "",
+      }))
+    }
+  }, [user])
+
+  const handleSave = async () => {
+    try {
+      // Update user metadata in Supabase
+      if (user) {
+        const { error: updateError } = await supabase.auth.updateUser({
+          email: settings.email,
+          data: {
+            full_name: settings.name,
+            phone: settings.phone,
+          }
+        })
+
+        if (updateError) {
+          console.error('Error updating user:', updateError)
+          // You might want to show an error message to the user here
+          return
+        }
+      }
+
+      setIsSaved(true)
+      setTimeout(() => setIsSaved(false), 3000)
+    } catch (error) {
+      console.error('Error saving settings:', error)
+    }
+  }
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/login')
   }
 
   const updateSettings = (path: string[], value: any) => {
@@ -169,6 +214,28 @@ export default function SettingsPage() {
                   <h2 className="text-lg font-semibold text-white mb-6">General Settings</h2>
 
                   <div className="space-y-6">
+                    {/* Login Status Banner */}
+                    <div className="flex items-center justify-between p-4 bg-emerald-500/10 rounded-lg border border-emerald-500/30">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-emerald-500/20">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-emerald-400">Logged In</p>
+                          <p className="text-xs text-emerald-400/70">{user?.email}</p>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleLogout}
+                        variant="outline"
+                        size="sm"
+                        className="border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10"
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
+                        Log Out
+                      </Button>
+                    </div>
+
                     {/* Profile Section */}
                     <div className="space-y-4">
                       <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
@@ -182,6 +249,7 @@ export default function SettingsPage() {
                             value={settings.name}
                             onChange={(e) => updateSettings(["name"], e.target.value)}
                             className="bg-white/5 border-white/10 text-white"
+                            placeholder="Enter your full name"
                           />
                         </div>
 
@@ -192,7 +260,9 @@ export default function SettingsPage() {
                             value={settings.email}
                             onChange={(e) => updateSettings(["email"], e.target.value)}
                             className="bg-white/5 border-white/10 text-white"
+                            placeholder="your.email@example.com"
                           />
+                          <p className="text-xs text-white/40 mt-1">You will receive a confirmation email to verify the new address</p>
                         </div>
 
                         <div>
@@ -202,6 +272,7 @@ export default function SettingsPage() {
                             value={settings.phone}
                             onChange={(e) => updateSettings(["phone"], e.target.value)}
                             className="bg-white/5 border-white/10 text-white"
+                            placeholder="+1 (555) 123-4567"
                           />
                         </div>
                       </div>
@@ -278,7 +349,7 @@ export default function SettingsPage() {
                           }
                           className={cn(
                             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                            settings.notifications[key] ? "bg-primary" : "bg-white/20"
+                            settings.notifications[key] ? "bg-emerald-500" : "bg-white/20"
                           )}
                         >
                           <span
@@ -323,7 +394,7 @@ export default function SettingsPage() {
                           onClick={() => updateSettings(["security", "twoFactor"], !settings.security.twoFactor)}
                           className={cn(
                             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                            settings.security.twoFactor ? "bg-primary" : "bg-white/20"
+                            settings.security.twoFactor ? "bg-emerald-500" : "bg-white/20"
                           )}
                         >
                           <span
@@ -389,7 +460,7 @@ export default function SettingsPage() {
                           onClick={() => updateSettings(["preferences", "darkMode"], !settings.preferences.darkMode)}
                           className={cn(
                             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                            settings.preferences.darkMode ? "bg-primary" : "bg-white/20"
+                            settings.preferences.darkMode ? "bg-emerald-500" : "bg-white/20"
                           )}
                         >
                           <span
@@ -416,7 +487,7 @@ export default function SettingsPage() {
                           }
                           className={cn(
                             "relative inline-flex h-6 w-11 items-center rounded-full transition-colors",
-                            settings.preferences.autoScan ? "bg-primary" : "bg-white/20"
+                            settings.preferences.autoScan ? "bg-emerald-500" : "bg-white/20"
                           )}
                         >
                           <span

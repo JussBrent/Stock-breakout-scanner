@@ -8,10 +8,19 @@ class Settings(BaseSettings):
     # Supabase
     SUPABASE_URL: Optional[str] = None
     SUPABASE_SERVICE_ROLE_KEY: Optional[str] = None
+    SUPABASE_JWT_SECRET: Optional[str] = None
+
+    # Stripe
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+    STRIPE_PRICE_ID: Optional[str] = None
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
     CACHE_TTL: int = 3600  # 1 hour
+
+    # Environment
+    ENVIRONMENT: str = "development"
     
     # Filtering Thresholds
     MIN_PRICE: float = 5.00

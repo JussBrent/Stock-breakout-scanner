@@ -369,11 +369,7 @@ function MiniNavbar() {
     </div>
   )
 
-  const navLinksData = [
-    { label: "Manifesto", href: "#1" },
-    { label: "Careers", href: "#2" },
-    { label: "Discover", href: "#3" },
-  ]
+  const navLinksData: { label: string; href: string }[] = []
 
   const loginButtonElement = (
     <button className="px-4 py-2 sm:px-3 text-xs sm:text-sm border border-[#333] bg-[rgba(31,31,31,0.62)] text-gray-300 rounded-full hover:border-white/50 hover:text-white transition-colors duration-200 w-full sm:w-auto">
@@ -736,42 +732,7 @@ className="block w-full backdrop-blur-[2px] bg-emerald-500/10 hover:bg-emerald-5
 </a>
 </div>
                     <p className="text-xs text-white/40 pt-10">
-                      By signing up, you agree to the{" "}
-                      <a
-                        href="#"
-                        className="underline text-white/40 hover:text-white/60 transition-colors"
-                      >
-                        MSA
-                      </a>
-                      ,{" "}
-                      <a
-                        href="#"
-                        className="underline text-white/40 hover:text-white/60 transition-colors"
-                      >
-                        Product Terms
-                      </a>
-                      ,{" "}
-                      <a
-                        href="#"
-                        className="underline text-white/40 hover:text-white/60 transition-colors"
-                      >
-                        Policies
-                      </a>
-                      ,{" "}
-                      <a
-                        href="#"
-                        className="underline text-white/40 hover:text-white/60 transition-colors"
-                      >
-                        Privacy Notice
-                      </a>
-                      , and{" "}
-                      <a
-                        href="#"
-                        className="underline text-white/40 hover:text-white/60 transition-colors"
-                      >
-                        Cookie Notice
-                      </a>
-                      .
+                      By signing up, you agree to our Terms and Privacy Policy.
                     </p>
                   </motion.div>
                 ) : step === "code" ? (
@@ -861,42 +822,7 @@ className="block w-full backdrop-blur-[2px] bg-emerald-500/10 hover:bg-emerald-5
 
                     <div className="pt-16">
                       <p className="text-xs text-white/40">
-                        By signing up, you agree to the{" "}
-                        <a
-                          href="#"
-                          className="underline text-white/40 hover:text-white/60 transition-colors"
-                        >
-                          MSA
-                        </a>
-                        ,{" "}
-                        <a
-                          href="#"
-                          className="underline text-white/40 hover:text-white/60 transition-colors"
-                        >
-                          Product Terms
-                        </a>
-                        ,{" "}
-                        <a
-                          href="#"
-                          className="underline text-white/40 hover:text-white/60 transition-colors"
-                        >
-                          Policies
-                        </a>
-                        ,{" "}
-                        <a
-                          href="#"
-                          className="underline text-white/40 hover:text-white/60 transition-colors"
-                        >
-                          Privacy Notice
-                        </a>
-                        , and{" "}
-                        <a
-                          href="#"
-                          className="underline text-white/40 hover:text-white/60 transition-colors"
-                        >
-                          Cookie Notice
-                        </a>
-                        .
+                        By signing up, you agree to our Terms and Privacy Policy.
                       </p>
                     </div>
                   </motion.div>

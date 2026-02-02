@@ -255,7 +255,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
                             className={`w-full bg-white/5 backdrop-blur-sm text-white border ${
                               errors.fullName ? "border-red-500/50" : "border-white/10"
                             } rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 transition-colors`}
-                            placeholder="John Doe"
                           />
                           {errors.fullName && (
                             <p className="text-red-400 text-xs mt-1">{errors.fullName}</p>
@@ -276,7 +275,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
                             className={`w-full bg-white/5 backdrop-blur-sm text-white border ${
                               errors.email ? "border-red-500/50" : "border-white/10"
                             } rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 transition-colors`}
-                            placeholder="john@example.com"
                           />
                           {errors.email && (
                             <p className="text-red-400 text-xs mt-1">{errors.email}</p>
@@ -297,7 +295,6 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
                             className={`w-full bg-white/5 backdrop-blur-sm text-white border ${
                               errors.phoneNumber ? "border-red-500/50" : "border-white/10"
                             } rounded-xl py-3 px-4 focus:outline-none focus:border-emerald-500/50 transition-colors`}
-                            placeholder="+1 (555) 000-0000"
                           />
                           {errors.phoneNumber && (
                             <p className="text-red-400 text-xs mt-1">{errors.phoneNumber}</p>
@@ -407,15 +404,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false)
                       </div>
 
                       <p className="text-xs text-white/40 mt-6 text-center leading-relaxed">
-                        By creating an account, you agree to our{" "}
-                        <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">
-                          Terms
-                        </a>{" "}
-                        and{" "}
-                        <a href="#" className="underline text-white/40 hover:text-white/60 transition-colors">
-                          Privacy Policy
-                        </a>
-                        .
+                        By creating an account, you agree to our Terms and Privacy Policy.
                       </p>
                     </div>
                   </div>

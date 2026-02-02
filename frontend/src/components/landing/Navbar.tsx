@@ -3,17 +3,25 @@
 import { Button } from '@/components/ui/button'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Menu, X } from 'lucide-react'
-import { Link, useLocation } from 'react-router-dom'
+import { ChevronDown, Menu, X, User, Settings, LogOut } from 'lucide-react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/hooks/useAuth'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, signOut } = useAuth()
 
   const isLoginPage = location.pathname === '/login'
   const useSolidNav = scrolled || isLoginPage
+
+  const handleLogout = async () => {
+    await signOut()
+    navigate('/login')
+  }
 
   useEffect(() => {
     const handleScroll = () => {
@@ -281,27 +289,80 @@ export default function Navbar() {
           </motion.div>
         </nav>
 
-        {/* AUTH BUTTONS */}
+        {/* AUTH BUTTONS / USER MENU */}
         <motion.div
           className="hidden md:flex items-center gap-3"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <Link
-            to="/login"
-            className="text-sm text-white/70 transition-colors hover:text-white"
-          >
-            Log in
-          </Link>
+          {user ? (
+            // Logged in state - show user menu
+            <div
+              className="relative"
+              onMouseEnter={() => setOpenDropdown('user')}
+              onMouseLeave={() => setOpenDropdown(null)}
+            >
+              <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 hover:border-white/30 transition-colors">
+                <div className="h-6 w-6 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+                  <User className="h-3.5 w-3.5 text-white" />
+                </div>
+                <span className="text-sm text-white/90">{user.user_metadata?.full_name || user.email}</span>
+                <ChevronDown className="h-3.5 w-3.5 text-white/60" />
+              </button>
 
-          <Button
-            size="sm"
-            className="rounded-full bg-white px-6 font-medium text-black shadow-lg hover:bg-white/90"
-            asChild
-          >
-            <Link to="/login">Get Started</Link>
-          </Button>
+              <AnimatePresence>
+                {openDropdown === 'user' && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute right-0 top-full pt-4"
+                  >
+                    <div className="min-w-[200px] rounded-xl border border-white/10 bg-black/95 p-2 shadow-2xl backdrop-blur-xl">
+                      <Link
+                        to="/settings"
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors"
+                        onClick={() => setOpenDropdown(null)}
+                      >
+                        <Settings className="h-4 w-4" />
+                        Settings
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout()
+                          setOpenDropdown(null)
+                        }}
+                        className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-white/70 hover:text-white hover:bg-white/5 transition-colors w-full text-left"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Log Out
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          ) : (
+            // Not logged in - show login buttons
+            <>
+              <Link
+                to="/login"
+                className="text-sm text-white/70 transition-colors hover:text-white"
+              >
+                Log in
+              </Link>
+
+              <Button
+                size="sm"
+                className="rounded-full bg-white px-6 font-medium text-black shadow-lg hover:bg-white/90"
+                asChild
+              >
+                <Link to="/login">Get Started</Link>
+              </Button>
+            </>
+          )}
         </motion.div>
 
         {/* MOBILE MENU BUTTON */}
@@ -391,20 +452,56 @@ export default function Navbar() {
               </Link>
 
               <div className="pt-4 border-t border-white/10 space-y-3">
-                <Link
-                  to="/login"
-                  className="block text-center text-white/70 hover:text-white transition-colors py-2"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Log in
-                </Link>
-                
-                <Button
-                  className="w-full rounded-full bg-white font-medium text-black shadow-lg hover:bg-white/90"
-                  asChild
-                >
-                  <Link to="/login">Get Started</Link>
-                </Button>
+                {user ? (
+                  // Logged in state
+                  <>
+                    <div className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-lg border border-white/10">
+                      <div className="h-8 w-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500 flex items-center justify-center">
+                        <User className="h-4 w-4 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-white/40">Logged in as</p>
+                        <p className="text-sm text-white/90 truncate">{user.user_metadata?.full_name || user.email}</p>
+                      </div>
+                    </div>
+                    <Link
+                      to="/settings"
+                      className="flex items-center justify-center gap-2 w-full text-center text-white/70 hover:text-white transition-colors py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Settings className="h-4 w-4" />
+                      Settings
+                    </Link>
+                    <Button
+                      onClick={() => {
+                        handleLogout()
+                        setMobileMenuOpen(false)
+                      }}
+                      className="w-full rounded-full bg-white/10 border border-white/10 font-medium text-white shadow-lg hover:bg-white/20"
+                    >
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Log Out
+                    </Button>
+                  </>
+                ) : (
+                  // Not logged in
+                  <>
+                    <Link
+                      to="/login"
+                      className="block text-center text-white/70 hover:text-white transition-colors py-2"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Log in
+                    </Link>
+
+                    <Button
+                      className="w-full rounded-full bg-white font-medium text-black shadow-lg hover:bg-white/90"
+                      asChild
+                    >
+                      <Link to="/login">Get Started</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </nav>
           </motion.div>

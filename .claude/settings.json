@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git -C /Users/jussbrent/\"Stock Scanner \\(Project\\)\" log --oneline -20)"
+    ]
+  }
+}

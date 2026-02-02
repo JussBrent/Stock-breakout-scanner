@@ -5,10 +5,15 @@ import logging
 import os
 
 from config import settings
-from api import scan_routes, symbol_routes, results_routes
+from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes
+from middleware.error_handler import register_error_handlers
+from middleware.rate_limit import setup_rate_limiting
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 
@@ -47,10 +52,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Register error handlers
+register_error_handlers(app)
+
+# Setup rate limiting
+setup_rate_limiting(app)
+
 # Include Routers
 app.include_router(scan_routes.router, prefix="/api/scan", tags=["Scan"])
 app.include_router(symbol_routes.router, prefix="/api/symbols", tags=["Symbols"])
 app.include_router(results_routes.router, prefix="/api/results", tags=["Results"])
+app.include_router(watchlist_routes.router, prefix="/api/watchlist", tags=["Watchlist"])
+app.include_router(preferences_routes.router, prefix="/api/preferences", tags=["Preferences"])
+app.include_router(subscription_routes.router, prefix="/api/subscription", tags=["Subscription"])
 
 
 @app.get("/", tags=["Root"])
