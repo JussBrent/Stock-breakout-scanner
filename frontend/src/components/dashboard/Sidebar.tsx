@@ -170,11 +170,11 @@ export const MobileSidebar = ({
 export const SidebarLink = ({
   link,
   className,
-  ...props
+  props,
 }: {
   link: Links
   className?: string
-  props?: React.ComponentProps<typeof Link>
+  props?: Omit<React.ComponentProps<typeof Link>, 'to'>
 }) => {
   const { open, hovered } = useSidebar()
   const showTooltip = hovered && !open
@@ -232,11 +232,11 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: (
             <SidebarLink
               key={item.label}
               link={item}
-              onClick={onNavigate}
               className={cn(
                 "transition-all duration-200",
                 isActive ? "bg-white/15 text-white" : "",
               )}
+              props={{ onClick: () => onNavigate?.() }}
             />
           )
         })}

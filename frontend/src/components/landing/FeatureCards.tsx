@@ -20,31 +20,31 @@ const features: Feature[] = [
     title: "AI Strength Scores",
     description:
       "Every setup is ranked by AI-powered quality metrics analyzing volume, momentum, and technical patterns.",
-    image: "/src/assets/stock1.jpg",
+    image: "/stock1.jpg",
   },
   {
     title: "Default Coach Methodology",
     description:
       "Pre-configured scans based on proven 8 EMA breakout playbooks used by professional traders.",
-    image: "/src/assets/stock2.jpg",
+    image: "/stock2.jpg",
   },
   {
     title: "Custom Scan Builder",
     description:
       "Build advanced scan profiles with custom filters, indicators, and technical criteria for your strategy.",
-    image: "/src/assets/stock3.png",
+    image: "/stock3.png",
   },
   {
     title: "Real-Time Focus Lists",
     description:
       "Automatically generated watchlists updated throughout the trading day with actionable breakout levels.",
-    image: "/src/assets/stock4.jpg",
+    image: "/stock4.jpg",
   },
   {
     title: "Leverage Advanced Indicators",
     description:
       "Limit possible losses and maximize gains with advanced technical indicators integrated into your scans.",
-    image: "/src/assets/stock5.jpg",
+    image: "/stock5.jpg",
   },
 ];
 

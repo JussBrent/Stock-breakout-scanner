@@ -1,4 +1,5 @@
 import os
+from supabase import create_client, Client
 from postgrest import AsyncPostgrestClient
 import httpx
 
@@ -7,6 +8,16 @@ SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 
 if not SUPABASE_URL or not SUPABASE_SERVICE_ROLE_KEY:
     raise ValueError("Missing Supabase environment variables")
+
+# Singleton Supabase client instance
+_supabase_client: Client = None
+
+def get_supabase_client() -> Client:
+    """Get or create Supabase client instance"""
+    global _supabase_client
+    if _supabase_client is None:
+        _supabase_client = create_client(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+    return _supabase_client
 
 # Direct Postgrest client (lightweight, no realtime)
 class SupabaseClient:
