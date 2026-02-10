@@ -7,14 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { mockScanResults } from "@/lib/mock-data"
+import { scanSymbol, type ScanResult } from "@/lib/api"
 import {
   Zap,
   Upload,
   Search,
   CheckCircle2,
   AlertCircle,
-  TrendingUp,
   Loader,
   X,
   BarChart3,
@@ -31,20 +30,40 @@ interface ScanInput {
 export function StockScanner() {
   const [scanInput, setScanInput] = useState<ScanInput>({ type: "stock_name", value: "" })
   const [isScanning, setIsScanning] = useState(false)
-  const [scanResults, setScanResults] = useState(mockScanResults[0])
+  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
   const [showResults, setShowResults] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const handleScan = async () => {
     if (!scanInput.value.trim() && !selectedFile) return
 
     setIsScanning(true)
-    // Simulate scan process
-    setTimeout(() => {
-      setScanResults(mockScanResults[0])
-      setShowResults(true)
+    setError(null)
+
+    try {
+      if (scanInput.type === "stock_name") {
+        // Extract ticker symbol (handle both "AAPL" and "Apple Inc" inputs)
+        const symbol = scanInput.value.trim().toUpperCase().split(' ')[0]
+        const result = await scanSymbol(symbol)
+
+        if (result) {
+          setScanResult(result)
+          setShowResults(true)
+        } else {
+          setError(`${symbol} did not pass breakout filters`)
+          setShowResults(false)
+        }
+      } else {
+        // For screenshot and content types, show message that it's not yet implemented
+        setError("Screenshot and content analysis coming soon")
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to scan stock")
+      setShowResults(false)
+    } finally {
       setIsScanning(false)
-    }, 2500)
+    }
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,32 +71,6 @@ export function StockScanner() {
     if (file) {
       setSelectedFile(file)
       setScanInput({ type: "screenshot", value: file.name, file })
-    }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "positive":
-        return <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-      case "negative":
-        return <AlertCircle className="h-4 w-4 text-red-400" />
-      case "warning":
-        return <AlertCircle className="h-4 w-4 text-yellow-400" />
-      default:
-        return <BarChart3 className="h-4 w-4 text-blue-400" />
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "positive":
-        return "bg-emerald-500/10 border-emerald-500/30 hover:bg-emerald-500/15"
-      case "negative":
-        return "bg-red-500/10 border-red-500/30 hover:bg-red-500/15"
-      case "warning":
-        return "bg-yellow-500/10 border-yellow-500/30 hover:bg-yellow-500/15"
-      default:
-        return "bg-blue-500/10 border-blue-500/30 hover:bg-blue-500/15"
     }
   }
 
@@ -266,7 +259,29 @@ export function StockScanner() {
         </div>
       </Card>
 
-      {showResults && (
+      {error && (
+        <Card className="relative overflow-hidden bg-gradient-to-br from-red-500/10 to-white/[0.02] border-red-500/20 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <div className="relative p-8">
+            <div className="flex items-center gap-4 mb-4">
+              <AlertCircle className="h-6 w-6 text-red-400" />
+              <h3 className="text-xl font-bold text-white">Scan Failed</h3>
+            </div>
+            <p className="text-white/70 mb-6">{error}</p>
+            <Button
+              onClick={() => {
+                setError(null)
+                setScanInput({ type: "stock_name", value: "" })
+              }}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              Try Again
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {showResults && scanResult && (
         <Card className="relative overflow-hidden bg-gradient-to-br from-white/[0.07] to-white/[0.02] border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-primary/5 pointer-events-none" />
 
@@ -275,73 +290,78 @@ export function StockScanner() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-                  <h3 className="text-2xl font-bold text-white">Analysis Complete</h3>
+                  <h3 className="text-2xl font-bold text-white">Breakout Setup Detected</h3>
                 </div>
-                <p className="text-white/60">
-                  {scanResults.inputType === "stock_name"
-                    ? `${scanResults.input} • Comprehensive AI Assessment`
-                    : scanResults.inputType === "screenshot"
-                      ? "Chart Pattern Analysis Results"
-                      : "Content Sentiment & Key Insights"}
-                </p>
+                <p className="text-white/60">{scanResult.symbol} • {scanResult.setup_type} Pattern</p>
               </div>
               <div className="text-right">
                 <div className="relative inline-block">
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-emerald-400/30 rounded-2xl blur-xl" />
                   <div className="relative px-6 py-4 bg-gradient-to-br from-white/10 to-white/5 rounded-2xl border border-white/20">
                     <div className="text-4xl font-bold bg-gradient-to-r from-primary via-emerald-400 to-primary bg-clip-text text-transparent">
-                      {scanResults.overallScore}
+                      {scanResult.breakout_score}
                     </div>
-                    <p className="text-xs font-medium text-white/70 mt-1 tracking-wide">CONFIDENCE</p>
+                    <p className="text-xs font-medium text-white/70 mt-1 tracking-wide">BREAKOUT SCORE</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl mb-8">
-              <TrendingUp className="h-4 w-4 text-emerald-400" />
-              <span className="font-semibold text-emerald-400">{scanResults.recommendation}</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Current Price</p>
+                <p className="text-2xl font-bold text-white">${scanResult.price.toFixed(2)}</p>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Breakout Level</p>
+                <p className="text-2xl font-bold text-primary">${scanResult.trigger_price.toFixed(2)}</p>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Distance</p>
+                <p className="text-2xl font-bold text-emerald-400">{scanResult.distance_pct.toFixed(2)}%</p>
+              </div>
+              <div className="p-4 bg-white/5 border border-white/10 rounded-xl">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider mb-2">Avg Volume</p>
+                <p className="text-2xl font-bold text-white">{(scanResult.avg_vol_50 / 1000000).toFixed(1)}M</p>
+              </div>
             </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-bold text-white/90 tracking-wide uppercase">Detailed Diagnostics</h4>
-                <span className="text-xs text-white/50">{scanResults.diagnostics.length} factors analyzed</span>
+                <h4 className="text-sm font-bold text-white/90 tracking-wide uppercase">Technical Analysis</h4>
+                <span className="text-xs text-white/50">{scanResult.notes.length} insights</span>
               </div>
 
               <div className="grid gap-3">
-                {scanResults.diagnostics.map((diagnostic, idx) => (
+                <div className="border border-white/10 rounded-xl p-5 bg-white/5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <BarChart3 className="h-5 w-5 text-primary" />
+                    <h5 className="font-semibold text-white text-base">Moving Averages</h5>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-white/60 mb-1">EMA 21</p>
+                      <p className="text-white font-semibold">${scanResult.ema21.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/60 mb-1">EMA 50</p>
+                      <p className="text-white font-semibold">${scanResult.ema50.toFixed(2)}</p>
+                    </div>
+                    <div>
+                      <p className="text-white/60 mb-1">EMA 200</p>
+                      <p className="text-white font-semibold">${scanResult.ema200.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {scanResult.notes.map((note, idx) => (
                   <div
                     key={idx}
-                    className={cn(
-                      "border rounded-xl p-5 space-y-3 transition-all duration-200",
-                      getStatusColor(diagnostic.status),
-                    )}
+                    className="border border-emerald-500/30 rounded-xl p-5 bg-emerald-500/10"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3 flex-1">
-                        <div className="flex-shrink-0">{getStatusIcon(diagnostic.status)}</div>
-                        <div className="flex-1">
-                          <h5 className="font-semibold text-white text-base">{diagnostic.category}</h5>
-                          <p className="text-sm text-white/70 mt-1 leading-relaxed">{diagnostic.message}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                        <span className="text-sm font-bold text-white">{diagnostic.confidence}%</span>
-                        <div className="w-24 h-2 bg-white/10 rounded-full overflow-hidden">
-                          <div
-                            className={cn(
-                              "h-full rounded-full transition-all duration-500",
-                              diagnostic.status === "positive" && "bg-gradient-to-r from-emerald-500 to-emerald-400",
-                              diagnostic.status === "negative" && "bg-gradient-to-r from-red-500 to-red-400",
-                              diagnostic.status === "warning" && "bg-gradient-to-r from-yellow-500 to-yellow-400",
-                              !["positive", "negative", "warning"].includes(diagnostic.status) &&
-                                "bg-gradient-to-r from-blue-500 to-blue-400",
-                            )}
-                            style={{ width: `${diagnostic.confidence}%` }}
-                          />
-                        </div>
-                      </div>
+                    <div className="flex items-start gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-white/80 leading-relaxed">{note}</p>
                     </div>
                   </div>
                 ))}
@@ -350,13 +370,14 @@ export function StockScanner() {
 
             <div className="flex items-center justify-between mt-8 pt-8 border-t border-white/10">
               <p className="text-sm text-white/50">
-                Analysis generated by AI • Results may vary based on market conditions
+                Real-time analysis powered by technical indicators
               </p>
               <Button
                 onClick={() => {
                   setShowResults(false)
                   setScanInput({ type: "stock_name", value: "" })
                   setSelectedFile(null)
+                  setError(null)
                 }}
                 variant="outline"
                 className="border-white/20 text-white hover:bg-white/10 hover:border-white/30 transition-all"

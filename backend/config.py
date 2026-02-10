@@ -21,7 +21,10 @@ class Settings(BaseSettings):
 
     # Environment
     ENVIRONMENT: str = "development"
-    
+
+    # CORS Settings
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+
     # Filtering Thresholds
     MIN_PRICE: float = 5.00
     MAX_PRICE: float = 1000.00
@@ -46,7 +49,17 @@ class Settings(BaseSettings):
     # API Settings
     API_HOST: str = "0.0.0.0"
     API_PORT: int = 8000
-    
+
+    # Scanning Configuration
+    SCAN_LOOKBACK_DAYS: int = 420  # Days of historical data for scanning (~1.2 years)
+    SCAN_API_DELAY: float = 0.5  # Delay between API calls in seconds
+    SCAN_CONCURRENCY_LIMIT: int = 3  # Max concurrent API requests
+    DEFAULT_SCAN_UNIVERSE: str = "AAPL,MSFT,NVDA,AMZN,TSLA"  # Comma-separated default symbols
+
+    # AI Analysis Configuration
+    OPENAI_MODEL: str = "gpt-4o-mini"  # OpenAI model to use
+    AI_ANALYSIS_MAX_STOCKS: int = 50  # Max stocks to analyze with AI per request
+
     class Config:
         env_file = ".env"
 

@@ -1,9 +1,12 @@
 import os
 import asyncio
 import aiohttp
+import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
 from models.candle import Candle
+
+logger = logging.getLogger(__name__)
 
 POLYGON_BASE = "https://api.polygon.io"
 API_KEY = os.getenv("POLYGON_API_KEY")
@@ -34,7 +37,7 @@ async def polygon_get(url: str, params: dict = None, tries: int = 5) -> dict:
                     elif resp.status == 429:
                         # Rate limit - aggressive backoff
                         backoff = 1.0 * (2 ** attempt)
-                        print(f"  Rate limited on {url}, retry in {backoff}s...")
+                        logger.warning(f"Rate limited on {url}, retry in {backoff}s...")
                         await asyncio.sleep(backoff)
                         continue
                     elif resp.status in [500, 502, 503, 504]:

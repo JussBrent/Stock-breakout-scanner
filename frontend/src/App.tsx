@@ -7,6 +7,7 @@ import SplitSection from "@/components/landing/SplitSection"
 import FAQSection from "@/components/landing/faq-section"
 import PricingPreview from "@/components/landing/PricingPreview"
 import Footer from "@/components/landing/Footer"
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute"
 
 // Pages
 import Login from "@/pages/login"
@@ -57,14 +58,14 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/demo" element={<Demo />} />
-        <Route path="/dashboard" element={<Suspense fallback={<div className="p-6">Loading…</div>}><AdminDashboardPageLazy /></Suspense>} />
-        <Route path="/admin" element={<Suspense fallback={<div className="p-6">Loading…</div>}><AdminDashboardPageLazy /></Suspense>} />
-        <Route path="/ai-insights" element={<Suspense fallback={<div className="p-6">Loading…</div>}><AiInsightsPageLazy /></Suspense>} />
-        <Route path="/scanner" element={<Suspense fallback={<div className="p-6">Loading…</div>}><ScannerPageLazy /></Suspense>} />
-        <Route path="/stock-momentum" element={<Suspense fallback={<div className="p-6">Loading…</div>}><StockMomentumPageLazy /></Suspense>} />
-        <Route path="/analytics" element={<Suspense fallback={<div className="p-6">Loading…</div>}><AnalyticsPageLazy /></Suspense>} />
-        <Route path="/focus-list" element={<Suspense fallback={<div className="p-6">Loading…</div>}><FocusListPageLazy /></Suspense>} />
-        <Route path="/settings" element={<Suspense fallback={<div className="p-6">Loading…</div>}><SettingsPageLazy /></Suspense>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AdminDashboardPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/admin" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AdminDashboardPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/ai-insights" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AiInsightsPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/scanner" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><ScannerPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/stock-momentum" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><StockMomentumPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/analytics" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AnalyticsPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/focus-list" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><FocusListPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><SettingsPageLazy /></Suspense></ProtectedRoute>} />
       </Routes>
 
       {/* Footer only on the main marketing page */}

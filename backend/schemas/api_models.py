@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal
 from models.candle import ScanResult
+import re
 
 # Request Models
 class UniverseScanRequest(BaseModel):
@@ -8,7 +9,8 @@ class UniverseScanRequest(BaseModel):
     symbols: Optional[List[str]] = Field(
         None,
         description="List of symbols to scan (empty = default universe)",
-        example=["AAPL", "MSFT", "NVDA"]
+        example=["AAPL", "MSFT", "NVDA"],
+        max_length=100
     )
     save_to_db: bool = Field(
         True,
@@ -18,6 +20,29 @@ class UniverseScanRequest(BaseModel):
         False,
         description="Use mock data for testing"
     )
+
+    @field_validator('symbols')
+    @classmethod
+    def validate_symbols(cls, v):
+        """Validate and sanitize stock symbols."""
+        if v is None:
+            return v
+
+        if len(v) > 100:
+            raise ValueError("Maximum 100 symbols allowed per scan")
+
+        validated = []
+        for symbol in v:
+            # Remove whitespace and convert to uppercase
+            symbol = symbol.strip().upper()
+
+            # Validate symbol format (letters and optionally dots/hyphens)
+            if not re.match(r'^[A-Z]{1,10}([.-][A-Z]{1,5})?$', symbol):
+                raise ValueError(f"Invalid symbol format: {symbol}. Must be 1-10 uppercase letters, optionally followed by a dot or hyphen and 1-5 letters.")
+
+            validated.append(symbol)
+
+        return validated
 
 
 class SymbolScanRequest(BaseModel):
@@ -29,6 +54,19 @@ class SymbolScanRequest(BaseModel):
         min_length=1,
         max_length=10
     )
+
+    @field_validator('symbol')
+    @classmethod
+    def validate_symbol(cls, v):
+        """Validate and sanitize stock symbol."""
+        # Remove whitespace and convert to uppercase
+        symbol = v.strip().upper()
+
+        # Validate symbol format (letters and optionally dots/hyphens)
+        if not re.match(r'^[A-Z]{1,10}([.-][A-Z]{1,5})?$', symbol):
+            raise ValueError(f"Invalid symbol format: {symbol}. Must be 1-10 uppercase letters.")
+
+        return symbol
 
 
 class FilterParams(BaseModel):

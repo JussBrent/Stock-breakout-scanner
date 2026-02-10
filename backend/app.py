@@ -39,17 +39,16 @@ app = FastAPI(
 )
 
 # CORS Configuration
+# Split CORS_ORIGINS by comma for multiple origins
+allowed_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
-    ],
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "User-Agent"],
+    max_age=3600,  # Cache preflight requests for 1 hour
 )
 
 # Register error handlers

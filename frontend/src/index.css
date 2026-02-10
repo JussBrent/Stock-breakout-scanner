@@ -190,7 +190,74 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply bg-background text-foreground;
+  }
+
+  /* Smooth scrolling for scrollable containers only - exclude interactive elements */
+  div,
+  section,
+  article,
+  main,
+  aside {
+    scroll-behavior: smooth;
+  }
+
+  /* Disable smooth scroll for interactive elements that need precise mouse control */
+  input[type="range"],
+  input[type="number"],
+  textarea,
+  select {
+    scroll-behavior: auto;
+  }
+
+  /* Ensure range sliders work smoothly without scroll interference */
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: grab;
+    overscroll-behavior: contain;
+  }
+
+  input[type="range"]:active {
+    cursor: grabbing;
+  }
+
+  /* Prevent scrolling when dragging range inputs */
+  input[type="range"]:focus,
+  input[type="range"]:active {
+    overscroll-behavior: none;
+  }
+
+  /* Custom scrollbar styles with smooth scrolling */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 5px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    transition: background 0.3s ease;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+
+  /* Firefox scrollbar */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05);
   }
 }
