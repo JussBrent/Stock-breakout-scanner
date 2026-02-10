@@ -11,9 +11,12 @@ import {
   BarChart3,
   Activity,
   Calendar,
-  Zap
+  Zap,
+  Star
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/hooks/useAuth'
+import { PresetManager } from './PresetManager'
 
 export interface FilterOptions {
   // Technical Indicators
@@ -101,10 +104,12 @@ const MARKET_CAP_PRESETS = [
 ]
 
 export function FilterControls({ filters, onChange, resultCount, totalCount }: FilterControlsProps) {
+  const { isAdmin } = useAuth()
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
     new Set(['technical', 'price'])
   )
   const [showAllFilters, setShowAllFilters] = useState(false)
+  const [showPresetManager, setShowPresetManager] = useState(false)
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections)
@@ -389,6 +394,20 @@ export function FilterControls({ filters, onChange, resultCount, totalCount }: F
             )}
           </div>
           <div className="flex items-center gap-3">
+            {isAdmin && (
+              <Button
+                onClick={() => setShowPresetManager(!showPresetManager)}
+                variant="outline"
+                size="sm"
+                className={cn(
+                  "border-white/10 text-zinc-300 hover:bg-white/5 hover:text-white",
+                  showPresetManager && "bg-white/5 text-white"
+                )}
+              >
+                <Star className="h-4 w-4 mr-2" />
+                Presets
+              </Button>
+            )}
             <Button
               onClick={resetFilters}
               variant="outline"
@@ -413,6 +432,17 @@ export function FilterControls({ filters, onChange, resultCount, totalCount }: F
           </div>
         </div>
       </div>
+
+      {/* Preset Manager - Admin Only */}
+      {isAdmin && showPresetManager && (
+        <div className="bg-zinc-900/50 border border-white/10 rounded-lg p-6">
+          <PresetManager
+            currentFilters={filters}
+            onLoadPreset={onChange}
+            onClose={() => setShowPresetManager(false)}
+          />
+        </div>
+      )}
 
       {/* Filter Sections */}
       <div className="grid grid-cols-1 gap-4">

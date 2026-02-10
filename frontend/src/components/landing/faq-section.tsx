@@ -38,12 +38,12 @@ const faqs = [
 ]
 
 const orbitItems = [
-  { id: 1, name: "Chart 1", src: "/src/assets/pfp1.jpg" },
-  { id: 2, name: "Chart 2", src: "/src/assets/pfp2.jpg" },
-  { id: 3, name: "Chart 3", src: "/src/assets/pfp3.jpg" },
-  { id: 4, name: "Chart 4", src: "/src/assets/pfp4.jpg" },
-  { id: 5, name: "Chart 5", src: "/src/assets/pfp5.jpg" },
-  { id: 6, name: "Chart 6", src: "/src/assets/pfp6.jpg" },
+  { id: 1, name: "Chart 1", src: "/pfp1.jpg" },
+  { id: 2, name: "Chart 2", src: "/pfp2.jpg" },
+  { id: 3, name: "Chart 3", src: "/pfp3.jpg" },
+  { id: 4, name: "Chart 4", src: "/pfp4.jpg" },
+  { id: 5, name: "Chart 5", src: "/pfp5.jpg" },
+  { id: 6, name: "Chart 6", src: "/pfp6.jpg" },
 ]
 
 export default function FAQSection() {
