@@ -21,8 +21,8 @@ aiohttp~=3.11.0
 # Supabase
 supabase~=2.12.0
 
-# OpenAI
-openai~=1.60.0
+# AI
+anthropic~=0.42.0
 
 # Authentication & Security
 pyjwt==2.8.0

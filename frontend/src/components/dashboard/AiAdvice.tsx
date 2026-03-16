@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Brain, Send, Loader, Sparkles, TrendingUp, BarChart3, Menu, X, Plus, Trash2, Clock, AlertCircle } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { callOpenAI, AIModel, getModelInfo } from "@/lib/openai"
+import { callOpenAI, AIModel } from "@/lib/openai"
 
 interface Message {
   id: string
@@ -88,7 +88,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
         {
           id: "1",
           role: "assistant",
-          content: `Hello! I'm ${getModelInfo(selectedModel).name}, your AI stock trading advisor. I specialize in breakout patterns, EMA analysis, and technical indicators. How can I help you today?`,
+          content: `Hey! I'm Sean, your AI stock advisor. I can help with breakout setups, EMA trends, volume analysis, and risk management. What are you looking at today?`,
           timestamp: new Date(),
         },
       ],
@@ -316,7 +316,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
         {
           id: "1",
           role: "assistant",
-          content: `Hello! I'm ${getModelInfo(selectedModel).name}, your AI stock trading advisor. I specialize in breakout patterns, EMA analysis, and technical indicators. How can I help you today?`,
+          content: `Hey! I'm Sean, your AI stock advisor. I can help with breakout setups, EMA trends, volume analysis, and risk management. What are you looking at today?`,
           timestamp: new Date(),
         },
       ],

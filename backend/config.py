@@ -58,7 +58,9 @@ class Settings(BaseSettings):
 
     # AI Analysis Configuration
     OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-4o-mini"  # OpenAI model to use
+    OPENAI_MODEL: str = "gpt-4o-mini"  # Legacy OpenAI model
+    ANTHROPIC_API_KEY: Optional[str] = None
+    CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
     AI_ANALYSIS_MAX_STOCKS: int = 50  # Max stocks to analyze with AI per request
 
     # Frontend
