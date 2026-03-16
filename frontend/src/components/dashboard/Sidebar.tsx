@@ -14,13 +14,13 @@ interface Links {
 }
 
 const navItems: Links[] = [
-  { icon: <LayoutDashboard className="h-5 w-5 text-white" />, label: "Dashboard", href: "/admin" },
-  { icon: <Brain className="h-5 w-5 text-white" />, label: "AI Insights", href: "/ai-insights" },
-  { icon: <Target className="h-5 w-5 text-white" />, label: "Scanner", href: "/scanner" },
-  { icon: <TrendingUp className="h-5 w-5 text-white" />, label: "Stock Momentum", href: "/stock-momentum" },
-  { icon: <BarChart3 className="h-5 w-5 text-white" />, label: "Analytics", href: "/analytics" },
-  { icon: <Activity className="h-5 w-5 text-white" />, label: "Focus List", href: "/focus-list" },
-  { icon: <Settings className="h-5 w-5 text-white" />, label: "Settings", href: "/settings" },
+  { icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard", href: "/admin" },
+  { icon: <Brain className="h-5 w-5" />, label: "AI Insights", href: "/ai-insights" },
+  { icon: <Target className="h-5 w-5" />, label: "Scanner", href: "/scanner" },
+  { icon: <TrendingUp className="h-5 w-5" />, label: "Stock Momentum", href: "/stock-momentum" },
+  { icon: <BarChart3 className="h-5 w-5" />, label: "Analytics", href: "/analytics" },
+  { icon: <Activity className="h-5 w-5" />, label: "Focus List", href: "/focus-list" },
+  { icon: <Settings className="h-5 w-5" />, label: "Settings", href: "/settings" },
 ]
 
 interface SidebarContextProps {
@@ -170,26 +170,31 @@ export const MobileSidebar = ({
 export const SidebarLink = ({
   link,
   className,
+  isActive,
   props,
 }: {
   link: Links
   className?: string
+  isActive?: boolean
   props?: Omit<React.ComponentProps<typeof Link>, 'to'>
 }) => {
   const { open, hovered } = useSidebar()
   const showTooltip = hovered && !open
-  
+
   return (
     <Link
       to={link.href}
       aria-label={link.label}
       className={cn(
-        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-white/70 hover:text-white hover:bg-white/10 transition-colors w-full",
+        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors w-full",
+        isActive
+          ? "bg-white/10 text-white border-l-2 border-emerald-400"
+          : "text-white/70 hover:text-white hover:bg-white/5",
         className,
       )}
       {...props}
     >
-      <span className="flex-shrink-0">{link.icon}</span>
+      <span className={cn("flex-shrink-0", isActive ? "text-emerald-400" : "text-white/70")}>{link.icon}</span>
       <motion.span
         initial={false}
         animate={{
@@ -225,23 +230,41 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: (
   return (
     <div className="w-full px-2">
       <nav className="flex flex-col gap-1">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href
-
-          return (
-            <SidebarLink
-              key={item.label}
-              link={item}
-              className={cn(
-                "transition-all duration-200",
-                isActive ? "bg-white/15 text-white" : "",
-              )}
-              props={{ onClick: () => onNavigate?.() }}
-            />
-          )
-        })}
+        {navItems.map((item) => (
+          <SidebarLink
+            key={item.label}
+            link={item}
+            isActive={pathname === item.href}
+            props={{ onClick: () => onNavigate?.() }}
+          />
+        ))}
       </nav>
     </div>
+  )
+}
+
+function BackLink() {
+  const { open } = useSidebar()
+  return (
+    <Link
+      to="/"
+      className="flex items-center justify-center w-full p-2.5 rounded-lg hover:bg-white/5 transition-colors text-white/80 hover:text-white group"
+      aria-label="Back to landing page"
+    >
+      <ArrowLeft className="h-5 w-5" />
+      <motion.span
+        initial={false}
+        animate={{
+          opacity: open ? 1 : 0,
+          x: open ? 0 : -10,
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="text-sm font-medium whitespace-nowrap overflow-hidden ml-2"
+        style={{ display: open ? "inline-block" : "none" }}
+      >
+        Back
+      </motion.span>
+    </Link>
   )
 }
 
@@ -249,30 +272,12 @@ export function AppSidebar() {
   const location = useLocation()
 
   return (
-    <SidebarShell animate open={false}>
+    <SidebarShell animate>
       {/* Desktop */}
       <DesktopSidebar className="fixed left-0 top-0 bottom-0 z-50 overflow-y-auto overflow-hidden pt-4">
         {/* Back Button */}
         <div className="px-2 pb-4 border-b border-white/10">
-          <Link
-            to="/"
-            className="flex items-center justify-center w-full p-2.5 rounded-lg hover:bg-white/10 transition-colors text-white/70 hover:text-white group"
-            aria-label="Back to landing page"
-          >
-            <ArrowLeft className="h-5 w-5" />
-            <motion.span
-              initial={false}
-              animate={{
-                opacity: false ? 1 : 0,
-                x: false ? 0 : -10,
-              }}
-              transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="text-sm font-medium whitespace-nowrap overflow-hidden ml-2"
-              style={{ display: false ? "inline-block" : "none" }}
-            >
-              Back
-            </motion.span>
-          </Link>
+          <BackLink />
         </div>
         <SidebarNav pathname={location.pathname} />
       </DesktopSidebar>
