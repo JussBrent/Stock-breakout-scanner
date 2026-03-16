@@ -57,10 +57,15 @@ class Settings(BaseSettings):
     DEFAULT_SCAN_UNIVERSE: str = "AAPL,MSFT,NVDA,AMZN,TSLA"  # Comma-separated default symbols
 
     # AI Analysis Configuration
+    OPENAI_API_KEY: Optional[str] = None
     OPENAI_MODEL: str = "gpt-4o-mini"  # OpenAI model to use
     AI_ANALYSIS_MAX_STOCKS: int = 50  # Max stocks to analyze with AI per request
 
+    # Frontend
+    FRONTEND_URL: str = "http://localhost:5173"
+
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
 settings = Settings()

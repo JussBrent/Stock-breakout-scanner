@@ -2,33 +2,61 @@
 Watchlist API endpoints - user-specific stock tracking.
 Requires authentication.
 """
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, HTTPException, Security, status
 from typing import List
 from datetime import datetime, timezone
 
 from models.user import Watchlist, WatchlistCreate, WatchlistUpdate
 from services.supabase_client import supabase
+from providers.polygon import polygon_get, POLYGON_BASE
 from middleware.auth import get_current_user, security
 
 router = APIRouter()
 
 
+async def _get_or_create_default_watchlist(user_id: str) -> str:
+    """Get user's default watchlist ID, creating one if it doesn't exist."""
+    # Check for existing default watchlist
+    results = await (
+        supabase.table("watchlists")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("is_default", True)
+        .execute()
+    )
+
+    if results and len(results) > 0:
+        return results[0]["id"]
+
+    # Create default watchlist
+    new_watchlist = {
+        "user_id": user_id,
+        "name": "My Watchlist",
+        "is_default": True,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    result = await supabase.table("watchlists").insert([new_watchlist]).execute()
+    if result and len(result) > 0:
+        return result[0]["id"]
+    raise Exception("Failed to create default watchlist")
+
+
 @router.get("/", response_model=List[Watchlist])
-async def get_watchlist(user: dict = Depends(get_current_user)):
-    """
-    Get user's watchlist.
-    Returns all symbols the user is watching.
-    """
+async def get_watchlist(user: dict = Security(get_current_user, scopes=[])):
+    """Get user's watchlist items."""
     try:
         user_id = user["user_id"]
 
-        query = supabase.table("watchlists").select()
-        query = query.eq("user_id", user_id)
-        query = query.order("added_at", desc=True)
+        results = await (
+            supabase.table("watchlist_items")
+            .select("*")
+            .eq("user_id", user_id)
+            .order("added_at", desc=True)
+            .execute()
+        )
 
-        results = await query.execute()
-
-        return results
+        return results or []
 
     except Exception as e:
         raise HTTPException(
@@ -40,39 +68,55 @@ async def get_watchlist(user: dict = Depends(get_current_user)):
 @router.post("/", response_model=Watchlist, status_code=status.HTTP_201_CREATED)
 async def add_to_watchlist(
     item: WatchlistCreate,
-    user: dict = Depends(get_current_user)
+    user: dict = Security(get_current_user, scopes=[])
 ):
-    """
-    Add a symbol to user's watchlist.
-    """
+    """Add a symbol to user's watchlist."""
     try:
         user_id = user["user_id"]
+        symbol = item.symbol.upper()
 
-        # Check if symbol already in watchlist
-        existing = await supabase.table("watchlists").select()
-        existing = existing.eq("user_id", user_id)
-        existing = existing.eq("symbol", item.symbol.upper())
-        existing_results = await existing.execute()
-
-        if existing_results:
+        # Validate symbol exists on Polygon
+        ticker_data = await polygon_get(
+            f"{POLYGON_BASE}/v3/reference/tickers/{symbol}"
+        )
+        if not ticker_data or ticker_data.get("status") == "NOT_FOUND":
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"{item.symbol} is already in your watchlist"
+                detail=f"{symbol} is not a valid stock symbol"
             )
 
-        # Add to watchlist
+        # Check if symbol already in watchlist
+        existing = await (
+            supabase.table("watchlist_items")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("symbol", symbol)
+            .execute()
+        )
+
+        if existing and len(existing) > 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"{symbol} is already in your watchlist"
+            )
+
+        # Get or create default watchlist
+        watchlist_id = await _get_or_create_default_watchlist(user_id)
+
+        # Add to watchlist_items
         watchlist_data = {
+            "watchlist_id": watchlist_id,
             "user_id": user_id,
-            "symbol": item.symbol.upper(),
+            "symbol": symbol,
             "notes": item.notes,
             "alert_enabled": item.alert_enabled,
             "alert_price": item.alert_price,
-            "added_at": datetime.now(timezone.utc).isoformat()
+            "added_at": datetime.now(timezone.utc).isoformat(),
         }
 
-        result = await supabase.table("watchlists").insert([watchlist_data]).execute()
+        result = await supabase.table("watchlist_items").insert([watchlist_data]).execute()
 
-        if result:
+        if result and len(result) > 0:
             return result[0]
         else:
             raise HTTPException(
@@ -93,16 +137,13 @@ async def add_to_watchlist(
 async def update_watchlist_item(
     symbol: str,
     update: WatchlistUpdate,
-    user: dict = Depends(get_current_user)
+    user: dict = Security(get_current_user, scopes=[])
 ):
-    """
-    Update a watchlist item (notes, alerts, etc.).
-    """
+    """Update a watchlist item (notes, alerts, etc.)."""
     try:
         user_id = user["user_id"]
         symbol = symbol.upper()
 
-        # Build update data
         update_data = {}
         if update.notes is not None:
             update_data["notes"] = update.notes
@@ -117,11 +158,13 @@ async def update_watchlist_item(
                 detail="No fields to update"
             )
 
-        # Update in database
-        query = supabase.table("watchlists").update(update_data)
-        query = query.eq("user_id", user_id)
-        query = query.eq("symbol", symbol)
-        result = await query.execute()
+        result = await (
+            supabase.table("watchlist_items")
+            .update(update_data)
+            .eq("user_id", user_id)
+            .eq("symbol", symbol)
+            .execute()
+        )
 
         if result:
             return {
@@ -147,25 +190,23 @@ async def update_watchlist_item(
 @router.delete("/{symbol}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_from_watchlist(
     symbol: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Security(get_current_user, scopes=[])
 ):
-    """
-    Remove a symbol from user's watchlist.
-    """
+    """Remove a symbol from user's watchlist."""
     try:
         user_id = user["user_id"]
         symbol = symbol.upper()
 
-        # Delete from database
-        query = supabase.table("watchlists").delete()
-        query = query.eq("user_id", user_id)
-        query = query.eq("symbol", symbol)
-        await query.execute()
+        await (
+            supabase.table("watchlist_items")
+            .delete()
+            .eq("user_id", user_id)
+            .eq("symbol", symbol)
+            .execute()
+        )
 
-        return None  # 204 No Content
+        return None
 
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -176,25 +217,24 @@ async def remove_from_watchlist(
 @router.get("/{symbol}/check")
 async def check_in_watchlist(
     symbol: str,
-    user: dict = Depends(get_current_user)
+    user: dict = Security(get_current_user, scopes=[])
 ):
-    """
-    Check if a symbol is in user's watchlist.
-    """
+    """Check if a symbol is in user's watchlist."""
     try:
         user_id = user["user_id"]
         symbol = symbol.upper()
 
-        query = supabase.table("watchlists").select()
-        query = query.eq("user_id", user_id)
-        query = query.eq("symbol", symbol)
-
-        results = await query.execute()
+        results = await (
+            supabase.table("watchlist_items")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("symbol", symbol)
+            .execute()
+        )
 
         return {
             "symbol": symbol,
-            "in_watchlist": len(results) > 0,
-            "data": results[0] if results else None
+            "in_watchlist": bool(results and len(results) > 0),
         }
 
     except Exception as e:

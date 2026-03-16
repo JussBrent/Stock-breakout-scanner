@@ -2,13 +2,16 @@
 JWT Authentication middleware for Supabase tokens.
 Verifies JWT tokens from Supabase Auth and extracts user information.
 """
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, Security, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from typing import Optional
 import jwt
 import os
 import httpx
+import logging
 from functools import lru_cache
+
+logger = logging.getLogger(__name__)
 
 security = HTTPBearer()
 
@@ -61,23 +64,26 @@ async def verify_token(token: str) -> dict:
         return payload
 
     except jwt.ExpiredSignatureError:
+        logger.error("JWT token has expired")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired"
         )
     except jwt.InvalidTokenError as e:
+        logger.error(f"Invalid JWT token: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Invalid token: {str(e)}"
         )
     except Exception as e:
+        logger.error(f"Auth failed: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Authentication failed: {str(e)}"
         )
 
 
-async def get_current_user(credentials: HTTPAuthorizationCredentials) -> dict:
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> dict:
     """
     Dependency to get current authenticated user from JWT token.
 

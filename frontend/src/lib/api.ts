@@ -100,3 +100,127 @@ export async function healthCheck(): Promise<{
   const response = await fetch(`${API_URL}/health`)
   return response.json()
 }
+
+// ============================================================
+// Momentum API
+// ============================================================
+
+export interface MomentumStock {
+  symbol: string
+  company: string
+  price: number
+  momentum: number
+  trend: "bullish" | "bearish" | "neutral"
+  volume: string
+  changePercent: number
+  breakoutStrength: number
+  efficiency: number
+}
+
+/**
+ * Get top momentum stocks (gainers or losers)
+ */
+export async function getMomentumStocks(
+  direction: "gainers" | "losers" = "gainers"
+): Promise<MomentumStock[]> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(
+    `${API_URL}/api/momentum/stocks?direction=${direction}`,
+    { headers }
+  )
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch momentum data")
+  }
+  const data = await response.json()
+  return data.stocks
+}
+
+// ============================================================
+// Watchlist API
+// ============================================================
+
+export interface WatchlistItem {
+  id?: number
+  user_id: string
+  symbol: string
+  added_at: string
+  notes?: string | null
+  alert_enabled: boolean
+  alert_price?: number | null
+}
+
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const { supabase } = await import("./supabase")
+  const { data } = await supabase.auth.getSession()
+  const token = data?.session?.access_token
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  }
+}
+
+/**
+ * Get user's watchlist
+ */
+export async function getWatchlist(): Promise<WatchlistItem[]> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/watchlist/`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch watchlist")
+  }
+  return response.json()
+}
+
+/**
+ * Add symbol to watchlist
+ */
+export async function addToWatchlist(
+  symbol: string,
+  notes?: string
+): Promise<WatchlistItem> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/watchlist/`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ symbol: symbol.toUpperCase(), notes }),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to add to watchlist")
+  }
+  return response.json()
+}
+
+/**
+ * Remove symbol from watchlist
+ */
+export async function removeFromWatchlist(symbol: string): Promise<void> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(
+    `${API_URL}/api/watchlist/${symbol.toUpperCase()}`,
+    { method: "DELETE", headers }
+  )
+  if (!response.ok && response.status !== 204) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to remove from watchlist")
+  }
+}
+
+/**
+ * Check if symbol is in watchlist
+ */
+export async function checkInWatchlist(
+  symbol: string
+): Promise<{ symbol: string; in_watchlist: boolean }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(
+    `${API_URL}/api/watchlist/${symbol.toUpperCase()}/check`,
+    { headers }
+  )
+  if (!response.ok) {
+    return { symbol, in_watchlist: false }
+  }
+  return response.json()
+}

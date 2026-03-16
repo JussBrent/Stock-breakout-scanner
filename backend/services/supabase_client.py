@@ -98,10 +98,11 @@ class SupabaseTable:
         async with httpx.AsyncClient() as client:
             # INSERT operation
             if self._insert_data is not None:
+                headers = {**self.headers, "Prefer": "return=representation"}
                 response = await client.post(
                     self.url,
                     json=self._insert_data,
-                    headers=self.headers,
+                    headers=headers,
                 )
                 if response.status_code not in [200, 201]:
                     raise Exception(f"Insert failed: {response.text}")
@@ -116,11 +117,12 @@ class SupabaseTable:
                     if len(parts) == 2:
                         params[parts[0]] = parts[1]
 
+                headers = {**self.headers, "Prefer": "return=representation"}
                 response = await client.patch(
                     self.url,
                     json=self._update_data,
                     params=params,
-                    headers=self.headers,
+                    headers=headers,
                 )
                 if response.status_code not in [200, 204]:
                     raise Exception(f"Update failed: {response.text}")

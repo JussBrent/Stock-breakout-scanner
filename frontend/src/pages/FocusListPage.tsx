@@ -1,40 +1,61 @@
-import { useState, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sidebar } from "@/components/dashboard/Sidebar"
-import { mockFocusListItems, FocusListItem } from "@/lib/mock-data"
-import { Heart, X, Plus, TrendingUp, TrendingDown, Target, Calendar, Star } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { getWatchlist, addToWatchlist, removeFromWatchlist, WatchlistItem } from "@/lib/api"
+import { Heart, X, Plus, Star, Loader2, AlertCircle } from "lucide-react"
 import { motion } from "framer-motion"
 
 export default function FocusListPage() {
-  const [focusItems, setFocusItems] = useState<FocusListItem[]>(mockFocusListItems)
+  const [focusItems, setFocusItems] = useState<WatchlistItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [newSymbol, setNewSymbol] = useState("")
   const [showAddForm, setShowAddForm] = useState(false)
+  const [adding, setAdding] = useState(false)
 
-  const removeFromFocus = (id: string) => {
-    setFocusItems(focusItems.filter((item) => item.id !== id))
+  // Fetch watchlist on mount
+  useEffect(() => {
+    fetchWatchlist()
+  }, [])
+
+  const fetchWatchlist = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const items = await getWatchlist()
+      setFocusItems(items)
+    } catch (err: any) {
+      setError(err.message || "Failed to load watchlist")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleAddStock = () => {
-    if (newSymbol.trim()) {
-      // Mock adding - in real app would fetch data
-      const newItem: FocusListItem = {
-        id: `focus-${Date.now()}`,
-        symbol: newSymbol.toUpperCase(),
-        company: `${newSymbol} Corp`,
-        price: Math.random() * 500 + 100,
-        change: (Math.random() - 0.5) * 20,
-        changePercent: (Math.random() - 0.5) * 5,
-        target: Math.random() * 500 + 150,
-        dailyUpdate: "Recently added to your focus list. Monitoring for opportunities.",
-        addedDate: new Date(),
-      }
+  const handleRemove = async (symbol: string) => {
+    try {
+      await removeFromWatchlist(symbol)
+      setFocusItems(focusItems.filter((item) => item.symbol !== symbol))
+    } catch (err: any) {
+      setError(err.message || "Failed to remove from watchlist")
+    }
+  }
+
+  const handleAddStock = async () => {
+    if (!newSymbol.trim()) return
+    try {
+      setAdding(true)
+      setError(null)
+      const newItem = await addToWatchlist(newSymbol.trim())
       setFocusItems([newItem, ...focusItems])
       setNewSymbol("")
       setShowAddForm(false)
+    } catch (err: any) {
+      setError(err.message || "Failed to add to watchlist")
+    } finally {
+      setAdding(false)
     }
   }
 
@@ -83,134 +104,112 @@ export default function FocusListPage() {
         </header>
 
         <main className="pt-24 p-8">
+          {/* Error Message */}
+          {error && (
+            <Card className="bg-red-500/10 border-red-500/30 p-4 mb-6 flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+              <p className="text-sm text-red-400">{error}</p>
+              <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-300">
+                <X className="h-4 w-4" />
+              </button>
+            </Card>
+          )}
+
           {/* Add Stock Form */}
           {showAddForm && (
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 mb-6">
-              <h3 className="text-lg font-semibold text-white mb-4">Add Stock to Focus List</h3>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter stock symbol (e.g., AAPL, TSLA, NVDA)..."
-                  value={newSymbol}
-                  onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
-                  onKeyPress={(e) => e.key === "Enter" && handleAddStock()}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
-                />
-                <Button
-                  onClick={handleAddStock}
-                  disabled={!newSymbol.trim()}
-                  className="bg-pink-600 text-white hover:bg-pink-700"
-                >
-                  Add
-                </Button>
-                <Button
-                  onClick={() => setShowAddForm(false)}
-                  variant="outline"
-                  className="border-white/20 text-white"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </Card>
+              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 mb-6">
+                <h3 className="text-lg font-semibold text-white mb-4">Add Stock to Focus List</h3>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter stock symbol (e.g., AAPL, TSLA, NVDA)..."
+                    value={newSymbol}
+                    onChange={(e) => setNewSymbol(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddStock()}
+                    className="bg-white/5 border-white/10 text-white placeholder:text-white/50"
+                    disabled={adding}
+                  />
+                  <Button
+                    onClick={handleAddStock}
+                    disabled={!newSymbol.trim() || adding}
+                    className="bg-pink-600 text-white hover:bg-pink-700"
+                  >
+                    {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add"}
+                  </Button>
+                  <Button
+                    onClick={() => setShowAddForm(false)}
+                    variant="outline"
+                    className="border-white/20 text-white"
+                    disabled={adding}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </Card>
             </motion.div>
           )}
 
-          {/* Focus List Items */}
-          {focusItems.length > 0 ? (
+          {/* Loading State */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-8 w-8 text-pink-400 animate-spin mb-4" />
+              <p className="text-white/60">Loading your watchlist...</p>
+            </div>
+          ) : focusItems.length > 0 ? (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
               {focusItems.map((item, index) => (
                 <motion.div
-                  key={item.id}
+                  key={item.symbol}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 + index * 0.05 }}
                 >
-                <Card
-                  className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 transition-all duration-200"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-bold text-white">{item.symbol}</h3>
-                        <Badge
-                          className={cn(
-                            "h-fit",
-                            item.changePercent >= 0
-                              ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/50"
-                              : "bg-red-500/20 text-red-400 border-red-500/50"
+                  <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 transition-all duration-200">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="text-xl font-bold text-white">{item.symbol}</h3>
+                          {item.alert_enabled && (
+                            <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 h-fit">
+                              Alert Active
+                            </Badge>
                           )}
-                        >
-                          {item.changePercent >= 0 ? (
-                            <TrendingUp className="h-3 w-3 mr-1" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3 mr-1" />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4 mt-4">
+                          <div>
+                            <p className="text-xs text-white/50 mb-1">Added</p>
+                            <p className="text-sm font-medium text-white">
+                              {new Date(item.added_at).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          {item.alert_price && (
+                            <div>
+                              <p className="text-xs text-white/50 mb-1">Alert Price</p>
+                              <p className="text-sm font-medium text-yellow-400">
+                                ${item.alert_price.toFixed(2)}
+                              </p>
+                            </div>
                           )}
-                          {item.changePercent >= 0 ? "+" : ""}
-                          {item.changePercent.toFixed(2)}%
-                        </Badge>
+
+                          {item.notes && (
+                            <div className="col-span-3 mt-2">
+                              <p className="text-xs text-white/50 mb-1">Notes</p>
+                              <p className="text-sm text-white/80">{item.notes}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-white/60">{item.company}</p>
-                    </div>
 
-                    <button
-                      onClick={() => removeFromFocus(item.id)}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-                    >
-                      <X className="h-5 w-5 text-white/60 hover:text-white" />
-                    </button>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-4 mb-6 pb-6 border-b border-white/10">
-                    <div>
-                      <p className="text-xs text-white/50 mb-1">Current Price</p>
-                      <p className="text-lg font-bold text-white">${item.price.toFixed(2)}</p>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-white/50 mb-1">Daily Change</p>
-                      <p
-                        className={cn(
-                          "text-lg font-bold",
-                          item.change >= 0 ? "text-emerald-400" : "text-red-400"
-                        )}
+                      <button
+                        onClick={() => handleRemove(item.symbol)}
+                        className="p-2 hover:bg-white/10 rounded-lg transition-colors"
                       >
-                        {item.change >= 0 ? "+" : ""}${item.change.toFixed(2)}
-                      </p>
+                        <X className="h-5 w-5 text-white/60 hover:text-white" />
+                      </button>
                     </div>
-
-                    <div>
-                      <p className="text-xs text-white/50 mb-1">Target Price</p>
-                      <div className="flex items-center gap-2">
-                        <Target className="h-4 w-4 text-blue-400" />
-                        <p className="text-lg font-bold text-white">${item.target.toFixed(2)}</p>
-                      </div>
-                    </div>
-
-                    <div>
-                      <p className="text-xs text-white/50 mb-1">Upside Potential</p>
-                      <p className="text-lg font-bold text-emerald-400">
-                        +{(((item.target - item.price) / item.price) * 100).toFixed(1)}%
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                    <p className="text-xs text-white/50 mb-2 flex items-center gap-2">
-                      <Calendar className="h-3 w-3" />
-                      Daily Update
-                    </p>
-                    <p className="text-sm text-white/80 leading-relaxed">{item.dailyUpdate}</p>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-xs text-white/40">
-                      Added {Math.floor((new Date().getTime() - item.addedDate.getTime()) / (24 * 60 * 60 * 1000))} days ago
-                    </p>
-                    <Button variant="outline" size="sm" className="border-white/20 text-white/80 hover:text-white">
-                      View Details
-                    </Button>
-                  </div>
-                </Card>
+                  </Card>
                 </motion.div>
               ))}
             </motion.div>

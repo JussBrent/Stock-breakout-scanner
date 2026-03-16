@@ -20,30 +20,25 @@ router = APIRouter()
 
 
 @router.post("/universe", response_model=ScanResponse)
-@limiter.limit("10/minute")
+@limiter.limit("10/minute", key_func=lambda request: request.client.host)
 async def scan_universe_endpoint(
-    req: Request,
-    request: UniverseScanRequest,
+    request: Request,
+    body: UniverseScanRequest,
     background_tasks: BackgroundTasks,
     user: dict = Depends(get_current_user)
 ):
     """
     Scan multiple symbols for breakout patterns.
     Requires authentication. Limited to 10 scans per minute.
-
-    - **symbols**: List of ticker symbols (optional, uses default universe if empty)
-    - **save_to_db**: Save results to Supabase (default: true)
-    - **use_mock**: Use mock data for testing (default: false)
     """
     try:
-        if request.use_mock:
+        if body.use_mock:
             results = await get_mock_results()
         else:
-            symbols = request.symbols if request.symbols else None
+            symbols = body.symbols if body.symbols else None
             results = await scan_universe(symbols)
 
-        # Save in background if requested
-        if request.save_to_db and results:
+        if body.save_to_db and results:
             background_tasks.add_task(save_scan_results, results)
 
         return ScanResponse(
@@ -58,34 +53,32 @@ async def scan_universe_endpoint(
 
 
 @router.post("/symbol", response_model=ScanResponse)
-@limiter.limit("30/minute")
+@limiter.limit("30/minute", key_func=lambda request: request.client.host)
 async def scan_symbol_endpoint(
-    req: Request,
-    request: SymbolScanRequest,
+    request: Request,
+    body: SymbolScanRequest,
     user: dict = Depends(get_current_user)
 ):
     """
     Scan a single symbol for breakout patterns.
     Requires authentication. Limited to 30 scans per minute.
-
-    - **symbol**: Ticker symbol (e.g., "AAPL", "NVDA")
     """
     try:
-        result = await scan_one_symbol(request.symbol.upper())
+        result = await scan_one_symbol(body.symbol.upper())
 
         if result is None:
             return ScanResponse(
                 success=True,
                 count=0,
                 results=[],
-                message=f"{request.symbol} did not pass filters"
+                message=f"{body.symbol} did not pass filters"
             )
 
         return ScanResponse(
             success=True,
             count=1,
             results=[result],
-            message=f"Scan complete for {request.symbol}"
+            message=f"Scan complete for {body.symbol}"
         )
 
     except Exception as e:
@@ -93,10 +86,10 @@ async def scan_symbol_endpoint(
 
 
 @router.post("/universe/background")
-@limiter.limit("5/minute")
+@limiter.limit("5/minute", key_func=lambda request: request.client.host)
 async def scan_universe_background(
-    req: Request,
-    request: UniverseScanRequest,
+    request: Request,
+    body: UniverseScanRequest,
     user: dict = Depends(get_current_user)
 ):
     """
@@ -104,19 +97,19 @@ async def scan_universe_background(
     Requires authentication. Limited to 5 background scans per minute.
     Returns task_id to check status later.
     """
-    task_id = f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{id(request)}"
+    task_id = f"scan_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{id(body)}"
 
     async def background_scan():
         try:
             task_manager.start_task(task_id)
 
-            if request.use_mock:
+            if body.use_mock:
                 results = await get_mock_results()
             else:
-                symbols = request.symbols if request.symbols else None
+                symbols = body.symbols if body.symbols else None
                 results = await scan_universe(symbols)
 
-            if request.save_to_db and results:
+            if body.save_to_db and results:
                 await save_scan_results(results)
 
             task_manager.complete_task(task_id, {
@@ -126,10 +119,7 @@ async def scan_universe_background(
         except Exception as e:
             task_manager.fail_task(task_id, str(e))
 
-    # Create task entry
     task_manager.create_task(task_id, {"type": "universe_scan"})
-
-    # Start background task
     asyncio.create_task(background_scan())
 
     return {
@@ -142,7 +132,7 @@ async def scan_universe_background(
 @router.get("/status/{task_id}", response_model=ScanStatusResponse)
 @limiter.limit("60/minute")
 async def get_scan_status(
-    req: Request,
+    request: Request,
     task_id: str,
     user: dict = Depends(get_current_user)
 ):
@@ -155,7 +145,6 @@ async def get_scan_status(
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    # Extract results from task result
     results = None
     count = 0
     if task.result and isinstance(task.result, dict):
@@ -172,26 +161,22 @@ async def get_scan_status(
 
 
 @router.post("/ai-analyze")
-@limiter.limit("3/minute")
+@limiter.limit("3/minute", key_func=lambda request: request.client.host)
 async def ai_analyze_scan(
-    req: Request,
-    request: UniverseScanRequest,
+    request: Request,
+    body: UniverseScanRequest,
     top_n: int = 10,
     user: dict = Depends(get_current_user)
 ):
     """
     Scan universe and return AI-rated top opportunities.
-    Requires authentication. Limited to 3 requests per minute (expensive operation).
-
-    - **symbols**: List of symbols to scan (optional)
-    - **top_n**: Number of top-rated stocks to return (default: 10)
+    Requires authentication. Limited to 3 requests per minute.
     """
     try:
-        # Get scan results
-        if request.use_mock:
+        if body.use_mock:
             results = await get_mock_results()
         else:
-            symbols = request.symbols if request.symbols else None
+            symbols = body.symbols if body.symbols else None
             results = await scan_universe(symbols)
 
         if not results:
@@ -202,7 +187,6 @@ async def ai_analyze_scan(
                 "message": "No setups found to analyze"
             }
 
-        # Get AI analysis
         ai_service = get_ai_service()
         ratings = await ai_service.analyze_stocks(results, top_n=top_n)
 

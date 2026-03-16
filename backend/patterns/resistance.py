@@ -1,4 +1,4 @@
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Optional
 from models.candle import Candle
 from indicators.pivots import pivot_highs
 
@@ -39,7 +39,7 @@ def cluster_resistance_levels(
     return clusters
 
 
-def find_inside_day_high(candles: List[Candle]) -> float | None:
+def find_inside_day_high(candles: List[Candle]) -> Optional[float]:
     """Find inside day high (price contained within previous candle)."""
     if len(candles) < 3:
         return None

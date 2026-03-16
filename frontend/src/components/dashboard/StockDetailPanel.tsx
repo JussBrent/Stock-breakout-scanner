@@ -1,6 +1,8 @@
+import { useState, useEffect } from 'react'
 import { BreakoutScan } from '@/hooks/useScanResults'
-import { X } from 'lucide-react'
+import { X, Heart, Loader2 } from 'lucide-react'
 import { StockChart } from './StockChart'
+import { addToWatchlist, removeFromWatchlist, checkInWatchlist } from '@/lib/api'
 
 interface StockDetailPanelProps {
   scan: BreakoutScan | null
@@ -8,6 +10,33 @@ interface StockDetailPanelProps {
 }
 
 export function StockDetailPanel({ scan, onClose }: StockDetailPanelProps) {
+  const [inWatchlist, setInWatchlist] = useState(false)
+  const [watchlistLoading, setWatchlistLoading] = useState(false)
+
+  useEffect(() => {
+    if (scan?.symbol) {
+      checkInWatchlist(scan.symbol).then((res) => setInWatchlist(res.in_watchlist))
+    }
+  }, [scan?.symbol])
+
+  const toggleWatchlist = async () => {
+    if (!scan) return
+    setWatchlistLoading(true)
+    try {
+      if (inWatchlist) {
+        await removeFromWatchlist(scan.symbol)
+        setInWatchlist(false)
+      } else {
+        await addToWatchlist(scan.symbol)
+        setInWatchlist(true)
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setWatchlistLoading(false)
+    }
+  }
+
   if (!scan) return null
 
   const formatNumber = (value: number, decimals: number = 2) => {
@@ -45,12 +74,30 @@ export function StockDetailPanel({ scan, onClose }: StockDetailPanelProps) {
           <h2 className="text-2xl font-bold text-white">{scan.symbol}</h2>
           <p className="text-sm text-zinc-400">{formatMarketCap(scan.market_cap)}</p>
         </div>
-        <button
-          onClick={onClose}
-          className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-zinc-800"
-        >
-          <X size={24} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleWatchlist}
+            disabled={watchlistLoading}
+            className={`p-2 transition-colors rounded-lg ${
+              inWatchlist
+                ? 'text-pink-400 bg-pink-500/20 hover:bg-pink-500/30'
+                : 'text-zinc-400 hover:text-pink-400 hover:bg-zinc-800'
+            }`}
+            title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
+          >
+            {watchlistLoading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              <Heart size={20} fill={inWatchlist ? 'currentColor' : 'none'} />
+            )}
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-zinc-800"
+          >
+            <X size={24} />
+          </button>
+        </div>
       </div>
 
       {/* Content */}
