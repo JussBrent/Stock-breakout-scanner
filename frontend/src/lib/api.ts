@@ -224,3 +224,318 @@ export async function checkInWatchlist(
   }
   return response.json()
 }
+
+// ============================================================
+// SnapTrade / Brokerage API
+// ============================================================
+
+export interface SnapTradeAccount {
+  id: string
+  brokerage_authorization_id?: string
+  name: string
+  number: string
+  institution_name?: string
+  sync_status?: { status: string }
+}
+
+export interface SnapTradeHolding {
+  symbol?: { symbol?: string; description?: string }
+  units?: number
+  price?: number
+  open_pnl?: number
+  currency?: { code?: string }
+}
+
+export interface SnapTradeActivity {
+  id?: string
+  symbol?: { symbol?: string }
+  type?: string
+  action?: string
+  units?: number
+  price?: number
+  amount?: number
+  trade_date?: string
+  settlement_date?: string
+  description?: string
+}
+
+/**
+ * Register user with SnapTrade
+ */
+export async function snaptradeRegister(): Promise<{ status: string; user_id: string }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/register`, {
+    method: "POST",
+    headers,
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to register with SnapTrade")
+  }
+  return response.json()
+}
+
+/**
+ * Get SnapTrade Connect URL for linking a brokerage
+ */
+export async function snaptradeGetConnectUrl(): Promise<{ redirect_url: string }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/connect`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to get connect URL")
+  }
+  return response.json()
+}
+
+/**
+ * Check SnapTrade connection status
+ */
+export async function snaptradeGetStatus(): Promise<{
+  registered: boolean
+  accounts_linked: number
+  accounts: SnapTradeAccount[]
+}> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/status`, { headers })
+  if (!response.ok) {
+    return { registered: false, accounts_linked: 0, accounts: [] }
+  }
+  return response.json()
+}
+
+/**
+ * Get all holdings across linked accounts
+ */
+export async function snaptradeGetHoldings(): Promise<{
+  holdings: Array<{ account: SnapTradeAccount; holdings: SnapTradeHolding[] }>
+}> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/holdings`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch holdings")
+  }
+  return response.json()
+}
+
+/**
+ * Get holdings for a specific account
+ */
+export async function snaptradeGetAccountHoldings(accountId: string): Promise<{
+  holdings: SnapTradeHolding[]
+}> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/holdings/${accountId}`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch account holdings")
+  }
+  return response.json()
+}
+
+/**
+ * Get account balances
+ */
+export async function snaptradeGetBalances(accountId: string): Promise<{
+  balances: Array<{ currency?: { code?: string }; cash?: number; buying_power?: number }>
+}> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/accounts/${accountId}/balances`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch balances")
+  }
+  return response.json()
+}
+
+/**
+ * Get trade/activity history
+ */
+export async function snaptradeGetActivities(params?: {
+  start_date?: string
+  end_date?: string
+  account_id?: string
+}): Promise<{ activities: SnapTradeActivity[] }> {
+  const headers = await getAuthHeaders()
+  const query = new URLSearchParams()
+  if (params?.start_date) query.set("start_date", params.start_date)
+  if (params?.end_date) query.set("end_date", params.end_date)
+  if (params?.account_id) query.set("account_id", params.account_id)
+
+  const response = await fetch(`${API_URL}/api/snaptrade/activities?${query}`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch activities")
+  }
+  return response.json()
+}
+
+/**
+ * Disconnect SnapTrade — revokes all brokerage connections and deletes stored credentials
+ */
+export async function snaptradeDisconnect(): Promise<{ status: string }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/disconnect`, {
+    method: "POST",
+    headers,
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to disconnect")
+  }
+  return response.json()
+}
+
+/**
+ * Place a trade order
+ */
+export async function snaptradePlaceOrder(order: {
+  account_id: string
+  symbol: string
+  action: "BUY" | "SELL"
+  order_type: "Market" | "Limit" | "StopLimit" | "StopLoss"
+  quantity: number
+  price?: number
+  stop_price?: number
+  time_in_force?: string
+}): Promise<{ order: unknown }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/order/place`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(order),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to place order")
+  }
+  return response.json()
+}
+
+/**
+ * Preview order impact
+ */
+export async function snaptradePreviewOrder(order: {
+  account_id: string
+  symbol: string
+  action: "BUY" | "SELL"
+  order_type: string
+  quantity: number
+  price?: number
+}): Promise<{ impact: unknown }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/order/preview`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(order),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to preview order")
+  }
+  return response.json()
+}
+
+// ============================================================
+// AI Training Content API
+// ============================================================
+
+export interface TrainingContent {
+  id: string
+  title: string
+  content: string
+  source_type: string
+  tags: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export async function getTrainingContent(): Promise<TrainingContent[]> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/training/`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch training content")
+  }
+  return response.json()
+}
+
+export async function createTrainingContent(data: {
+  title: string
+  content: string
+  source_type?: string
+  tags?: string[]
+}): Promise<TrainingContent> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/training/`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to create training content")
+  }
+  return response.json()
+}
+
+export async function updateTrainingContent(
+  id: string,
+  data: { title?: string; content?: string; tags?: string[]; is_active?: boolean }
+): Promise<TrainingContent> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/training/${id}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to update training content")
+  }
+  return response.json()
+}
+
+export async function deleteTrainingContent(id: string): Promise<void> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/training/${id}`, {
+    method: "DELETE",
+    headers,
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to delete training content")
+  }
+}
+
+export async function importYoutubeTranscript(
+  url: string,
+  tags: string[] = []
+): Promise<TrainingContent> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/training/youtube`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ url, tags }),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to import YouTube transcript")
+  }
+  return response.json()
+}
+
+export async function toggleTrainingContent(id: string): Promise<TrainingContent> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/training/${id}/toggle`, {
+    method: "PATCH",
+    headers,
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to toggle training content")
+  }
+  return response.json()
+}

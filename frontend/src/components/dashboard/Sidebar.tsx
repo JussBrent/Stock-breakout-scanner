@@ -1,14 +1,16 @@
 import React, { useState, createContext, useContext } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { LayoutDashboard, Brain, Target, TrendingUp, Settings, BarChart3, Activity, Menu, X, ArrowLeft } from "lucide-react"
+import { LayoutDashboard, Brain, Target, TrendingUp, Settings, BarChart3, Activity, Menu, X, ArrowLeft, Wallet, BookOpen } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
+import { useAuth } from "@/hooks/useAuth"
 
 interface Links {
   label: string
   href: string
   icon: React.ReactNode
+  adminOnly?: boolean
 }
 
 const navItems: Links[] = [
@@ -17,7 +19,9 @@ const navItems: Links[] = [
   { icon: <Target className="h-5 w-5" />, label: "Scanner", href: "/scanner" },
   { icon: <TrendingUp className="h-5 w-5" />, label: "Stock Momentum", href: "/stock-momentum" },
   { icon: <BarChart3 className="h-5 w-5" />, label: "Analytics", href: "/analytics" },
+  { icon: <Wallet className="h-5 w-5" />, label: "Portfolio", href: "/portfolio" },
   { icon: <Activity className="h-5 w-5" />, label: "Focus List", href: "/focus-list" },
+  { icon: <BookOpen className="h-5 w-5" />, label: "AI Training", href: "/ai-training", adminOnly: true },
   { icon: <Settings className="h-5 w-5" />, label: "Settings", href: "/settings" },
 ]
 
@@ -225,10 +229,13 @@ export const SidebarLink = ({
 
 // Nav list used by both desktop and mobile shells
 function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  const { isAdmin } = useAuth()
+  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin)
+
   return (
     <div className="w-full px-2">
       <nav className="flex flex-col gap-1">
-        {navItems.map((item) => (
+        {visibleItems.map((item) => (
           <SidebarLink
             key={item.label}
             link={item}

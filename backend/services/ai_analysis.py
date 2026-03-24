@@ -1,6 +1,7 @@
 """AI-powered stock analysis using Claude (Anthropic)."""
 import os
 import json
+import time
 import logging
 from typing import List, Dict, Optional
 from models.candle import ScanResult
@@ -60,6 +61,11 @@ class AIStockRating(BaseModel):
 class AIAnalysisService:
     """Service for AI-powered stock analysis using Claude."""
 
+    # Cache training content for 5 minutes to avoid DB hit on every chat
+    _training_cache: Optional[str] = None
+    _training_cache_time: float = 0
+    TRAINING_CACHE_TTL = 300  # seconds
+
     def __init__(self):
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
@@ -68,6 +74,36 @@ class AIAnalysisService:
         import anthropic
         self.client = anthropic.AsyncAnthropic(api_key=self.api_key)
         self.model = settings.CLAUDE_MODEL
+
+    async def _get_training_context(self) -> str:
+        """Fetch active training content from Supabase, cached for 5 min."""
+        now = time.time()
+        if self._training_cache is not None and (now - self._training_cache_time) < self.TRAINING_CACHE_TTL:
+            return self._training_cache
+
+        try:
+            from services.supabase_client import supabase
+            rows = await (
+                supabase.table("ai_training_content")
+                .select("title,content")
+                .eq("is_active", "true")
+                .order("created_at", desc=False)
+                .execute()
+            )
+            if rows:
+                sections = []
+                for row in rows:
+                    sections.append(f"### {row['title']}\n{row['content']}")
+                AIAnalysisService._training_cache = "\n\n".join(sections)
+            else:
+                AIAnalysisService._training_cache = ""
+            AIAnalysisService._training_cache_time = now
+        except Exception as e:
+            logger.error(f"Failed to fetch training content: {e}")
+            AIAnalysisService._training_cache = ""
+            AIAnalysisService._training_cache_time = now
+
+        return AIAnalysisService._training_cache
 
     async def analyze_stocks(
         self,
@@ -130,6 +166,11 @@ class AIAnalysisService:
     ) -> str:
         """Handle conversational AI chat about stocks."""
         system = SEAN_SYSTEM_PROMPT
+
+        # Inject training content (trader's knowledge base)
+        training_context = await self._get_training_context()
+        if training_context:
+            system += f"\n\n## Trader's Knowledge Base\nThe following is knowledge from the trader's own teachings, video transcripts, and strategies. Use this as your primary reference when answering questions about setups, strategies, and trading approaches.\n\n{training_context}"
 
         if scan_context:
             system += f"\n\n## User's Current Data\n{scan_context}"

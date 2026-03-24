@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     STRIPE_WEBHOOK_SECRET: Optional[str] = None
     STRIPE_PRICE_ID: Optional[str] = None
 
+    # SnapTrade
+    SNAPTRADE_CLIENT_ID: Optional[str] = None
+    SNAPTRADE_CONSUMER_KEY: Optional[str] = None
+
     # Redis
     REDIS_URL: str = "redis://localhost:6379"
     CACHE_TTL: int = 3600  # 1 hour
@@ -23,7 +27,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # CORS Settings
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://127.0.0.1:3000,http://127.0.0.1:5173"
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173,http://localhost:5174,http://127.0.0.1:3000,http://127.0.0.1:5173,http://127.0.0.1:5174"
 
     # Filtering Thresholds
     MIN_PRICE: float = 5.00

@@ -20,6 +20,8 @@ const AiInsightsPageLazy = React.lazy(() => import("@/pages/AiInsightsPage"))
 const FocusListPageLazy = React.lazy(() => import("@/pages/FocusListPage"))
 const AnalyticsPageLazy = React.lazy(() => import("@/pages/AnalyticsPage"))
 const StockMomentumPageLazy = React.lazy(() => import("@/pages/StockMomentumPage"))
+const PortfolioPageLazy = React.lazy(() => import("@/pages/PortfolioPage"))
+const AiTrainingPageLazy = React.lazy(() => import("@/pages/AiTrainingPage"))
 
 function AppContent() {
   const location = useLocation()
@@ -35,6 +37,8 @@ function AppContent() {
     "/analytics",
     "/focus-list",
     "/settings",
+    "/portfolio",
+    "/ai-training",
     "/demo",
   ].some((path) => location.pathname.startsWith(path))
 
@@ -66,6 +70,8 @@ function AppContent() {
         <Route path="/stock-momentum" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><StockMomentumPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/analytics" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AnalyticsPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/focus-list" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><FocusListPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/portfolio" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><PortfolioPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/ai-training" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AiTrainingPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><SettingsPageLazy /></Suspense></ProtectedRoute>} />
       </Routes>
 
