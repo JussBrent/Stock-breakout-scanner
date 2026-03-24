@@ -1,255 +1,515 @@
-"use client";
+import { useState, useEffect, useRef } from "react"
+import { motion, useInView, useReducedMotion } from "framer-motion"
 
-import { useEffect, useState, type CSSProperties } from "react";
-import {
-  motion,
-  AnimatePresence,
-  useMotionValue,
-  useSpring,
-} from "framer-motion";
-import { AuroraBackground } from "@/components/ui/aurora-background";
+const motionTokens = {
+  ease: [0.22, 1, 0.36, 1] as const,
+  duration: {
+    fast: 0.25,
+    base: 0.5,
+    slow: 0.8,
+  },
+}
 
-type Feature = {
-  title: string;
-  description: string;
-  image: string;
-};
+const container = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.08,
+    },
+  },
+}
 
-const features: Feature[] = [
+const fadeUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: motionTokens.duration.base,
+      ease: motionTokens.ease,
+    },
+  },
+}
+
+const cardInView = {
+  hidden: { opacity: 0, y: 32 },
+  visible: (index: number = 0) => ({
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: motionTokens.duration.base,
+      ease: motionTokens.ease,
+      delay: index * 0.1,
+    },
+  }),
+}
+
+const fade = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: motionTokens.duration.base,
+    },
+  },
+}
+
+const features = [
   {
-    title: "AI Strength Scores",
-    description:
-      "Every setup is ranked by AI-powered quality metrics analyzing volume, momentum, and technical patterns.",
-    image: "/stock1.jpg",
+    title: "Prompt-Driven Technical Analysis",
+    description: "Request technical analysis like support, resistance, and breakouts and set alerts or trades from the results.",
+    prompts: [
+      "Show me the support and resistance on AAPL",
+      "Remind me when TSLA breaks out of the channel",
+      "Sell TSLA when it drops to my support line",
+    ],
   },
   {
-    title: "Default Coach Methodology",
-    description:
-      "Pre-configured scans based on proven 8 EMA breakout playbooks used by professional traders.",
-    image: "/stock2.jpg",
+    title: "Advanced Market Research",
+    description: "Research companies, sectors, and market movements with fast, detailed analysis.",
+    prompts: [
+      "Find underrated, top-performing stocks",
+      "Explain why TSLA just dropped suddenly",
+      "Dive into MSFT's fundamentals",
+    ],
   },
   {
-    title: "Custom Scan Builder",
-    description:
-      "Build advanced scan profiles with custom filters, indicators, and technical criteria for your strategy.",
-    image: "/stock3.png",
+    title: "Lightning-Fast Backtesting",
+    description: "Validate your strategies against historical data in seconds with institutional-grade accuracy.",
+    prompts: [
+      "Backtest RSI divergence on SPY",
+      "Test 8 EMA breakout strategy",
+      "Compare momentum vs value factors",
+    ],
   },
-  {
-    title: "Real-Time Focus Lists",
-    description:
-      "Automatically generated watchlists updated throughout the trading day with actionable breakout levels.",
-    image: "/stock4.jpg",
-  },
-  {
-    title: "Leverage Advanced Indicators",
-    description:
-      "Limit possible losses and maximize gains with advanced technical indicators integrated into your scans.",
-    image: "/stock5.jpg",
-  },
-];
+]
 
-export default function FeatureCards() {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [typedText, setTypedText] = useState("");
-  const [hoverLabel, setHoverLabel] = useState<string | null>(null);
-
-  // --- Smooth cursor trail for hover pill ---
-  const rawX = useMotionValue(0);
-  const rawY = useMotionValue(0);
-
-  // tweak stiffness/damping for more / less lag
-  const smoothX = useSpring(rawX, { stiffness: 95, damping: 16 });
-  const smoothY = useSpring(rawY, { stiffness: 95, damping: 16 });
-
-  const len = features.length;
-  const clampIndex = (index: number) => (index + len) % len;
-
-  const next = () => setActiveIndex((i) => clampIndex(i + 1));
-
-  const getPosition = (i: number) => {
-    let pos = i - activeIndex;
-    if (pos > len / 2) pos -= len;
-    if (pos < -len / 2) pos += len;
-    return pos;
-  };
-
-  const getCardStyle = (i: number): CSSProperties => {
-    const position = getPosition(i);
-
-    // Hide cards beyond immediate neighbours
-    if (Math.abs(position) > 1) {
-      return {
-        opacity: 0,
-        pointerEvents: "none",
-        transform: `translateX(${position * 120}%) rotate(${position * 4}deg) scale(0.88)`,
-        filter: "brightness(0.4)",
-      };
-    }
-
-    const isCenter = position === 0;
-    const width = "68%";
-    const translateX = position * 108;
-    const rotate = position * 4;
-    const opacity = isCenter ? 1 : 0.75;
-    const scale = isCenter ? 1 : 0.92;
-
-    // center bright, side cards dimmed
-    const brightness = isCenter ? 1 : 0.6;
-
-    return {
-      width,
-      opacity,
-      transform: `translateX(${translateX}%) scale(${scale}) rotate(${rotate}deg)`,
-      zIndex: isCenter ? 20 : 10 - Math.abs(position),
-      filter: `brightness(${brightness})`,
-      transition:
-        "transform 450ms cubic-bezier(0.34, 1.56, 0.64, 1), opacity 320ms ease-out, filter 320ms ease-out",
-    };
-  };
-
-  // Typing animation
-  useEffect(() => {
-    const full = features[activeIndex].description;
-    setTypedText("");
-
-    let idx = 0;
-    const speed = 20;
-
-    const id = setInterval(() => {
-      idx += 1;
-      setTypedText(full.slice(0, idx));
-      if (idx >= full.length) clearInterval(id);
-    }, speed);
-
-    return () => clearInterval(id);
-  }, [activeIndex]);
-
-  // Autoplay
-  useEffect(() => {
-    const id = setInterval(() => next(), 6500);
-    return () => clearInterval(id);
-  }, []);
+export default function FeaturesSection() {
+  const sectionRef = useRef(null)
+  const isInView = useInView(sectionRef, { once: true, margin: "-100px" })
 
   return (
-    <AuroraBackground className="py-32 border-t border-white/10">
-      <motion.div
-        className="mx-auto flex max-w-7xl flex-col items-center px-4 sm:px-6"
-        initial={{ opacity: 0, y: 60 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, amount: 0.3 }}
-        transition={{ duration: 1.25, ease: "easeInOut" }}
-      >
+    <motion.section
+      id="features"
+      ref={sectionRef}
+      className="relative bg-black py-20 sm:py-32"
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      variants={fade}
+    >
+      {/* Border lines */}
+      <div className="absolute left-0 top-0 h-full w-px bg-[#222]" />
+      <div className="absolute right-0 top-0 h-full w-px bg-[#222]" />
+
+      <div className="mx-auto max-w-7xl px-4 sm:px-6">
+
         {/* Header */}
         <motion.div
-          className="mb-16 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 1.1, ease: "easeInOut", delay: 0.15 }}
+          className="mb-16 border-b border-[#222] pb-8"
+          variants={fadeUp}
         >
-          <p className="text-[10px] tracking-[0.2em] text-white/50 uppercase">
-            EVERYTHING YOU NEED
-          </p>
-          <h2 className="font-serif text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-white">
-            Professional scanning tools
+          <div className="flex items-center gap-2 mb-4">
+            <motion.div
+              className="h-1 w-8 bg-[#00ff88]"
+              initial={{ width: 0 }}
+              animate={isInView ? { width: 32 } : {}}
+              transition={{ duration: 0.4 }}
+            />
+            <span className="font-mono text-xs uppercase tracking-wider text-[#00ff88]">
+              Features
+            </span>
+          </div>
+
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight text-balance">
+            Everything you need to trade smarter.
           </h2>
+
+          <p className="mt-4 max-w-2xl font-mono text-sm text-white/60">
+            StockBreakout consolidates research, charting, and strategy building into one AI-driven platform.
+          </p>
         </motion.div>
 
-        {/* Cards */}
-        <div className="relative flex h-[380px] w-full items-center justify-center sm:h-[440px] lg:h-[480px]">
-          {features.map((feature, i) => {
-            const position = getPosition(i);
-            const isSide = Math.abs(position) === 1;
-            const isCenter = position === 0;
+        {/* Grid */}
+        <div className="grid gap-4 lg:grid-cols-2">
 
-            return (
-              <div
-                key={feature.title}
-                className={
-                  "group absolute aspect-[16/9] overflow-hidden rounded-3xl bg-zinc-900 border border-white/10 transition-shadow " +
-                  (isCenter
-                    ? "shadow-[0_26px_90px_-30px_rgba(0,0,0,0.9)]"
-                    : "shadow-[0_16px_60px_-28px_rgba(0,0,0,0.7)]") +
-                  (isSide ? " cursor-pointer" : "")
-                }
-                style={getCardStyle(i)}
-                onMouseMove={(e) => {
-                  if (!isSide) return;
-                  // position raw cursor; spring will lag behind
-                  rawX.set(e.clientX + 16);
-                  rawY.set(e.clientY + 16);
-                  setHoverLabel(position === 1 ? "Next" : "Previous");
-                }}
-                onMouseLeave={() => {
-                  setHoverLabel(null);
-                }}
-                onClick={() => {
-                  if (isSide) setActiveIndex(i);
-                }}
-              >
-                <img
-                  src={feature.image}
-                  alt={feature.title}
-                  className="h-full w-full object-cover"
-                />
+          {/* Technical Analysis */}
+          <motion.div
+            className="lg:col-span-2 border border-[#222] bg-[#0a0a0a] overflow-hidden"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={cardInView}
+            custom={0}
+            whileHover={{ y: -4, borderColor: "#333" }}
+            transition={{ duration: motionTokens.duration.fast }}
+          >
+            <div className="grid lg:grid-cols-2">
+
+              <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
+
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">
+                  {features[0].title}
+                </h3>
+
+                <p className="font-mono text-sm text-white/60 mb-6">
+                  {features[0].description}
+                </p>
+
+                <motion.div
+                  className="space-y-3"
+                  variants={container}
+                >
+                  {features[0].prompts.map((prompt, i) => (
+                    <motion.div
+                      key={i}
+                      layout
+                      className="flex items-center gap-3"
+                      variants={fadeUp}
+                    >
+                      <span className="text-[#00ff88] font-mono text-xs">→</span>
+                      <span className="font-mono text-xs text-white/80">
+                        {prompt}
+                      </span>
+                    </motion.div>
+                  ))}
+                </motion.div>
               </div>
-            );
-          })}
+
+              <div className="border-t lg:border-t-0 lg:border-l border-[#222] p-6">
+                <TechnicalAnalysisDemo />
+              </div>
+
+            </div>
+          </motion.div>
+
+          {/* Market Research */}
+          <motion.div
+            className="border border-[#222] bg-[#0a0a0a]"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={cardInView}
+            custom={1}
+            whileHover={{ y: -4, borderColor: "#333" }}
+          >
+            <div className="p-6 sm:p-8">
+
+              <h3 className="text-xl font-bold text-white mb-4">
+                {features[1].title}
+              </h3>
+
+              <p className="font-mono text-sm text-white/60 mb-6">
+                {features[1].description}
+              </p>
+
+              <ResearchDemo />
+
+            </div>
+          </motion.div>
+
+          {/* Backtesting */}
+          <motion.div
+            className="border border-[#222] bg-[#0a0a0a]"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={cardInView}
+            custom={2}
+            whileHover={{ y: -4, borderColor: "#333" }}
+          >
+            <div className="p-6 sm:p-8">
+
+              <h3 className="text-xl font-bold text-white mb-4">
+                {features[2].title}
+              </h3>
+
+              <p className="font-mono text-sm text-white/60 mb-6">
+                {features[2].description}
+              </p>
+
+              <BacktestDemo />
+
+            </div>
+          </motion.div>
+
+          {/* Community */}
+          <motion.div
+            className="lg:col-span-2 border border-[#222] bg-[#0a0a0a]"
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            variants={cardInView}
+            custom={3}
+            whileHover={{ y: -4, borderColor: "#333" }}
+          >
+            <div className="grid lg:grid-cols-2">
+
+              <div className="p-6 sm:p-8 lg:p-10 flex flex-col justify-center">
+
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-4">
+                  Share & Discover Strategies
+                </h3>
+
+                <p className="font-mono text-sm text-white/60 mb-6">
+                  Discover, copy, and modify profitable strategies from the StockBreakout community.
+                </p>
+
+                <motion.div
+                  className="space-y-3"
+                  variants={container}
+                >
+                  {[
+                    "Search for high win-rate strategies",
+                    "Discover popular custom indicators",
+                    "Save and modify community setups",
+                  ].map((text, i) => (
+                    <motion.div
+                      key={i}
+                      layout
+                      className="flex items-center gap-3"
+                      variants={fadeUp}
+                    >
+                      <span className="text-[#00ff88] font-mono text-xs">→</span>
+                      <span className="font-mono text-xs text-white/80">{text}</span>
+                    </motion.div>
+                  ))}
+                </motion.div>
+
+              </div>
+
+              <div className="border-t lg:border-t-0 lg:border-l border-[#222] p-6">
+                <CommunityDemo />
+              </div>
+
+            </div>
+          </motion.div>
+
         </div>
+      </div>
+    </motion.section>
+  )
+}
 
-        {/* Floating pill (white, follows cursor, delayed & smooth) */}
-        <AnimatePresence>
-          {hoverLabel && (
-            <motion.div
-              key="hover-pill"
-              className="fixed pointer-events-none z-[999]"
-              style={{ left: smoothX, top: smoothY }}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
-            >
-              <span className="rounded-full border border-black/20 bg-white px-4 py-2 text-[10px] uppercase tracking-[0.2em] text-black shadow-xl backdrop-blur-md">
-                {hoverLabel}
-              </span>
-            </motion.div>
-          )}
-        </AnimatePresence>
+/* ------------------------------------------------ */
+/* DEMO COMPONENTS */
+/* ------------------------------------------------ */
 
-        {/* Typing line */}
-        <div className="mt-12 max-w-3xl text-center">
-          <p className="mb-3 text-xs uppercase tracking-[0.25em] text-white/40">
-            FEATURE HIGHLIGHT
-          </p>
+function TechnicalAnalysisDemo() {
 
-          {/* fixed height so layout doesn’t jump while typing */}
-          <div className="flex h-[54px] items-center justify-center sm:h-[64px]">
-            <p className="text-base leading-relaxed text-white sm:text-lg">
-              <span className="font-semibold text-accent">
-                {features[activeIndex].title}:
-              </span>{" "}
-              <span className="text-white/70">{typedText}</span>
-              <span className="ml-1 inline-block h-5 w-[2px] animate-pulse bg-accent" />
-            </p>
+  const [tick, setTick] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick((p) => p + 1)
+    }, 1500)
+
+    return () => clearInterval(interval)
+  }, [])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: motionTokens.duration.base }}
+    >
+      <div className="mb-3 border border-[#222] bg-black/80 px-3 py-2 font-mono text-xs text-[#00ff88]">
+        <span className="mr-2 text-white/40">&gt;</span>
+        <PhraseTyper phrases={features[0].prompts} />
+      </div>
+
+      <div className="font-mono text-sm text-white mb-4">
+        NVDA +{(2.4 + Math.sin(tick * 0.5) * 0.3).toFixed(1)}%
+      </div>
+
+      <div className="h-32 bg-black border border-[#222] flex items-end gap-1 p-2">
+        {Array.from({ length: 20 }).map((_, i) => (
+          <motion.div
+            key={i}
+            className="flex-1 bg-[#00ff88]"
+            animate={{
+              height: `${40 + Math.sin(tick * 0.4 + i) * 30}%`,
+            }}
+            transition={{
+              duration: motionTokens.duration.slow,
+              ease: motionTokens.ease,
+            }}
+          />
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+function ResearchDemo() {
+  return (
+    <div className="space-y-3 border border-[#222] bg-black/50 p-4">
+      <div className="font-mono text-[10px] uppercase tracking-wider text-white/50">
+        Live research query
+      </div>
+
+      <div className="font-mono text-xs text-white min-h-5">
+        <PhraseTyper phrases={features[1].prompts} />
+      </div>
+
+      <div className="h-px w-full bg-[#222]" />
+
+      <div className="font-mono text-[11px] text-[#00ff88]">
+        Analyzing fundamentals • sentiment • news flow
+      </div>
+    </div>
+  )
+}
+
+function PhraseTyper({
+  phrases,
+  typingDelay = 34,
+  deletingDelay = 20,
+  holdDelay = 1300,
+}: {
+  phrases: string[]
+  typingDelay?: number
+  deletingDelay?: number
+  holdDelay?: number
+}) {
+  const reduceMotion = useReducedMotion()
+  const [phraseIndex, setPhraseIndex] = useState(0)
+  const [value, setValue] = useState("")
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  useEffect(() => {
+    if (!phrases.length) return
+
+    if (reduceMotion) {
+      const staticTimeout = setTimeout(() => {
+        setPhraseIndex((idx) => (idx + 1) % phrases.length)
+      }, holdDelay)
+      return () => clearTimeout(staticTimeout)
+    }
+
+    const current = phrases[phraseIndex]
+    const atEnd = value.length === current.length
+    const atStart = value.length === 0
+
+    const delay = !isDeleting
+      ? atEnd
+        ? holdDelay
+        : typingDelay
+      : deletingDelay
+
+    const timeout = setTimeout(() => {
+      if (!isDeleting) {
+        if (atEnd) {
+          setIsDeleting(true)
+          return
+        }
+        setValue(current.slice(0, value.length + 1))
+        return
+      }
+
+      if (!atStart) {
+        setValue(current.slice(0, value.length - 1))
+        return
+      }
+
+      setIsDeleting(false)
+      setPhraseIndex((idx) => (idx + 1) % phrases.length)
+    }, delay)
+
+    return () => clearTimeout(timeout)
+  }, [
+    phrases,
+    phraseIndex,
+    value,
+    isDeleting,
+    typingDelay,
+    deletingDelay,
+    holdDelay,
+    reduceMotion,
+  ])
+
+  return (
+    <span className="inline-flex items-center">
+      {reduceMotion ? phrases[phraseIndex] : value}
+      <motion.span
+        animate={{ opacity: [1, 0, 1] }}
+        transition={{ duration: 0.9, repeat: Infinity, ease: "linear" }}
+        className="ml-1 inline-block h-[1em] w-0.5 bg-[#00ff88]"
+      />
+    </span>
+  )
+}
+
+function BacktestDemo() {
+
+  const [bars] = useState<number[]>(() =>
+    Array.from({ length: 20 }, () => Math.random() * 80 + 20)
+  )
+
+  return (
+    <div className="border border-[#222] p-4">
+
+      <div className="h-16 flex items-end gap-1 mb-4">
+
+        {bars.map((h, i) => (
+          <motion.div
+            key={i}
+            className="flex-1 bg-[#00ff88]"
+            initial={{ height: 0 }}
+            animate={{ height: `${h}%` }}
+            transition={{
+              duration: motionTokens.duration.base,
+              delay: i * 0.03,
+              ease: motionTokens.ease,
+            }}
+          />
+        ))}
+
+      </div>
+
+      <div className="font-mono text-xs text-white/60">
+        Net Profit +34% | Win Rate 67%
+      </div>
+
+    </div>
+  )
+}
+
+function CommunityDemo() {
+
+  const [active, setActive] = useState(0)
+
+  const strategies = [
+    { name: "Momentum Score", stars: 8321 },
+    { name: "Dist Lower BB", stars: 3142 },
+  ]
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setActive((p) => (p + 1) % strategies.length)
+    }, 3000)
+
+    return () => clearInterval(interval)
+  }, [strategies.length])
+
+  return (
+    <div className="space-y-4">
+
+      {strategies.map((s, i) => (
+        <motion.div
+          key={i}
+          layout
+          className="border border-[#222] p-4 bg-black/50"
+          animate={{ opacity: i === active ? 1 : 0.6 }}
+        >
+          <div className="font-mono text-sm text-white">{s.name}</div>
+          <div className="font-mono text-xs text-white/60">
+            ⭐ {s.stars.toLocaleString()}
           </div>
-        </div>
+        </motion.div>
+      ))}
 
-        {/* Dots */}
-        <div className="mt-8 flex items-center gap-2">
-          {features.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => setActiveIndex(i)}
-              className={
-                "h-1.5 rounded-full transition-all " +
-                (i === activeIndex
-                  ? "w-8 bg-accent"
-                  : "w-1.5 bg-white/30 hover:bg-white/50")
-              }
-            />
-          ))}
-        </div>
-      </motion.div>
-    </AuroraBackground>
-  );
+    </div>
+  )
 }

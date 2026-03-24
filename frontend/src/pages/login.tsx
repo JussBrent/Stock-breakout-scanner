@@ -1,7 +1,5 @@
-"use client"
-
-import { SignInPage } from "@/components/landing/canvas-reveal-effect"
+import LoginPage from "@/components/landing/canvas-reveal-effect"
 
 export default function Login() {
-  return <SignInPage />
+  return <LoginPage />
 }

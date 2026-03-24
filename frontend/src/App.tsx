@@ -35,6 +35,7 @@ function AppContent() {
     "/analytics",
     "/focus-list",
     "/settings",
+    "/demo",
   ].some((path) => location.pathname.startsWith(path))
 
   return (

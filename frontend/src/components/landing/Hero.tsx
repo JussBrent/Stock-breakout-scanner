@@ -1,370 +1,630 @@
-'use client'
+import { useEffect, useState, useCallback } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { useNavigate } from "react-router-dom"
+import type { Variants } from "framer-motion"
 
-import { Button } from '@/components/ui/button'
-import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
-
-const heroContainer = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.8,
-      ease: [0.22, 0.61, 0.36, 1] as const,
-    },
-  },
-}
-
-const staggerGroup = {
+const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.15,
-      delayChildren: 0.1,
+      staggerChildren: 0.1,
+      delayChildren: 0.3,
     },
   },
 }
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 30 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.7, ease: [0.22, 0.61, 0.36, 1] as const },
+    transition: {
+      duration: 0.6,
+      ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+    },
   },
 }
 
-export default function Hero() {
-  return (
-    <section className="relative isolate min-h-screen overflow-hidden pt-16">
-      {/* Background GIF */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/-999x-999-qzb4AnjjF6uPmM3WungtuF7M5iGfRS.gif"
-            alt=""
-            className="h-full w-full object-cover opacity-80"
-          />
-        </div>
+// Demo scenarios that cycle through
+const demoScenarios = [
+  {
+    prompt: "Buy NVDA when RSI is oversold",
+    ticker: "NVDA",
+    change: "+2.4%",
+    resultTitle: "NVDA Oversold Reversal",
+    resultType: "LONG",
+    entry: "RSI < 30",
+    exit: "Profit > 5%",
+    chartData: [45, 42, 38, 35, 40, 48, 55, 60, 58, 65],
+    chatMessage: "Looking for oversold conditions on NVDA...",
+  },
+  {
+    prompt: "Find breakout patterns on AAPL",
+    ticker: "AAPL",
+    change: "+1.8%",
+    resultTitle: "AAPL Channel Breakout",
+    resultType: "LONG",
+    entry: "Price > Resistance",
+    exit: "Trailing 3%",
+    chartData: [50, 52, 51, 53, 54, 52, 55, 58, 62, 68],
+    chatMessage: "Scanning AAPL for breakout patterns...",
+  },
+  {
+    prompt: "Alert me when TSLA hits support",
+    ticker: "TSLA",
+    change: "-1.2%",
+    resultTitle: "TSLA Support Bounce",
+    resultType: "LONG",
+    entry: "Near $180 support",
+    exit: "Stop at $175",
+    chartData: [65, 60, 55, 52, 48, 45, 48, 52, 50, 55],
+    chatMessage: "Setting alert for TSLA support levels...",
+  },
+  {
+    prompt: "Show me MSFT momentum signals",
+    ticker: "MSFT",
+    change: "+0.9%",
+    resultTitle: "MSFT Momentum Play",
+    resultType: "LONG",
+    entry: "MACD crossover",
+    exit: "RSI > 70",
+    chartData: [40, 42, 45, 48, 52, 50, 55, 58, 62, 65],
+    chatMessage: "Analyzing MSFT momentum indicators...",
+  },
+]
 
-        {/* PURE dark overlay for readability (no white tint) */}
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/70 to-black/90" />
+export default function HeroSection() {
+  const navigate = useNavigate()
+  const [typedText, setTypedText] = useState("")
+  const [currentScenario, setCurrentScenario] = useState(0)
+  const [demoPhase, setDemoPhase] = useState<"typing" | "processing" | "result" | "fadeout">("typing")
+  const [promptTyped, setPromptTyped] = useState("")
+  const [progress, setProgress] = useState(0)
+  
+  const fullText = "The market doesn't wait. Neither should you."
+  const scenario = demoScenarios[currentScenario]
+
+  // Main headline typing effect
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      let idx = 0
+      const interval = setInterval(() => {
+        idx += 1
+        setTypedText(fullText.slice(0, idx))
+        if (idx >= fullText.length) clearInterval(interval)
+      }, 40)
+      return () => clearInterval(interval)
+    }, 800)
+    return () => clearTimeout(timeout)
+  }, [])
+
+  // Demo cycling logic
+  const runDemoCycle = useCallback(() => {
+    // Reset state
+    setPromptTyped("")
+    setProgress(0)
+    setDemoPhase("typing")
+    
+    // Type the prompt
+    let idx = 0
+    const prompt = demoScenarios[currentScenario].prompt
+    const typeInterval = setInterval(() => {
+      idx += 1
+      setPromptTyped(prompt.slice(0, idx))
+      if (idx >= prompt.length) {
+        clearInterval(typeInterval)
+        // Move to processing phase
+        setTimeout(() => {
+          setDemoPhase("processing")
+          // Animate progress bar
+          let prog = 0
+          const progInterval = setInterval(() => {
+            prog += 5
+            setProgress(prog)
+            if (prog >= 100) {
+              clearInterval(progInterval)
+              // Show result
+              setTimeout(() => {
+                setDemoPhase("result")
+                // Fade out and move to next scenario
+                setTimeout(() => {
+                  setDemoPhase("fadeout")
+                  setTimeout(() => {
+                    setCurrentScenario((prev) => (prev + 1) % demoScenarios.length)
+                  }, 500)
+                }, 3000)
+              }, 300)
+            }
+          }, 30)
+        }, 500)
+      }
+    }, 50)
+
+    return () => clearInterval(typeInterval)
+  }, [currentScenario])
+
+  useEffect(() => {
+    const cleanup = runDemoCycle()
+    return cleanup
+  }, [currentScenario, runDemoCycle])
+
+  return (
+    <section className="relative min-h-screen bg-black pt-16 overflow-hidden">
+      {/* Animated Grid Background */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.3 }}
+        transition={{ duration: 2 }}
+        className="absolute inset-0"
+      >
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, #00ff88 1px, transparent 1px),
+              linear-gradient(to bottom, #00ff88 1px, transparent 1px)
+            `,
+            backgroundSize: "80px 80px",
+            maskImage: "radial-gradient(ellipse at center, black 30%, transparent 70%)",
+          }}
+        />
+      </motion.div>
+
+      {/* Scan Lines */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <motion.div
+          animate={{ top: ["0%", "100%"] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+          className="absolute w-full h-px bg-[#00ff88]/30"
+        />
       </div>
 
-      {/* Hero content */}
       <motion.div
-        className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col items-center justify-center px-4 sm:px-6 md:px-8 pb-12 sm:pb-20 pt-12 sm:pt-20"
+        variants={containerVariants}
         initial="hidden"
         animate="visible"
-        variants={heroContainer}
+        className="relative mx-auto max-w-7xl px-4 sm:px-6 pt-20 sm:pt-32 pb-16"
       >
-        {/* Eyebrow */}
-        <motion.div
-          className="mb-4 sm:mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-3 sm:px-4 py-1.5 sm:py-2 backdrop-blur-sm"
-          variants={fadeUp}
-        >
-          <div className="h-1.5 w-1.5 animate-pulse rounded-full bg-green-500" />
-          <span className="text-[10px] sm:text-xs font-medium uppercase tracking-widest text-gray-400">
-            Stock Breakout Scanner
+        {/* Status Badge */}
+        <motion.div variants={itemVariants} className="mb-8 flex items-center gap-2">
+          <motion.div 
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="h-2 w-2 bg-[#00ff88]" 
+          />
+          <span className="font-mono text-xs uppercase tracking-wider text-[#00ff88]">
+            Now Live
           </span>
         </motion.div>
 
-        {/* Main headline + subheadline */}
-        <motion.div
-          className="flex flex-col items-center"
-          variants={staggerGroup}
+        {/* Main Headline */}
+        <motion.h1 
+          variants={itemVariants}
+          className="mb-6 mx-auto whitespace-nowrap text-center font-sans text-[clamp(1.15rem,4.5vw,3.75rem)] font-bold leading-[1.1] tracking-tight text-white"
         >
-          <motion.h1
-            className="max-w-5xl text-balance text-center font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-bold leading-[1.1] sm:leading-[1.05] tracking-tight text-white px-2"
-            variants={fadeUp}
+          {typedText}
+          <motion.span
+            animate={{ opacity: [1, 0, 1] }}
+            transition={{ duration: 1, repeat: Infinity }}
+            className="inline-block w-[3px] h-[0.9em] bg-[#00ff88] ml-1 align-middle"
+          />
+        </motion.h1>
+
+        <motion.p 
+          variants={itemVariants}
+          className="mb-10 max-w-2xl font-mono text-sm sm:text-base text-white/60 leading-relaxed"
+        >
+          StockBreakout brings professional trading tools to everyday investors.
+          Scan 2,000+ stocks in seconds with AI-powered pattern recognition.
+        </motion.p>
+
+        {/* CTA Buttons */}
+        <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4 mb-16">
+          <motion.button 
+            whileHover={{ scale: 1.02, boxShadow: "0 0 30px rgba(0, 255, 136, 0.3)" }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/dashboard")}
+            className="group border border-[#00ff88] bg-[#00ff88] px-8 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
           >
-            Find Breakout Opportunities{' '}
-            <span className="text-white">Instantly.</span>
-          </motion.h1>
-
-          <motion.p
-            className="mt-4 sm:mt-6 max-w-2xl text-balance text-center text-sm sm:text-base md:text-lg leading-relaxed text-gray-400 px-4"
-            variants={fadeUp}
+            <span className="flex items-center justify-center gap-2">
+              <span>Launch Scanner</span>
+              <motion.svg 
+                className="h-4 w-4"
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              </motion.svg>
+            </span>
+          </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.02, borderColor: "#00ff88" }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => navigate("/demo")}
+            className="border border-white/20 bg-transparent px-8 py-4 font-mono text-sm font-bold uppercase tracking-wider text-white transition-all hover:border-[#00ff88] hover:text-[#00ff88]"
           >
-            AI-driven breakout scans based on your coach’s methodology. Turn 2
-            hours of manual scanning into a Focus List in seconds.
-          </motion.p>
+            View Demo
+          </motion.button>
         </motion.div>
 
-        {/* CTAs */}
-        <motion.div
-          className="mt-6 sm:mt-10 flex flex-col items-center gap-3 sm:gap-4 w-full sm:w-auto px-4 sm:px-0 sm:flex-row"
-          variants={staggerGroup}
+        {/* Animated Demo Panels */}
+        <motion.div 
+          variants={itemVariants}
+          className="grid gap-4 lg:grid-cols-2"
         >
-          {/* Get Started → /login */}
-          <motion.div variants={fadeUp} className="w-full sm:w-auto">
-            <Button
-              size="lg"
-              className="w-full sm:w-auto rounded-full bg-white px-8 sm:px-10 py-5 text-base font-semibold text-black shadow-2xl hover:bg-white/90"
-              asChild
+          {/* Left Panel - Chat Interface with Cycling Demo */}
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={`chat-${currentScenario}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: demoPhase === "fadeout" ? 0 : 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="border border-[#222] bg-[#0a0a0a]"
             >
-              <Link to="/login">Get Started</Link>
-            </Button>
-          </motion.div>
-
-          {/* Run Demo Scan → /demo */}
-          <motion.div variants={fadeUp} className="w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto rounded-full border-white/40 bg-black/40 px-8 sm:px-10 py-5 text-base text-white backdrop-blur hover:border-green-500/60 hover:bg-green-500/10"
-              asChild
-            >
-              <Link to="/demo">
-                <svg
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                  className="mr-2 h-4 w-4"
-                >
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-                Run Demo Scan
-              </Link>
-            </Button>
-          </motion.div>
-        </motion.div>
-
-        {/* Trust indicators with avatars */}
-        <motion.div
-          className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:gap-6"
-          variants={fadeUp}
-        >
-          <div className="flex -space-x-3">
-            <img
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&q=80"
-              alt="Trader"
-              className="h-10 w-10 rounded-full border-2 border-white/20 bg-gray-800 object-cover"
-            />
-            <img
-              src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop&q=80"
-              alt="Trader"
-              className="h-10 w-10 rounded-full border-2 border-white/20 bg-gray-800 object-cover"
-            />
-            <img
-              src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&q=80"
-              alt="Trader"
-              className="h-10 w-10 rounded-full border-2 border-white/20 bg-gray-800 object-cover"
-            />
-            <img
-              src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&q=80"
-              alt="Trader"
-              className="h-10 w-10 rounded-full border-2 border-white/20 bg-gray-800 object-cover"
-            />
-          </div>
-          <p className="text-sm text-white/70">
-            Join <span className="font-semibold text-white">2,400+ traders</span> finding breakouts daily
-          </p>
-        </motion.div>
-
-        {/* Stats bar */}
-        <motion.div
-          className="mt-10 sm:mt-16 grid w-full max-w-4xl grid-cols-3 gap-3 sm:gap-6 rounded-2xl border border-white/10 bg-black/40 p-4 sm:p-8 backdrop-blur-md mx-4"
-          variants={staggerGroup}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.5 }}
-        >
-          <motion.div className="text-center" variants={fadeUp}>
-            <p className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-white">98%</p>
-            <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs uppercase tracking-wider text-gray-500">Accuracy Rate</p>
-          </motion.div>
-          <motion.div className="text-center border-x border-white/10" variants={fadeUp}>
-            <p className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-white">2min</p>
-            <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs uppercase tracking-wider text-gray-500">Avg Scan Time</p>
-          </motion.div>
-          <motion.div className="text-center" variants={fadeUp}>
-            <p className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold text-white">150+</p>
-            <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs uppercase tracking-wider text-gray-500">Daily Scans</p>
-          </motion.div>
-        </motion.div>
-
-        {/* Focus List preview card */}
-        <motion.div
-          className="mt-12 sm:mt-20 w-full max-w-5xl overflow-hidden rounded-2xl sm:rounded-3xl border border-white/15 bg-black/60 shadow-2xl backdrop-blur-md mx-4"
-          variants={fadeUp}
-        >
-          <div className="border-b border-white/10 bg-black/40 px-4 sm:px-6 py-3 sm:py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex gap-1 sm:gap-1.5">
-                  <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-gray-600" />
-                  <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-gray-500" />
-                  <div className="h-2 w-2 sm:h-3 sm:w-3 rounded-full bg-green-500" />
+              {/* Terminal Header */}
+              <div className="flex items-center justify-between border-b border-[#222] px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-3 w-3 rounded-full bg-[#ff5f56]" />
+                  <div className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
+                  <div className="h-3 w-3 rounded-full bg-[#27c93f]" />
                 </div>
-                <span className="text-xs sm:text-sm font-medium text-white">
-                  Tonight's Focus List
-                </span>
+                <span className="font-mono text-xs text-white/40">stockbreakout_terminal</span>
               </div>
-              <span className="text-[10px] sm:text-xs text-gray-500">
-                Live · 17:03 ET
-              </span>
-            </div>
-          </div>
+              
+              {/* Prompt Input */}
+              <div className="p-6">
+                <div className="flex items-center gap-3 border border-[#222] bg-black/50 px-4 py-3 mb-4">
+                  <span className="font-mono text-sm text-white flex-1">
+                    {promptTyped}
+                    <motion.span
+                      animate={{ opacity: [1, 0, 1] }}
+                      transition={{ duration: 0.5, repeat: Infinity }}
+                      className={`inline-block w-[2px] h-[14px] bg-white ml-0.5 align-middle ${demoPhase !== "typing" ? "opacity-0" : ""}`}
+                    />
+                  </span>
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ 
+                      scale: demoPhase === "result" ? 1 : 0,
+                      backgroundColor: "#00ff88"
+                    }}
+                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                    className="w-8 h-8 flex items-center justify-center"
+                  >
+                    <svg className="w-5 h-5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </motion.div>
+                </div>
 
-          <div className="p-4 sm:p-8">
-            <motion.div
-              className="grid gap-4 sm:gap-6 sm:grid-cols-3"
-              variants={staggerGroup}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, amount: 0.3 }}
+                {/* Progress Bar */}
+                <motion.div 
+                  initial={{ scaleX: 0 }}
+                  animate={{ 
+                    scaleX: demoPhase === "processing" || demoPhase === "result" ? 1 : 0,
+                    opacity: demoPhase === "processing" ? 1 : demoPhase === "result" ? 0.3 : 0
+                  }}
+                  transition={{ duration: 0.3 }}
+                  className="h-1 bg-[#0066ff] origin-left mb-6"
+                  style={{ transform: `scaleX(${progress / 100})` }}
+                />
+
+                {/* Result Card */}
+                <AnimatePresence>
+                  {demoPhase === "result" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                      className="border border-[#222] bg-[#111] p-4"
+                    >
+                      <div className="flex items-start gap-4">
+                        {/* Mini Chart */}
+                        <div className="w-20 h-14 border border-[#222] bg-black flex items-end p-1">
+                          <svg viewBox="0 0 80 40" className="w-full h-full">
+                            <motion.path
+                              initial={{ pathLength: 0 }}
+                              animate={{ pathLength: 1 }}
+                              transition={{ duration: 1, ease: "easeOut" }}
+                              d={`M ${scenario.chartData.map((v, i) => `${i * 9},${40 - (v - 30) * 0.8}`).join(" L ")}`}
+                              fill="none"
+                              stroke="#00ff88"
+                              strokeWidth="2"
+                            />
+                          </svg>
+                        </div>
+                        
+                        {/* Result Info */}
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-mono text-base font-bold text-white">{scenario.resultTitle}</span>
+                          </div>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span className="font-mono text-xs text-white/60">${scenario.ticker}</span>
+                            <span className="px-2 py-0.5 bg-[#00ff88] font-mono text-xs font-bold text-black">
+                              {scenario.resultType}
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                              <span className="font-mono text-xs text-white/60">Entry: {scenario.entry}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+                              <span className="font-mono text-xs text-white/60">Exit: {scenario.exit}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Processing Message */}
+                <AnimatePresence>
+                  {demoPhase === "processing" && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex items-center gap-2 font-mono text-xs text-white/40"
+                    >
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-3 h-3 border border-[#00ff88] border-t-transparent rounded-full"
+                      />
+                      {scenario.chatMessage}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          {/* Right Panel - Chart with Animations */}
+          <AnimatePresence mode="wait">
+            <motion.div 
+              key={`chart-${currentScenario}`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: demoPhase === "fadeout" ? 0 : 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+              className="border border-[#222] bg-[#0a0a0a]"
             >
-              <motion.div
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black/70 to-black/40 p-6 transition-all hover:border-green-500/50 hover:shadow-xl hover:shadow-green-500/10"
-                variants={fadeUp}
-                whileHover={{ scale: 1.02, y: -4 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-                  Symbol
-                </p>
-                <p className="relative mt-3 font-serif text-3xl font-bold text-white">
-                  NVDA
-                </p>
-                <p className="relative mt-3 text-sm leading-relaxed text-gray-400">
-                  Watch for breakout above{' '}
-                  <span className="font-semibold text-green-500">$183.40</span>
-                </p>
-              </motion.div>
+              <div className="flex items-center justify-between border-b border-[#222] px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-sm font-bold text-white">{scenario.ticker}</span>
+                  <motion.span 
+                    key={scenario.change}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className={`font-mono text-xs ${scenario.change.startsWith("+") ? "text-[#00ff88]" : "text-[#ff5f56]"}`}
+                  >
+                    {scenario.change}
+                  </motion.span>
+                </div>
+                <div className="flex gap-1">
+                  <div className="h-2 w-2 bg-white/20" />
+                  <div className="h-2 w-2 bg-white/20" />
+                </div>
+              </div>
+              
+              {/* Animated Candlestick Chart */}
+              <div className="p-6 min-h-[280px] flex items-center justify-center">
+                <AnimatedCandlestickChart 
+                  key={currentScenario} 
+                  data={scenario.chartData} 
+                  isProcessing={demoPhase === "processing" || demoPhase === "result"}
+                />
+              </div>
 
-              <motion.div
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black/70 to-black/40 p-6 transition-all hover:border-white/30 hover:shadow-xl hover:shadow-white/10"
-                variants={fadeUp}
-                whileHover={{ scale: 1.02, y: -4 }}
+              {/* Analysis Output */}
+              <motion.div 
+                className="border-t border-[#222] p-4"
               >
-                <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-                  Setup Quality
-                </p>
-                <p className="relative mt-3 font-serif text-3xl font-bold text-white">
-                  92 <span className="text-xl text-gray-400">A+</span>
-                </p>
-                <p className="relative mt-3 text-sm leading-relaxed text-gray-400">
-                  8 EMA trend · volume expansion · clean structure
-                </p>
-              </motion.div>
-
-              <motion.div
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black/70 to-black/40 p-6 transition-all hover:border-green-500/50 hover:shadow-xl hover:shadow-green-500/10"
-                variants={fadeUp}
-                whileHover={{ scale: 1.02, y: -4 }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-gray-500">
-                  Scan Time
-                </p>
-                <p className="relative mt-3 font-serif text-3xl font-bold text-white">
-                  17:03
-                </p>
-                <p className="relative mt-3 text-sm leading-relaxed text-gray-400">
-                  Added to Premium Focus List for tomorrow's open.
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-mono text-xs text-white/60">{">"}</span>
+                  <span className="font-mono text-sm text-white">Analyzing {scenario.ticker} patterns...</span>
+                </div>
+                <AnimatePresence>
+                  {demoPhase === "result" && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="flex items-center gap-2 overflow-hidden"
+                    >
+                      <motion.svg 
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                        className="h-4 w-4 text-[#00ff88]" 
+                        fill="none" 
+                        viewBox="0 0 24 24" 
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </motion.svg>
+                      <span className="font-mono text-xs">
+                        <span className="text-white/60">SIGNAL: </span>
+                        <span className="text-[#00ff88]">{scenario.resultType}</span>
+                        <span className="text-white/60"> | Entry: </span>
+                        <span className="text-white">{scenario.entry}</span>
+                      </span>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             </motion.div>
-          </div>
+          </AnimatePresence>
         </motion.div>
 
-        {/* Testimonials / Reviews Section */}
-        <motion.div
-          className="mt-24 w-full max-w-6xl"
-          variants={fadeUp}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, amount: 0.2 }}
+        {/* Partners */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 1.2, duration: 0.6 }}
+          className="mt-16 border-t border-[#222] pt-8"
         >
-          <div className="mb-12 text-center">
-            <motion.p
-              className="text-xs uppercase tracking-[0.2em] text-gray-500"
-              variants={fadeUp}
-            >
-              Trusted by Professionals
-            </motion.p>
-            <motion.h2
-              className="mt-3 font-serif text-3xl font-semibold text-white sm:text-4xl"
-              variants={fadeUp}
-            >
-              What traders are saying
-            </motion.h2>
-          </div>
-
-          <motion.div
-            className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
-            variants={staggerGroup}
-          >
-            {[
-              {
-                name: "Michael Chen",
-                role: "Day Trader",
-                avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop&q=80",
-                review: "This scanner cut my research time from 2 hours to 10 minutes. The AI quality scores are incredibly accurate.",
-                rating: 5
-              },
-              {
-                name: "Sarah Williams",
-                role: "Swing Trader",
-                avatar: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&h=400&fit=crop&q=80",
-                review: "Game changer for finding 8 EMA setups. The focus lists are exactly what I need each morning.",
-                rating: 5
-              },
-              {
-                name: "Alex Rodriguez",
-                role: "Professional Trader",
-                avatar: "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&h=400&fit=crop&q=80",
-                review: "Best breakout scanner I've used. The custom filters let me dial in my exact strategy perfectly.",
-                rating: 5
-              }
-            ].map((testimonial, i) => (
-              <motion.div
-                key={i}
-                className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-black/60 to-black/40 p-6 backdrop-blur-sm transition-all hover:border-white/30"
-                variants={fadeUp}
-                whileHover={{ y: -8, scale: 1.02 }}
-                transition={{ duration: 0.3 }}
+          <p className="mb-6 font-mono text-xs uppercase tracking-wider text-white/40">
+            Partnered With:
+          </p>
+          <div className="flex flex-wrap items-center gap-8">
+            {["Alpaca", "Tradier", "TD Ameritrade", "E*TRADE"].map((partner, i) => (
+              <motion.span 
+                key={partner} 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.4 }}
+                transition={{ delay: 1.4 + i * 0.1 }}
+                whileHover={{ opacity: 1, color: "#00ff88" }}
+                className="font-mono text-sm text-white cursor-default"
               >
-                <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-gradient-to-br from-green-500/10 to-white/5 blur-2xl transition-all group-hover:scale-150" />
-                
-                <div className="relative">
-                  <div className="flex items-center gap-4">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                      className="h-12 w-12 rounded-full border-2 border-white/20 bg-gray-800 object-cover"
-                    />
-                    <div>
-                      <p className="font-semibold text-white">{testimonial.name}</p>
-                      <p className="text-xs text-gray-500">{testimonial.role}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex gap-1">
-                    {Array.from({ length: testimonial.rating }).map((_, j) => (
-                      <svg
-                        key={j}
-                        className="h-4 w-4 text-green-500"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-
-                  <p className="mt-4 text-sm leading-relaxed text-gray-400">
-                    "{testimonial.review}"
-                  </p>
-                </div>
-              </motion.div>
+                {partner}
+              </motion.span>
             ))}
-          </motion.div>
+          </div>
         </motion.div>
       </motion.div>
     </section>
+  )
+}
+
+function AnimatedCandlestickChart({ data, isProcessing }: { data: number[], isProcessing: boolean }) {
+  const [animatedData, setAnimatedData] = useState(data)
+  
+  // Animate chart data when processing
+  useEffect(() => {
+    if (!isProcessing) {
+      setAnimatedData(data)
+      return
+    }
+    
+    const interval = setInterval(() => {
+      setAnimatedData(prev => 
+        prev.map((val, i) => {
+          const variation = (Math.random() - 0.5) * 3
+          return Math.max(30, Math.min(70, val + variation))
+        })
+      )
+    }, 200)
+    
+    return () => clearInterval(interval)
+  }, [isProcessing, data])
+
+  const candles = animatedData.map((close, i) => {
+    const open = i === 0 ? close - 2 : animatedData[i - 1]
+    const isGreen = close > open
+    return {
+      o: open,
+      c: close,
+      h: Math.max(open, close) + Math.random() * 5,
+      l: Math.min(open, close) - Math.random() * 5,
+      isGreen,
+    }
+  })
+
+  const allVals = candles.flatMap(c => [c.h, c.l])
+  const minL = Math.min(...allVals)
+  const maxH = Math.max(...allVals)
+  const range = maxH - minL || 1
+  const height = 180
+  const width = 300
+
+  const scale = (val: number) => height - ((val - minL) / range) * height
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height + 20}`} className="w-full max-w-[300px]">
+      {/* Grid lines */}
+      {[0, 1, 2, 3, 4].map(i => (
+        <line
+          key={i}
+          x1={0}
+          y1={height * i / 4}
+          x2={width}
+          y2={height * i / 4}
+          stroke="#222"
+          strokeWidth={0.5}
+        />
+      ))}
+      
+      {candles.map((candle, i) => {
+        const x = i * 28 + 15
+        const bodyTop = scale(Math.max(candle.o, candle.c))
+        const bodyBottom = scale(Math.min(candle.o, candle.c))
+        const bodyHeight = Math.max(bodyBottom - bodyTop, 2)
+
+        return (
+          <motion.g 
+            key={i}
+            initial={{ opacity: 0, scaleY: 0 }}
+            animate={{ opacity: 1, scaleY: 1 }}
+            transition={{ delay: i * 0.05, duration: 0.3 }}
+            style={{ transformOrigin: `${x + 8}px ${height}px` }}
+          >
+            {/* Wick */}
+            <motion.line
+              x1={x + 8}
+              y1={scale(candle.h)}
+              x2={x + 8}
+              y2={scale(candle.l)}
+              stroke={candle.isGreen ? "#00ff88" : "#ff5f56"}
+              strokeWidth={1}
+              animate={{ 
+                y1: scale(candle.h), 
+                y2: scale(candle.l) 
+              }}
+              transition={{ duration: 0.2 }}
+            />
+            {/* Body */}
+            <motion.rect
+              x={x}
+              width={16}
+              fill={candle.isGreen ? "#00ff88" : "#ff5f56"}
+              animate={{ 
+                y: bodyTop, 
+                height: bodyHeight 
+              }}
+              transition={{ duration: 0.2 }}
+            />
+          </motion.g>
+        )
+      })}
+      
+      {/* Buy Signal */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ 
+          opacity: isProcessing ? 1 : 0, 
+          scale: isProcessing ? 1 : 0 
+        }}
+        transition={{ delay: 0.5, type: "spring", stiffness: 500, damping: 25 }}
+      >
+        <polygon 
+          points={`${15 + 3 * 28},${height + 5} ${15 + 3 * 28 + 8},${height + 15} ${15 + 3 * 28 - 8},${height + 15}`}
+          fill="#00ff88" 
+        />
+      </motion.g>
+      
+      {/* Sell Signal */}
+      <motion.g
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ 
+          opacity: isProcessing ? 1 : 0, 
+          scale: isProcessing ? 1 : 0 
+        }}
+        transition={{ delay: 0.7, type: "spring", stiffness: 500, damping: 25 }}
+      >
+        <polygon 
+          points={`${15 + 7 * 28},-5 ${15 + 7 * 28 + 8},5 ${15 + 7 * 28 - 8},5`}
+          fill="#ff5f56" 
+        />
+      </motion.g>
+    </svg>
   )
 }

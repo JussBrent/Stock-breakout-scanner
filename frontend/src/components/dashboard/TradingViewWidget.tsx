@@ -23,11 +23,12 @@ export function TradingViewWidget({
 }: TradingViewWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const containerId = useMemo(() => `tv-chart-${Math.random().toString(36).slice(2)}`, [])
-  const studiesKey = studies.join(',')
 
   useEffect(() => {
+    const container = containerRef.current
+
     const createWidget = () => {
-      if (!window.TradingView || !containerRef.current) return
+      if (!window.TradingView || !container) return
 
       new window.TradingView.widget({
         container_id: containerId,
@@ -72,11 +73,11 @@ export function TradingViewWidget({
     }
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = ''
+      if (container) {
+        container.innerHTML = ''
       }
     }
-  }, [symbol, interval, theme, containerId, studiesKey])
+  }, [symbol, interval, theme, containerId, studies])
 
   return <div id={containerId} ref={containerRef} style={{ height }} className="w-full" />
 }

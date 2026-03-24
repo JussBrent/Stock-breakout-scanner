@@ -1,8 +1,6 @@
-"use client"
-
 import type React from "react"
 
-import { useState, useRef, useEffect, useCallback } from "react"
+import { useState, useRef, useEffect, useCallback, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { Brain, Send, Loader, Sparkles, TrendingUp, BarChart3, Menu, X, Plus, Trash2, Clock, AlertCircle } from "lucide-react"
@@ -41,6 +39,7 @@ interface AiAdviceProps {
 }
 
 const STORAGE_KEY = 'ai-conversations'
+const EMPTY_MESSAGES: Message[] = []
 
 function useAutoResizeTextarea({ minHeight, maxHeight }: UseAutoResizeTextareaProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -106,34 +105,40 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const commandPaletteRef = useRef<HTMLDivElement>(null)
 
-  const currentConversation = conversations.find((c) => c.id === currentConversationId) || conversations[0]
-  const messages = currentConversation?.messages || []
+  const currentConversation = useMemo(
+    () => conversations.find((c) => c.id === currentConversationId) || conversations[0],
+    [conversations, currentConversationId],
+  )
+  const messages = currentConversation?.messages ?? EMPTY_MESSAGES
 
   const { textareaRef, adjustHeight } = useAutoResizeTextarea({
     minHeight: 60,
     maxHeight: 200,
   })
 
-  const commandSuggestions: CommandSuggestion[] = [
-    {
-      icon: <TrendingUp className="w-4 h-4" />,
-      label: "Analyze Stock",
-      description: "Get technical analysis for a stock",
-      prefix: "/analyze",
-    },
-    {
-      icon: <BarChart3 className="w-4 h-4" />,
-      label: "Market Trends",
-      description: "View current market trends",
-      prefix: "/trends",
-    },
-    {
-      icon: <Sparkles className="w-4 h-4" />,
-      label: "Strategy",
-      description: "Get trading strategy advice",
-      prefix: "/strategy",
-    },
-  ]
+  const commandSuggestions: CommandSuggestion[] = useMemo(
+    () => [
+      {
+        icon: <TrendingUp className="w-4 h-4" />,
+        label: "Analyze Stock",
+        description: "Get technical analysis for a stock",
+        prefix: "/analyze",
+      },
+      {
+        icon: <BarChart3 className="w-4 h-4" />,
+        label: "Market Trends",
+        description: "View current market trends",
+        prefix: "/trends",
+      },
+      {
+        icon: <Sparkles className="w-4 h-4" />,
+        label: "Strategy",
+        description: "Get trading strategy advice",
+        prefix: "/strategy",
+      },
+    ],
+    [],
+  )
 
   // Load conversations from localStorage on mount
   useEffect(() => {
@@ -187,7 +192,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
     } else {
       setShowCommandPalette(false)
     }
-  }, [value])
+  }, [value, commandSuggestions])
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

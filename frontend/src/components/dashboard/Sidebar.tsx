@@ -1,5 +1,3 @@
-"use client"
-
 import React, { useState, createContext, useContext } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { LayoutDashboard, Brain, Target, TrendingUp, Settings, BarChart3, Activity, Menu, X, ArrowLeft } from "lucide-react"

@@ -1,79 +1,19 @@
-"use client"
-
-import { TextRoll } from "@/components/ui/text-roll"
-import React from "react"
 import { motion } from "framer-motion"
 
-const comparisonFeatures = [
-  {
-    without: {
-      title: "Manual Chart Analysis",
-      description: "Spend 1-2 hours every night manually reviewing charts to identify breakout patterns",
-    },
-    with: {
-      title: "AI Pattern Recognition",
-      description: "Automated scanning identifies 8 EMA breakouts across 2,000+ stocks in under 30 seconds",
-    },
-  },
-  {
-    without: {
-      title: "No Quality Scoring",
-      description: "Difficult to objectively rank which setups have the highest probability of success",
-    },
-    with: {
-      title: "AI Strength Scoring",
-      description: "Every setup gets an institutional-grade quality score based on multiple technical factors",
-    },
-  },
-  {
-    without: {
-      title: "Limited Market Coverage",
-      description: "Humanly impossible to scan more than 100-200 stocks with consistent quality",
-    },
-    with: {
-      title: "Complete Market Scan",
-      description: "Automated coverage of entire U.S. equity universe with consistent analysis quality",
-    },
-  },
-  {
-    without: {
-      title: "Inconsistent Results",
-      description: "Fatigue and human error lead to missed opportunities and varying analysis quality",
-    },
-    with: {
-      title: "100% Consistency",
-      description: "Same rigorous criteria applied to every stock, every night, without fatigue or bias",
-    },
-  },
-]
+const motionEase = [0.22, 1, 0.36, 1] as const
 
-const sectionVariants = {
-  hidden: { opacity: 0, y: 40 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.7,
-      ease: [0.22, 0.61, 0.36, 1] as const,
-    },
-  },
-}
-
-const headerVariants = {
+const headerVariant = {
   hidden: { opacity: 0, y: 24 },
-  show: {
+  visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: 0.6,
-      ease: [0.25, 0.8, 0.25, 1] as const,
-    },
+    transition: { duration: 0.6, ease: motionEase },
   },
 }
 
-const gridVariants = {
+const cardsContainerVariant = {
   hidden: {},
-  show: {
+  visible: {
     transition: {
       staggerChildren: 0.12,
       delayChildren: 0.1,
@@ -81,210 +21,184 @@ const gridVariants = {
   },
 }
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 24, scale: 0.98 },
-  show: {
+const cardVariant = {
+  hidden: {
+    opacity: 0,
+    y: 20,
+  },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.55,
+      ease: motionEase,
+    },
+  },
+}
+
+const statContainerVariant = {
+  hidden: {},
+  visible: {
+    transition: {
+      staggerChildren: 0.1,
+      delayChildren: 0.1,
+    },
+  },
+}
+
+const statVariant = {
+  hidden: { opacity: 0, y: 18, scale: 0.98 },
+  visible: {
     opacity: 1,
     y: 0,
     scale: 1,
     transition: {
       duration: 0.45,
-      ease: [0.22, 0.61, 0.36, 1] as const,
+      ease: motionEase,
     },
   },
 }
 
+const comparisonFeatures = [
+  {
+    title: "AI Pattern Recognition",
+    description: "Automated scanning identifies 8 EMA breakouts across 2,000+ stocks in under 30 seconds.",
+  },
+  {
+    title: "AI Strength Scoring",
+    description: "Every setup gets an institutional-grade quality score based on multiple technical factors.",
+  },
+  {
+    title: "Complete Market Scan",
+    description: "Automated coverage of entire U.S. equity universe with consistent analysis quality.",
+  },
+  {
+    title: "100% Consistency",
+    description: "Same rigorous criteria applied to every stock, every night, without fatigue or bias.",
+  },
+]
+
 export default function ComparisonSection() {
   return (
-    <motion.section
-      id="split"
-      className="relative overflow-hidden bg-black py-16 sm:py-24 lg:py-32"
-      variants={sectionVariants}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once: true, amount: 0.25 }}
-    >
-      {/* Modern mesh gradient with radial glow */}
-      <div className="absolute inset-0">
-        {/* Base gradient */}
-        <div className="absolute inset-0 bg-gradient-radial from-neutral-900/40 via-black to-black" />
-        
-        {/* Animated gradient orbs */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-emerald-900/20 via-neutral-900/10 to-transparent rounded-full blur-3xl animate-pulse" />
-          <div className="absolute bottom-1/4 -right-1/4 w-[600px] h-[600px] bg-gradient-to-tl from-neutral-800/20 via-neutral-900/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-        </div>
-        
-        {/* Dot grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-30"
-          style={{
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.05) 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-          }}
-        />
-        
-        {/* Animated line grid with gradient flow */}
-        <div 
-          className="absolute inset-0 opacity-40"
+    <section id="comparison" className="relative bg-black py-20 sm:py-32">
+      {/* Grid Background */}
+      <div className="absolute inset-0 opacity-20">
+        <div
+          className="absolute inset-0"
           style={{
             backgroundImage: `
-              linear-gradient(to bottom, 
-                transparent 0%, 
-                rgba(16, 185, 129, 0.3) 10%, 
-                rgba(16, 185, 129, 0.1) 20%, 
-                transparent 30%, 
-                transparent 100%
-              ),
-              linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px)
+              linear-gradient(to right, #222 1px, transparent 1px),
+              linear-gradient(to bottom, #222 1px, transparent 1px)
             `,
-            backgroundSize: '100% 200%, 80px 80px, 80px 80px',
-            animation: 'gridFlow 8s linear infinite'
+            backgroundSize: "80px 80px",
           }}
         />
-        
-        {/* Vertical flowing pixels */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div 
-            className="absolute w-px h-32 left-[20%] bg-gradient-to-b from-transparent via-emerald-400 to-transparent opacity-60"
-            style={{ animation: 'flowDown 3s linear infinite' }}
-          />
-          <div 
-            className="absolute w-px h-32 left-[40%] bg-gradient-to-b from-transparent via-emerald-500 to-transparent opacity-60"
-            style={{ animation: 'flowDown 4s linear infinite 1s' }}
-          />
-          <div 
-            className="absolute w-px h-32 left-[60%] bg-gradient-to-b from-transparent via-emerald-400 to-transparent opacity-60"
-            style={{ animation: 'flowDown 3.5s linear infinite 0.5s' }}
-          />
-          <div 
-            className="absolute w-px h-32 left-[80%] bg-gradient-to-b from-transparent via-emerald-500 to-transparent opacity-60"
-            style={{ animation: 'flowDown 4.5s linear infinite 2s' }}
-          />
-        </div>
-        
-        {/* Add custom keyframes */}
-        <style dangerouslySetInnerHTML={{__html: `
-          @keyframes flowDown {
-            0% {
-              transform: translateY(-100%);
-              opacity: 0;
-            }
-            10% {
-              opacity: 0.6;
-            }
-            90% {
-              opacity: 0.6;
-            }
-            100% {
-              transform: translateY(100vh);
-              opacity: 0;
-            }
-          }
-          
-          @keyframes gridFlow {
-            0% {
-              background-position: 0% 0%, 0 0, 0 0;
-            }
-            100% {
-              background-position: 0% 200%, 0 0, 0 0;
-            }
-          }
-        `}} />
       </div>
-      
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 md:px-8">
-        {/* Header */}
-        <motion.div className="mb-12 sm:mb-20 text-center" variants={headerVariants}>
-          <h2 className="mb-4 sm:mb-6 font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.1] tracking-tight text-white px-2">
-            <TextRoll className="inline-block">Turn hours of stock scanning</TextRoll>
+
+      {/* Flowing Lines */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {[20, 40, 60, 80].map((left, i) => (
+          <motion.div
+            key={i}
+            className="absolute w-px bg-linear-to-b from-transparent via-[#00ff88]/40 to-transparent"
+            initial={{ y: "-120%", opacity: 0 }}
+            animate={{ y: "120vh", opacity: [0, 1, 1, 0] }}
+            transition={{
+              duration: 3 + i * 0.5,
+              repeat: Infinity,
+              ease: "linear",
+              delay: i * 0.5,
+            }}
+            style={{
+              left: `${left}%`,
+              height: "200px",
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
+        {/* Section Header */}
+        <motion.div
+          className="mb-16 text-center"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.35 }}
+          variants={headerVariant}
+        >
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="h-px w-8 bg-[#00ff88]" />
+            <span className="font-mono text-xs uppercase tracking-wider text-[#00ff88]">
+              Comparison
+            </span>
+            <div className="h-px w-8 bg-[#00ff88]" />
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
+            Turn hours of stock scanning
             <br />
-            <span className="text-white">into seconds.</span>
+            <span className="text-[#00ff88]">into seconds.</span>
           </h2>
-          <p className="mx-auto max-w-2xl text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed text-neutral-300 px-4">
-            Stop wasting time on manual chart analysis. StockBreakout Scanner automates your entire scanning workflow
-            with AI-powered pattern recognition.
+          <p className="mx-auto max-w-2xl font-mono text-sm text-white/60">
+            Stop wasting time on manual chart analysis. StockBreakout Scanner automates your entire scanning workflow with AI-powered pattern recognition.
           </p>
         </motion.div>
 
         {/* Comparison Grid */}
-        <motion.div className="grid gap-4 lg:grid-cols-2 lg:gap-6" variants={gridVariants}>
+        <motion.div
+          className="grid gap-4 md:grid-cols-2"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.25 }}
+          variants={cardsContainerVariant}
+        >
           {comparisonFeatures.map((feature, index) => (
-            <React.Fragment key={index}>
-              {/* Without Card */}
-              <motion.div
-                variants={cardVariants}
-                whileHover={{
-                  y: -4,
-                  scale: 1.01,
-                  transition: { duration: 0.18, ease: "easeOut" },
-                }}
-                className="group relative overflow-hidden rounded-xl border border-red-900/30 bg-red-950/10 p-5 sm:p-8 backdrop-blur-sm transition-colors hover:border-red-800/50 hover:bg-red-950/20"
-              >
-                <div className="flex items-start gap-3 sm:gap-4">
-                  {/* X Icon */}
-                  <div className="shrink-0">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 sm:h-5 sm:w-5 text-red-500"
-                    >
-                      <path d="M18 6 6 18" />
-                      <path d="m6 6 12 12" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="mb-2 sm:mb-3 text-lg sm:text-xl font-semibold text-white">{feature.without.title}</h3>
-                    <p className="text-sm sm:text-base leading-relaxed text-neutral-300">{feature.without.description}</p>
-                  </div>
+            <motion.div
+              key={index}
+              className="group border border-[#222] bg-[#0a0a0a] p-6 sm:p-8 transition-all hover:border-[#00ff88]/50 hover:bg-[#00ff88]/5"
+              variants={cardVariant}
+              whileHover={{ y: -4, borderColor: "rgba(0,255,136,0.5)", backgroundColor: "rgba(0,255,136,0.05)" }}
+            >
+              <div className="flex items-start gap-4">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center border border-[#00ff88] bg-[#00ff88] text-black">
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
                 </div>
-              </motion.div>
+                <div>
+                  <h3 className="text-lg font-bold text-white mb-2">{feature.title}</h3>
+                  <p className="font-mono text-sm text-white/60">{feature.description}</p>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
 
-              {/* With Card */}
-              <motion.div
-                variants={cardVariants}
-                whileHover={{
-                  y: -4,
-                  scale: 1.02,
-                  transition: { duration: 0.18, ease: "easeOut" },
-                }}
-                className="group relative overflow-hidden rounded-xl border border-emerald-900/30 bg-emerald-950/10 p-5 sm:p-8 backdrop-blur-sm transition-colors hover:border-emerald-800/50 hover:bg-emerald-950/20"
-              >
-                {/* subtle glow accent */}
-                <div className="pointer-events-none absolute inset-0 opacity-0 mix-blend-screen blur-3xl transition-opacity duration-300 group-hover:opacity-100">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 via-emerald-400/5 to-transparent" />
-                </div>
-
-                <div className="relative flex items-start gap-3 sm:gap-4">
-                  {/* Checkmark Icon */}
-                  <div className="shrink-0">
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-500"
-                    >
-                      <path d="M20 6 9 17l-5-5" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="mb-2 sm:mb-3 text-lg sm:text-xl font-semibold text-white">{feature.with.title}</h3>
-                    <p className="text-sm sm:text-base leading-relaxed text-neutral-300">{feature.with.description}</p>
-                  </div>
-                </div>
-              </motion.div>
-            </React.Fragment>
+        {/* Bottom Stats */}
+        <motion.div
+          className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, amount: 0.35 }}
+          variants={statContainerVariant}
+        >
+          {[
+            { value: "2,000+", label: "Stocks Scanned" },
+            { value: "<30s", label: "Scan Time" },
+            { value: "100%", label: "Consistency" },
+            { value: "24/7", label: "Availability" },
+          ].map((stat, i) => (
+            <motion.div
+              key={i}
+              className="border border-[#222] bg-[#0a0a0a] p-6 text-center"
+              variants={statVariant}
+              whileHover={{ y: -3, borderColor: "#333" }}
+            >
+              <div className="font-mono text-2xl sm:text-3xl font-bold text-[#00ff88]">{stat.value}</div>
+              <div className="font-mono text-xs text-white/40 uppercase tracking-wider mt-1">{stat.label}</div>
+            </motion.div>
           ))}
         </motion.div>
       </div>
-    </motion.section>
+    </section>
   )
 }
