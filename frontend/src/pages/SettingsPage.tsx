@@ -407,28 +407,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-4 pt-6 border-t border-white/10">
-                      <h3 className="text-sm font-semibold text-white/80">API Keys</h3>
-                      <div>
-                        <label className="text-sm text-white/60 mb-2 block">ChatGPT API Key</label>
-                        <div className="flex gap-2">
-                          <Input
-                            type="password"
-                            value={settings.security.apiKey}
-                            onChange={(e) => updateSettings(["security", "apiKey"], e.target.value)}
-                            placeholder="sk-proj-..."
-                            className="bg-white/5 border-white/10 text-white"
-                          />
-                          <Button variant="outline" size="sm" className="border-white/20">
-                            Regenerate
-                          </Button>
-                        </div>
-                        <p className="text-xs text-white/50 mt-2">
-                          Your API key is encrypted and never shared
-                        </p>
-                      </div>
-                    </div>
-
                     <Button
                       onClick={handleSave}
                       className="w-full mt-6 bg-primary text-white hover:bg-primary/90"

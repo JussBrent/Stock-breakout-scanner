@@ -96,7 +96,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
     },
   ])
   const [currentConversationId, setCurrentConversationId] = useState("default")
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
   const [value, setValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
   const [showCommandPalette, setShowCommandPalette] = useState(false)

@@ -3,6 +3,7 @@ import os
 import json
 import time
 import logging
+from datetime import date
 from typing import List, Dict, Optional
 from models.candle import ScanResult
 from pydantic import BaseModel
@@ -324,7 +325,10 @@ class AIAnalysisService:
         vol_quality = "High" if avg_vol > 1_000_000 else "Medium" if avg_vol > 300_000 else "Low"
         cap_str = f"${market_cap/1e9:.2f}B" if market_cap else "Unknown"
 
+        today_str = date.today().strftime("%Y-%m-%d")
+
         prompt = f"""Analyze {sym} and provide a technical analysis. Respond with JSON only.
+Today's date is {today_str}. All suggested expiry dates must be AFTER today.
 
 **Symbol**: {sym}
 **Current Price**: ${price:.2f}
@@ -350,7 +354,7 @@ Respond with this exact JSON:
   "suggested_entry": <exact price number for entry>,
   "suggested_stop": <exact price number for stop loss>,
   "suggested_target": <exact price number for take profit>,
-  "suggested_expiry": "<nearest optimal options expiration date as YYYY-MM-DD, or null if stock-only play>",
+  "suggested_expiry": "<nearest optimal options expiration date as YYYY-MM-DD that is strictly after today ({today_str}), or null if stock-only play>",
   "entry_notes": "<1 sentence on entry — where to buy or what to wait for>",
   "stop_notes": "<1 sentence on stop loss placement>"
 }}"""
@@ -363,11 +367,18 @@ Respond with this exact JSON:
 
             response = await self.client.messages.create(
                 model=self.model,
-                max_tokens=600,
-                system=system + "\n\nRespond with valid JSON only.",
+                max_tokens=800,
+                system=system + "\n\nRespond with valid JSON only. Do not use markdown code fences.",
                 messages=[{"role": "user", "content": prompt}],
             )
-            content = response.content[0].text
+            content = response.content[0].text.strip()
+            # Strip markdown code fences if Claude wraps the JSON
+            if content.startswith("```"):
+                content = content.split("```")[1]
+                if content.startswith("json"):
+                    content = content[4:]
+                content = content.strip()
+            logger.debug(f"Claude raw response for {sym}: {content[:200]}")
             data = json.loads(content)
             return {
                 "symbol": sym,

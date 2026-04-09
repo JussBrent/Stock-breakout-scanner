@@ -156,6 +156,41 @@ async def get_momentum_stocks(
         # Sort by momentum score descending
         stocks.sort(key=lambda s: s["momentum"], reverse=True)
 
+        # Fallback: if no stocks passed filters, fetch popular tickers individually
+        if not stocks:
+            fallback_tickers = ["AAPL", "TSLA", "NVDA", "MSFT", "META", "AMZN", "GOOGL", "AMD", "SPY", "QQQ"]
+            for sym in fallback_tickers:
+                try:
+                    snap = await polygon_get(
+                        f"{POLYGON_BASE}/v2/snapshot/locale/us/markets/stocks/tickers/{sym}"
+                    )
+                    ticker = snap.get("ticker", {}) if snap else {}
+                    if not ticker:
+                        continue
+                    prev_day = ticker.get("prevDay", {})
+                    day = ticker.get("day", {})
+                    price = day.get("c") or prev_day.get("c", 0)
+                    volume = day.get("v") or prev_day.get("v", 0)
+                    change_pct = ticker.get("todaysChangePerc", 0)
+                    if price < 1:
+                        continue
+                    momentum = _calc_momentum(change_pct, 1.0)
+                    trend = _classify_trend(change_pct)
+                    stocks.append({
+                        "symbol": sym,
+                        "company": sym,
+                        "price": round(price, 2),
+                        "momentum": momentum,
+                        "trend": trend,
+                        "volume": _format_volume(volume),
+                        "changePercent": round(change_pct, 2),
+                        "breakoutStrength": _calc_breakout_strength(change_pct, 1.0, 0),
+                        "efficiency": 50,
+                    })
+                except Exception:
+                    continue
+            stocks.sort(key=lambda s: s["momentum"], reverse=True)
+
         market_open = market_open_count > len(stocks) // 2 if stocks else False
         return {"stocks": stocks, "marketOpen": market_open}
 

@@ -12,6 +12,7 @@ import {
   snaptradeGetConnectUrl,
   snaptradePlaceOrder,
   snaptradePreviewOrder,
+  logTradeOutcome,
   type SnapTradeAccount,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
@@ -153,6 +154,19 @@ export function TradeModal({ open, onClose, symbol = "", action = "BUY", price }
         quantity: parseFloat(form.quantity),
         ...(form.orderType !== "Market" && form.price ? { price: parseFloat(form.price) } : {}),
       })
+
+      // Log trade outcome for AI learning (fire and forget)
+      try {
+        await logTradeOutcome({
+          symbol: form.symbol.toUpperCase(),
+          entry_price: form.price ? parseFloat(form.price) : 0,
+          outcome: "open",
+          notes: `${form.action} ${form.quantity} shares via ${form.orderType} order`,
+        })
+      } catch {
+        // Don't block the trade flow if logging fails
+      }
+
       setSuccess(true)
       setStep("done")
     } catch (e) {

@@ -2,11 +2,10 @@ import type React from "react"
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { aiScanSymbol, analyzeContent, type AISymbolAnalysis } from "@/lib/api"
+import { Input } from "@/components/ui/input"
+import { aiScanSymbol, analyzeContent, addToWatchlist, type AISymbolAnalysis } from "@/lib/api"
 import {
-  Zap,
   Upload,
   Search,
   AlertCircle,
@@ -20,9 +19,12 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Crosshair,
+  Star,
+  Check,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TradeModal } from "./TradeModal"
+import { TradingViewWidget } from "./TradingViewWidget"
 
 type ScanMode = "symbol" | "image" | "content"
 
@@ -36,11 +38,22 @@ export function StockScanner() {
   const [contentResult, setContentResult] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tradeModalOpen, setTradeModalOpen] = useState(false)
+  const [focusAdded, setFocusAdded] = useState(false)
 
   const resetResults = () => {
     setSymbolResult(null)
     setContentResult(null)
     setError(null)
+    setFocusAdded(false)
+  }
+
+  const handleAddToFocusList = async () => {
+    if (!symbolResult || focusAdded) return
+    try {
+      await addToWatchlist(symbolResult.symbol)
+    } finally {
+      setFocusAdded(true)
+    }
   }
 
   const switchMode = (m: ScanMode) => {
@@ -152,10 +165,6 @@ export function StockScanner() {
                 <p className="text-sm text-white/50 mt-0.5">Multi-modal analysis powered by advanced AI</p>
               </div>
             </div>
-            <Badge variant="outline" className="bg-primary/10 border-primary/30 text-primary px-3 py-1.5">
-              <Zap className="h-3.5 w-3.5 mr-1.5" />
-              Real-time Analysis
-            </Badge>
           </div>
 
           {/* Mode tabs */}
@@ -260,7 +269,7 @@ export function StockScanner() {
               onClick={handleScan}
               disabled={!canScan()}
               size="lg"
-              className="w-full h-14 bg-linear-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 text-white font-semibold text-base shadow-lg shadow-primary/25 disabled:opacity-50 transition-all"
+              className="w-full h-14 bg-linear-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-semibold text-base shadow-lg shadow-emerald-500/25 disabled:opacity-50 transition-all"
             >
               {isScanning ? (
                 <><Loader className="mr-2.5 h-5 w-5 animate-spin" />Sean is analysing...</>
@@ -311,6 +320,19 @@ export function StockScanner() {
         <Card className="relative overflow-hidden bg-linear-to-br from-white/[0.07] to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-primary/5 pointer-events-none" />
           <div className="relative p-8 space-y-8">
+            <div className="rounded-xl overflow-hidden bg-black/60 border border-white/10 h-[420px]">
+              <TradingViewWidget
+                symbol={symbolResult.symbol}
+                interval="D"
+                theme="dark"
+                height={420}
+                entry={symbolResult.suggested_entry}
+                stop={symbolResult.suggested_stop}
+                target={symbolResult.suggested_target}
+                direction={symbolResult.direction as 'Long' | 'Short' | null}
+              />
+            </div>
+
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
@@ -338,10 +360,25 @@ export function StockScanner() {
                 </div>
                 <p className="text-white/50 text-sm">{symbolResult.trend}</p>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-white/40 mb-1">Opportunity Score</p>
-                <p className={cn("text-5xl font-bold", scoreColor(symbolResult.opportunity_score))}>{symbolResult.opportunity_score}</p>
-                <p className="text-xs text-white/30 mt-1">Confidence {symbolResult.confidence}%</p>
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-right">
+                  <p className="text-xs text-white/40 mb-1">Opportunity Score</p>
+                  <p className={cn("text-5xl font-bold", scoreColor(symbolResult.opportunity_score))}>{symbolResult.opportunity_score}</p>
+                  <p className="text-xs text-white/30 mt-1">Confidence {symbolResult.confidence}%</p>
+                </div>
+                <button
+                  onClick={handleAddToFocusList}
+                  disabled={focusAdded}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border",
+                    focusAdded
+                      ? "bg-pink-500/20 border-pink-500/40 text-pink-400 cursor-default"
+                      : "bg-white/5 border-white/10 text-white/50 hover:text-pink-400 hover:border-pink-500/30 hover:bg-pink-500/10"
+                  )}
+                >
+                  {focusAdded ? <Check className="h-3 w-3" /> : <Star className="h-3 w-3" />}
+                  {focusAdded ? "In Focus List" : "Add to Focus List"}
+                </button>
               </div>
             </div>
 
