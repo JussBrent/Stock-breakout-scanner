@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 
 type TradingViewWidgetProps = {
   symbol: string
@@ -14,6 +14,14 @@ declare global {
   }
 }
 
+// Sanitize symbol for TradingView — strip anything that isn't A-Z, 0-9, dot, colon
+function sanitizeSymbol(raw: string): string {
+  const cleaned = raw.trim().toUpperCase().replace(/[^A-Z0-9.:]/g, '')
+  return cleaned || 'SPY'
+}
+
+let widgetCounter = 0
+
 export function TradingViewWidget({
   symbol,
   interval = 'D',
@@ -22,18 +30,24 @@ export function TradingViewWidget({
   height = 560,
 }: TradingViewWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const containerId = useMemo(() => `tv-chart-${Math.random().toString(36).slice(2)}`, [])
+  // Stable ID for the lifetime of this component instance
+  const containerId = useRef(`tv-chart-${++widgetCounter}`).current
 
   useEffect(() => {
+    let mounted = true
     const container = containerRef.current
+    if (!container) return
+
+    const tvSymbol = sanitizeSymbol(symbol)
 
     const createWidget = () => {
-      if (!window.TradingView || !container) return
-
+      if (!mounted || !window.TradingView || !container) return
+      // Clear any previous widget content
+      container.innerHTML = ''
       new window.TradingView.widget({
         container_id: containerId,
         autosize: true,
-        symbol,
+        symbol: tvSymbol,
         interval,
         theme: theme === 'light' ? 'light' : 'dark',
         timezone: 'Etc/UTC',
@@ -55,13 +69,13 @@ export function TradingViewWidget({
     }
 
     const scriptId = 'tradingview-widget-script'
-    const scriptExists = document.getElementById(scriptId)
+    const scriptEl = document.getElementById(scriptId)
 
-    if (scriptExists) {
+    if (scriptEl) {
       if (window.TradingView) {
         createWidget()
       } else {
-        scriptExists.addEventListener('load', createWidget, { once: true })
+        scriptEl.addEventListener('load', createWidget, { once: true })
       }
     } else {
       const script = document.createElement('script')
@@ -73,9 +87,13 @@ export function TradingViewWidget({
     }
 
     return () => {
-      if (container) {
-        container.innerHTML = ''
-      }
+      mounted = false
+      // Let TradingView finish any in-flight async work before clearing DOM
+      setTimeout(() => {
+        if (container) {
+          container.innerHTML = ''
+        }
+      }, 0)
     }
   }, [symbol, interval, theme, containerId, studies])
 

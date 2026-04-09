@@ -1,470 +1,395 @@
-import { useState, useMemo, useEffect } from "react"
+import { useEffect, useState, useCallback, useRef } from "react"
 import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
+import { motion } from "framer-motion"
+import {
+  Wallet, DollarSign, TrendingUp, TrendingDown, Link2,
+  RefreshCw, ExternalLink, ArrowUpRight, ArrowDownRight,
+  Target, Brain, Activity,
+} from "lucide-react"
+
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/dashboard/Sidebar"
-import { ScanResultsTable } from "@/components/dashboard/ScanResultsTable"
-import { BreakoutCard } from "@/components/dashboard/BreakoutCard"
-import { FilterControls, FilterOptions } from "@/components/dashboard/FilterControls"
-import { StockDetailPanel } from "@/components/dashboard/StockDetailPanel"
 import { TradingViewWidget } from "@/components/dashboard/TradingViewWidget"
-import { useScanResults, BreakoutScan } from "@/hooks/useScanResults"
-import { useMarketStatus } from "@/hooks/useMarketStatus"
-import { PlayIcon, Crown, RefreshCw, Grid3x3, List, BarChart4, Activity, ArrowLeft } from "lucide-react"
+import {
+  snaptradeGetStatus,
+  snaptradeRegister,
+  snaptradeGetConnectUrl,
+  snaptradeGetHoldings,
+  snaptradeGetBalances,
+  type SnapTradeAccount,
+  type SnapTradeHolding,
+} from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
+
+type ConnectionState = "loading" | "unregistered" | "no_accounts" | "connected"
 
 export default function AdminDashboardPage() {
-  const { results, loading, error } = useScanResults()
-  const { isOpen: marketOpen } = useMarketStatus()
-  const [isScanning, setIsScanning] = useState(false)
-  const [selectedStock, setSelectedStock] = useState<BreakoutScan | null>(null)
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards')
-  const [focusSymbol, setFocusSymbol] = useState<string | null>(null)
-  
-  const [filters, setFilters] = useState<FilterOptions>({
-    // Technical Indicators
-    minScore: 70,
-    maxDistance: 5,
-    setupTypes: new Set(['FLAT_TOP', 'WEDGE', 'FLAG', 'BASE', 'UNKNOWN']),
-    emaAlignedOnly: false,
-    minAdr: 0,
+  const [connectionState, setConnectionState] = useState<ConnectionState>("loading")
+  const [accounts, setAccounts] = useState<SnapTradeAccount[]>([])
+  const [holdings, setHoldings] = useState<Array<{ account: SnapTradeAccount; holdings: SnapTradeHolding[] }>>([])
+  const [balances, setBalances] = useState<Record<string, { cash: number; buying_power: number }>>({})
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [chartSymbol, setChartSymbol] = useState("SPY")
+  const symbolDebounce = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    // Price & Volume
-    minPrice: 0,
-    maxPrice: Infinity,
-    minVolume: 0,
-    minAvgVolume: 0,
-    minRelVolume: 0,
+  const switchChartSymbol = useCallback((sym: string) => {
+    if (symbolDebounce.current) clearTimeout(symbolDebounce.current)
+    symbolDebounce.current = setTimeout(() => setChartSymbol(sym), 150)
+  }, [])
 
-    // Market Data
-    markets: new Set(['NASDAQ', 'NYSE', 'AMEX', 'OTC']),
-    watchlists: new Set(),
-    indices: new Set(),
-    sectors: new Set([
-      'Technology',
-      'Healthcare',
-      'Financial',
-      'Consumer Cyclical',
-      'Consumer Defensive',
-      'Industrials',
-      'Energy',
-      'Materials',
-      'Real Estate',
-      'Utilities',
-      'Communication Services'
-    ]),
-
-    // Fundamental Filters
-    minMarketCap: 0,
-    maxMarketCap: Infinity,
-    minPE: 0,
-    maxPE: Infinity,
-    minPEG: 0,
-    maxPEG: Infinity,
-    minROE: 0,
-    minEPSGrowth: 0,
-    minRevenueGrowth: 0,
-    minDivYield: 0,
-    maxBeta: Infinity,
-
-    // EMA Filters
-    priceAboveEMA21: false,
-    priceAboveEMA50: false,
-    priceAboveEMA200: false,
-    ema21AboveEMA50: false,
-    ema50AboveEMA200: false,
-
-    // Performance
-    minPerfWeek: -Infinity,
-    minPerfMonth: -Infinity,
-    minPerfQuarter: -Infinity,
-
-    // Analyst & Earnings
-    analystRating: new Set(['Strong Buy', 'Buy', 'Hold', 'Sell', 'Strong Sell']),
-    hasRecentEarnings: false,
-    hasUpcomingEarnings: false,
-    daysUntilEarnings: 30,
-  })
-
-  // Apply filters
-  const filteredResults = useMemo(() => {
-    return results.filter((scan) => {
-      // Technical Indicators
-      if (scan.breakout_score < filters.minScore) return false
-      if (scan.distance_pct > filters.maxDistance) return false
-      if (!filters.setupTypes.has(scan.setup_type)) return false
-      if (scan.adr_pct_14 < filters.minAdr) return false
-      
-      // Full EMA alignment filter
-      if (filters.emaAlignedOnly) {
-        const emaAligned = scan.price > scan.ema21 && 
-                          scan.ema21 > scan.ema50 && 
-                          scan.ema50 > scan.ema200
-        if (!emaAligned) return false
+  const checkStatus = useCallback(async () => {
+    try {
+      const status = await snaptradeGetStatus()
+      if (!status.registered) {
+        setConnectionState("unregistered")
+      } else if (status.accounts_linked === 0) {
+        setConnectionState("no_accounts")
+      } else {
+        setConnectionState("connected")
+        setAccounts(status.accounts)
       }
-      
-      // Individual EMA filters
-      if (filters.priceAboveEMA21 && scan.price <= scan.ema21) return false
-      if (filters.priceAboveEMA50 && scan.price <= scan.ema50) return false
-      if (filters.priceAboveEMA200 && scan.price <= scan.ema200) return false
-      if (filters.ema21AboveEMA50 && scan.ema21 <= scan.ema50) return false
-      if (filters.ema50AboveEMA200 && scan.ema50 <= scan.ema200) return false
-      
-      // Price & Volume filters
-      if (scan.price < filters.minPrice) return false
-      if (scan.price > filters.maxPrice) return false
-      if (scan.avg_vol_50 < filters.minAvgVolume) return false
-      
-      // Market Cap filter (when available)
-      if (scan.market_cap) {
-        if (scan.market_cap < filters.minMarketCap) return false
-        if (scan.market_cap > filters.maxMarketCap) return false
-      }
-      
-      // Note: Other filters (P/E, PEG, ROE, sectors, analyst ratings, etc.) 
-      // would require additional data in the BreakoutScan type
-      // For now, we're filtering on available data only
-      
-      return true
-    })
-  }, [results, filters])
+    } catch {
+      setConnectionState("unregistered")
+    }
+  }, [])
 
-  const handleScan = () => {
-    setIsScanning(true)
-    // In production, this would trigger a new scan
-    setTimeout(() => setIsScanning(false), 2000)
+  const loadData = useCallback(async () => {
+    if (connectionState !== "connected") return
+    setLoading(true)
+    try {
+      const holdingsData = await snaptradeGetHoldings()
+      setHoldings(holdingsData.holdings || [])
+
+      const balanceMap: Record<string, { cash: number; buying_power: number }> = {}
+      for (const acct of accounts) {
+        try {
+          const bal = await snaptradeGetBalances(acct.id)
+          if (bal.balances && bal.balances.length > 0) {
+            balanceMap[acct.id] = {
+              cash: bal.balances[0]?.cash || 0,
+              buying_power: bal.balances[0]?.buying_power || 0,
+            }
+          }
+        } catch { /* skip */ }
+      }
+      setBalances(balanceMap)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load portfolio data")
+    } finally {
+      setLoading(false)
+    }
+  }, [connectionState, accounts])
+
+  useEffect(() => { checkStatus() }, [checkStatus])
+  useEffect(() => { if (connectionState === "connected") loadData() }, [connectionState, loadData])
+
+  const handleRegister = async () => {
+    setLoading(true)
+    try {
+      await snaptradeRegister()
+      setConnectionState("no_accounts")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Registration failed")
+    } finally {
+      setLoading(false)
+    }
   }
 
-  useEffect(() => {
-    if (filteredResults.length === 0) {
-      setFocusSymbol(null)
-      return
+  const handleConnect = async () => {
+    setLoading(true)
+    try {
+      const { redirect_url } = await snaptradeGetConnectUrl()
+      window.open(redirect_url, "_blank", "width=800,height=700")
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to open connect URL")
+    } finally {
+      setLoading(false)
     }
+  }
 
-    setFocusSymbol((prev) => {
-      if (prev && filteredResults.some((scan) => scan.symbol === prev)) {
-        return prev
-      }
-      return filteredResults[0]?.symbol ?? null
-    })
-  }, [filteredResults])
+  const allPositions = holdings.flatMap((h) => {
+    const list = Array.isArray(h.holdings) ? h.holdings : []
+    return list.map((pos) => ({
+      ...pos,
+      accountName: h.account?.name || h.account?.institution_name || "Account",
+    }))
+  })
 
-  const focusScan = useMemo(
-    () => filteredResults.find((scan) => scan.symbol === focusSymbol) ?? filteredResults[0] ?? null,
-    [filteredResults, focusSymbol]
-  )
+  const totalValue = allPositions.reduce((sum, p) => sum + (p.units || 0) * (p.price || 0), 0)
+  const totalPnl = allPositions.reduce((sum, p) => sum + (p.open_pnl || 0), 0)
+  const totalCash = Object.values(balances).reduce((sum, b) => sum + (b.cash || 0), 0)
 
   return (
     <div className="min-h-screen bg-black">
-      {/* Sidebar */}
       <Sidebar />
 
-      {/* Main Content */}
       <div className="ml-[72px]">
-        {/* Header */}
         <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
-                <BarChart4 className="h-5 w-5 text-blue-400" />
+            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
+                <Wallet className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">Admin Dashboard</h1>
-                <p className="text-xs text-neutral-400 font-light">
-                  Real-time breakout scanner & market analysis
-                </p>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Dashboard</h1>
+                <p className="text-xs text-neutral-400 font-light">Portfolio overview & quick access</p>
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <Badge className={cn(
-                "h-fit px-3 py-1.5 rounded-lg font-medium",
-                marketOpen 
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                  : "bg-red-500/20 text-red-400 border border-red-500/30"
-              )}>
-                <span className={cn(
-                  "mr-2 inline-block h-2 w-2 rounded-full",
-                  marketOpen ? "bg-emerald-400 animate-pulse" : "bg-red-400"
-                )} />
-                {marketOpen ? "Market Open" : "Market Closed"}
+            <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
+              {connectionState === "connected" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadData}
+                  disabled={loading}
+                  className="border-white/10 text-white/70 hover:text-white hover:bg-white/5"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
+                  Refresh
+                </Button>
+              )}
+              <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+                <Wallet className="h-3.5 w-3.5 mr-1.5" />
+                {accounts.length} {accounts.length === 1 ? "Account" : "Accounts"}
               </Badge>
-
-              <Button
-                onClick={handleScan}
-                disabled={isScanning || loading}
-                className="bg-blue-600 text-white hover:bg-blue-700 shadow-lg"
-              >
-                {isScanning || loading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    {loading ? 'Loading...' : 'Scanning...'}
-                  </>
-                ) : (
-                  <>
-                    <PlayIcon className="mr-2 h-4 w-4" />
-                    Refresh Scan
-                  </>
-                )}
-              </Button>
             </motion.div>
           </div>
         </header>
 
-        <main className="pt-24 p-8 space-y-8">
-          {/* Filter Controls */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <FilterControls
-              filters={filters}
-              onChange={setFilters}
-              resultCount={filteredResults.length}
-              totalCount={results.length}
-            />
-          </motion.div>
-
-          {/* Trading Desk Panel */}
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-            <div className="grid xl:grid-cols-[2fr,1fr] gap-6">
-            <Card className="bg-white/[0.03] border-white/10 shadow-xl overflow-hidden">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-                <div>
-                  <p className="text-xs uppercase tracking-wide text-white/60">Live TradingView Chart</p>
-                  <div className="flex items-baseline gap-3">
-                    <h3 className="text-2xl font-semibold text-white">{focusScan?.symbol ?? 'No symbol'}</h3>
-                    {focusScan && (
-                      <Badge className="bg-white/10 text-white border-white/10">
-                        Score {focusScan.breakout_score}
-                      </Badge>
-                    )}
-                  </div>
-                  <p className="text-sm text-white/60">Full drawing toolkit with multi-timeframe view</p>
-                </div>
-                {focusScan && (
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="border-cyan-500/50 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-400"
-                      onClick={() => setSelectedStock(focusScan)}
-                    >
-                      Open detail panel
-                    </Button>
-                    <Button
-                      className="bg-cyan-500 text-white hover:bg-cyan-600 border-0"
-                      onClick={() => setFocusSymbol(focusScan.symbol)}
-                    >
-                      Pin symbol
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6 space-y-4">
-                {focusScan ? (
-                  <>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-xs text-white/60">Price</p>
-                        <p className="text-lg font-semibold text-white">${focusScan.price.toFixed(2)}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-xs text-white/60">Trigger</p>
-                        <p className="text-lg font-semibold text-cyan-300">${focusScan.trigger_price.toFixed(2)}</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-xs text-white/60">Distance</p>
-                        <p className="text-lg font-semibold text-white">{focusScan.distance_pct.toFixed(2)}%</p>
-                      </div>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-xs text-white/60">ADR (14)</p>
-                        <p className="text-lg font-semibold text-white">{focusScan.adr_pct_14.toFixed(2)}%</p>
-                      </div>
-                    </div>
-                    <div className="rounded-xl overflow-hidden bg-black/60 border border-white/10">
-                      <TradingViewWidget symbol={focusScan.symbol} interval="D" theme="dark" />
-                    </div>
-                  </>
-                ) : (
-                  <div className="h-[560px] flex items-center justify-center text-white/60">
-                    No symbols in view. Adjust your filters to populate the watchlist.
-                  </div>
-                )}
-              </div>
-            </Card>
-
-            <Card className="bg-white/[0.02] border-white/10 shadow-xl overflow-hidden">
-              <div className="px-6 py-4 border-b border-white/10">
-                <p className="text-xs uppercase tracking-wide text-white/60">Watchlist & analytics</p>
-                <h3 className="text-xl font-semibold text-white mt-1">Breakout radar</h3>
-                <p className="text-sm text-white/60">Tap to load any symbol into the live chart</p>
-              </div>
-              <div className="max-h-[640px] overflow-y-auto divide-y divide-white/5">
-                {filteredResults.length === 0 && (
-                  <div className="p-6 text-white/60">No symbols available. Loosen the filters to see candidates.</div>
-                )}
-                {filteredResults.map((scan) => {
-                  const emaAligned = scan.price > scan.ema21 && scan.ema21 > scan.ema50 && scan.ema50 > scan.ema200
-                  const isActive = focusSymbol === scan.symbol
-                  return (
-                    <button
-                      key={scan.id}
-                      onClick={() => {
-                        setFocusSymbol(scan.symbol)
-                        setSelectedStock(scan)
-                      }}
-                      className={cn(
-                        "w-full text-left px-6 py-4 transition-colors",
-                        isActive ? "bg-primary/15 border-l-4 border-primary" : "hover:bg-white/5"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-lg font-semibold text-white">{scan.symbol}</span>
-                          <Badge className="bg-white/10 text-white border-white/10">{scan.setup_type.replace('_', ' ')}</Badge>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-white font-semibold">${scan.price.toFixed(2)}</p>
-                          <p className="text-xs text-white/60">{scan.distance_pct.toFixed(2)}% to trigger</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-white/70">
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-2 w-2 rounded-full bg-cyan-400" />
-                          ADR {scan.adr_pct_14.toFixed(2)}%
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                          Score {scan.breakout_score}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="inline-flex h-2 w-2 rounded-full bg-amber-400" />
-                          EMA {emaAligned ? 'aligned' : 'mixed'}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            </Card>
-          </div>
-
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-zinc-400">View:</span>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => setViewMode('cards')}
-                className={cn(
-                  "px-4 py-2 rounded-lg border transition-all",
-                  viewMode === 'cards'
-                    ? "bg-cyan-500 text-white border-cyan-400"
-                    : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
-                )}
-              >
-                <Grid3x3 size={16} className="mr-2" />
-                Cards
-              </Button>
-              <Button
-                onClick={() => setViewMode('table')}
-                className={cn(
-                  "px-4 py-2 rounded-lg border transition-all",
-                  viewMode === 'table'
-                    ? "bg-cyan-500 text-white border-cyan-400"
-                    : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
-                )}
-              >
-                <List size={16} className="mr-2" />
-                Table
-              </Button>
-            </div>
-          </div>
-          </motion.div>
-
-          {/* Error State */}
+        <main className="pt-24 p-8 space-y-6">
           {error && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <Card className="bg-red-500/10 border-red-500/30 p-4">
-                <p className="text-red-400">Error loading scan results: {error}</p>
+            <Card className="bg-red-500/10 border-red-500/30 p-4">
+              <p className="text-red-400 text-sm">{error}</p>
+            </Card>
+          )}
+
+          {/* Onboarding */}
+          {(connectionState === "loading" || connectionState === "unregistered" || connectionState === "no_accounts") && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-12 text-center">
+                {connectionState === "loading" && (
+                  <div className="flex flex-col items-center gap-4">
+                    <RefreshCw className="h-8 w-8 text-white/40 animate-spin" />
+                    <p className="text-white/60">Checking brokerage connection...</p>
+                  </div>
+                )}
+                {connectionState === "unregistered" && (
+                  <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
+                      <Wallet className="h-10 w-10 text-emerald-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-white mb-2">Connect Your Brokerage</h2>
+                      <p className="text-white/50 text-sm">
+                        Link your broker to view portfolio, track positions, and place trades from one place.
+                      </p>
+                    </div>
+                    <Button onClick={handleRegister} disabled={loading} className="bg-emerald-600 hover:bg-emerald-700 text-white px-8">
+                      {loading ? "Setting up..." : "Get Started"}
+                    </Button>
+                  </div>
+                )}
+                {connectionState === "no_accounts" && (
+                  <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
+                      <Link2 className="h-10 w-10 text-blue-400" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-semibold text-white mb-2">Link a Brokerage Account</h2>
+                      <p className="text-white/50 text-sm">
+                        Connect Robinhood, TD Ameritrade, Interactive Brokers, and 15+ more.
+                      </p>
+                    </div>
+                    <Button onClick={handleConnect} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white px-8">
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      {loading ? "Opening..." : "Connect Brokerage"}
+                    </Button>
+                  </div>
+                )}
               </Card>
             </motion.div>
           )}
 
-          {/* Cards View - Default */}
-          {viewMode === 'cards' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-              <div>
-              {loading ? (
-                <div className="p-12 text-center">
-                  <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin mx-auto mb-4" />
-                  <p className="text-white/60">Loading breakout setups...</p>
+          {/* Connected — Portfolio Summary */}
+          {connectionState === "connected" && (
+            <>
+              {/* Summary Cards */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-4 gap-4">
+                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-white/60">Portfolio Value</p>
+                    <DollarSign className="h-4 w-4 text-emerald-400" />
+                  </div>
+                  <p className="text-3xl font-bold text-white">
+                    ${totalValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-white/40 mt-2">{allPositions.length} open positions</p>
+                </Card>
+
+                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-white/60">Open P&L</p>
+                    {totalPnl >= 0
+                      ? <TrendingUp className="h-4 w-4 text-emerald-400" />
+                      : <TrendingDown className="h-4 w-4 text-red-400" />}
+                  </div>
+                  <p className={cn("text-3xl font-bold", totalPnl >= 0 ? "text-emerald-400" : "text-red-400")}>
+                    {totalPnl >= 0 ? "+" : ""}${totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-white/40 mt-2">Unrealized gains/losses</p>
+                </Card>
+
+                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-white/60">Cash Available</p>
+                    <DollarSign className="h-4 w-4 text-blue-400" />
+                  </div>
+                  <p className="text-3xl font-bold text-white">
+                    ${totalCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                  <p className="text-xs text-white/40 mt-2">Across all accounts</p>
+                </Card>
+
+                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm text-white/60">Linked Accounts</p>
+                    <Link2 className="h-4 w-4 text-purple-400" />
+                  </div>
+                  <p className="text-3xl font-bold text-white">{accounts.length}</p>
+                  <p className="text-xs text-white/40 mt-2">
+                    {accounts.map((a) => a.institution_name || a.name).filter(Boolean).join(", ") || "Brokerage accounts"}
+                  </p>
+                </Card>
+              </motion.div>
+
+              {/* Positions Table */}
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-lg font-semibold text-white">Open Positions</h2>
+                  <Link to="/portfolio">
+                    <Button variant="outline" size="sm" className="border-white/10 text-white/60 hover:text-white hover:bg-white/5">
+                      View Full Portfolio
+                    </Button>
+                  </Link>
                 </div>
-              ) : filteredResults.length > 0 ? (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {filteredResults.map((scan) => (
-                    <BreakoutCard key={scan.id} scan={scan} />
+
+                {allPositions.length === 0 ? (
+                  <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8 text-center">
+                    <p className="text-white/40">No open positions</p>
+                  </Card>
+                ) : (
+                  <Card className="bg-white/[0.02] border-white/10 shadow-xl overflow-hidden">
+                    <div className="divide-y divide-white/5">
+                      {allPositions.slice(0, 8).map((pos, i) => {
+                        const symbolData = pos.symbol?.symbol as string | { symbol?: string } | undefined
+                        const symbol = (typeof symbolData === "object" ? symbolData?.symbol : symbolData) || "—"
+                        const value = (pos.units || 0) * (pos.price || 0)
+                        const pnl = pos.open_pnl || 0
+
+                        return (
+                          <div key={`${symbol}-${i}`} className="flex items-center justify-between px-6 py-4">
+                            <div className="flex items-center gap-4">
+                              <div>
+                                <span className="font-bold text-white">{symbol}</span>
+                                <p className="text-xs text-white/40 mt-0.5">{pos.units} shares @ ${pos.price?.toFixed(2)}</p>
+                              </div>
+                              <Badge className="bg-white/5 text-white/40 text-[10px]">{pos.accountName}</Badge>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-medium text-white">
+                                ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                              <p className={cn("text-xs font-medium flex items-center justify-end gap-0.5", pnl >= 0 ? "text-emerald-400" : "text-red-400")}>
+                                {pnl >= 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                                {pnl >= 0 ? "+" : ""}${pnl.toFixed(2)}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </Card>
+                )}
+              </motion.div>
+            </>
+          )}
+
+          {/* Chart */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+            <Card className="bg-white/2 border-white/10 shadow-xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
+                <h2 className="text-lg font-semibold text-white">{chartSymbol} — Live Chart</h2>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {["SPY", "QQQ", "IWM",
+                    ...Array.from(new Set(allPositions.slice(0, 5).map((p) => {
+                      const s = p.symbol?.symbol
+                      return (typeof s === "object" ? (s as any)?.symbol : s) as string | undefined
+                    }).filter((s): s is string => Boolean(s))))
+                  ].filter((s, i, arr) => arr.indexOf(s) === i).map((sym) => (
+                    <button
+                      key={sym}
+                      onClick={() => switchChartSymbol(sym)}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        chartSymbol === sym
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                          : "bg-white/5 text-white/50 hover:text-white hover:bg-white/10 border border-white/10"
+                      }`}
+                    >
+                      {sym}
+                    </button>
                   ))}
                 </div>
-              ) : (
-                <Card className="bg-zinc-800/30 border-zinc-800 p-8 text-center">
-                  <p className="text-zinc-400">No breakout setups match your filters</p>
-                  <p className="text-xs text-zinc-600 mt-2">Try adjusting your filter criteria</p>
-                </Card>
-              )}
-            </div>
-            </motion.div>
-          )}
-
-          {/* Table View */}
-          {viewMode === 'table' && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-            <Card className="bg-white/[0.02] border-white/10 shadow-xl overflow-hidden">
-              <div className="p-6 border-b border-white/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-2xl font-bold text-white">Breakout Scanner Results</h2>
-                    <p className="text-sm text-white/60 mt-1">
-                      Live breakout opportunities with EMA trend analysis
-                    </p>
-                  </div>
-                  {!loading && (
-                    <Badge className="bg-primary/20 text-primary border-primary/30">
-                      {filteredResults.length} Setups Found
-                    </Badge>
-                  )}
-                </div>
               </div>
-              
-              {loading ? (
-                <div className="p-12 text-center">
-                  <RefreshCw className="h-8 w-8 text-cyan-400 animate-spin mx-auto mb-4" />
-                  <p className="text-white/60">Loading scan results...</p>
-                </div>
-              ) : (
-                <ScanResultsTable 
-                  results={filteredResults} 
-                  onRowClick={setSelectedStock}
-                />
-              )}
+              <div className="h-[460px]">
+                <TradingViewWidget symbol={chartSymbol} interval="D" theme="dark" height={460} />
+              </div>
             </Card>
-            </motion.div>
-          )}
+          </motion.div>
+
+          {/* Quick Access */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="grid grid-cols-3 gap-4">
+            <Link to="/scanner">
+              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 hover:bg-white/[0.04] transition-all cursor-pointer group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-cyan-500/15 group-hover:bg-cyan-500/25 transition-colors">
+                    <Target className="h-5 w-5 text-cyan-400" />
+                  </div>
+                  <h3 className="font-semibold text-white">Stock Scanner</h3>
+                </div>
+                <p className="text-sm text-white/50">Scan for breakout setups with EMA analysis and quality scores.</p>
+              </Card>
+            </Link>
+
+            <Link to="/ai-insights">
+              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 hover:bg-white/[0.04] transition-all cursor-pointer group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-blue-500/15 group-hover:bg-blue-500/25 transition-colors">
+                    <Brain className="h-5 w-5 text-blue-400" />
+                  </div>
+                  <h3 className="font-semibold text-white">Ask Sean</h3>
+                </div>
+                <p className="text-sm text-white/50">Get AI-powered breakout analysis, setups, and risk management guidance.</p>
+              </Card>
+            </Link>
+
+            <Link to="/focus-list">
+              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 hover:bg-white/[0.04] transition-all cursor-pointer group">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-pink-500/15 group-hover:bg-pink-500/25 transition-colors">
+                    <Activity className="h-5 w-5 text-pink-400" />
+                  </div>
+                  <h3 className="font-semibold text-white">Focus List</h3>
+                </div>
+                <p className="text-sm text-white/50">Monitor your watchlist stocks and set price alerts.</p>
+              </Card>
+            </Link>
+          </motion.div>
         </main>
       </div>
-
-      {/* Stock Detail Panel */}
-      <StockDetailPanel 
-        scan={selectedStock}
-        onClose={() => setSelectedStock(null)}
-      />
     </div>
   )
 }

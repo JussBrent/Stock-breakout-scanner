@@ -37,6 +37,36 @@ export interface AIAnalyzeResponse {
   message: string
 }
 
+export interface AISymbolAnalysis {
+  symbol: string
+  price: number
+  ema21: number | null
+  ema50: number | null
+  ema200: number | null
+  adr_pct_14: number
+  avg_vol_50: number
+  market_cap: number | null
+  trend: string
+  passes_breakout_filter: boolean
+  setup_type: string | null
+  trigger_price: number | null
+  distance_pct: number | null
+  breakout_score: number | null
+  opportunity_score: number
+  confidence: number
+  analysis: string
+  key_factors: string[]
+  risk_level: string
+  recommendation: string
+  direction: "Long" | "Short" | null
+  suggested_entry: number | null
+  suggested_stop: number | null
+  suggested_target: number | null
+  suggested_expiry: string | null
+  entry_notes: string
+  stop_notes: string
+}
+
 export interface UniverseScanRequest {
   symbols?: string[]
   save_to_db?: boolean
@@ -52,11 +82,10 @@ export async function aiAnalyzeScan(
   request: UniverseScanRequest = {},
   top_n: number = 10
 ): Promise<AIAnalyzeResponse> {
-  const response = await fetch(`${API_BASE}/scan/ai-analyze?top_n=${top_n}`, {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/scan/ai-analyze?top_n=${top_n}`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify(request),
   })
 
@@ -69,14 +98,57 @@ export async function aiAnalyzeScan(
 }
 
 /**
- * Scan a single symbol
+ * Analyze chart image or news text with Sean AI
+ */
+export async function analyzeContent(opts: {
+  textContent?: string
+  imageBase64?: string
+  mediaType?: string
+}): Promise<string> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/scan/analyze-content`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      text_content: opts.textContent ?? null,
+      image_base64: opts.imageBase64 ?? null,
+      media_type: opts.mediaType ?? "image/png",
+    }),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Analysis failed")
+  }
+  const data = await response.json()
+  return data.analysis
+}
+
+/**
+ * AI analysis for any symbol — fetches Polygon data + runs Claude analysis
+ */
+export async function aiScanSymbol(symbol: string): Promise<AISymbolAnalysis> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/scan/symbol/ai`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ symbol }),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to analyse symbol")
+  }
+  const data = await response.json()
+  return data.result
+}
+
+/**
+ * Scan a single symbol (technical filter only, no AI)
  */
 export async function scanSymbol(symbol: string): Promise<ScanResult | null> {
-  const response = await fetch(`${API_BASE}/scan/symbol`, {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/scan/symbol`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers,
     body: JSON.stringify({ symbol }),
   })
 
@@ -122,7 +194,7 @@ export interface MomentumStock {
  */
 export async function getMomentumStocks(
   direction: "gainers" | "losers" = "gainers"
-): Promise<MomentumStock[]> {
+): Promise<{ stocks: MomentumStock[]; marketOpen: boolean }> {
   const headers = await getAuthHeaders()
   const response = await fetch(
     `${API_URL}/api/momentum/stocks?direction=${direction}`,
@@ -133,7 +205,7 @@ export async function getMomentumStocks(
     throw new Error(error.detail || "Failed to fetch momentum data")
   }
   const data = await response.json()
-  return data.stocks
+  return { stocks: data.stocks ?? [], marketOpen: data.marketOpen ?? false }
 }
 
 // ============================================================
@@ -536,6 +608,114 @@ export async function toggleTrainingContent(id: string): Promise<TrainingContent
   if (!response.ok) {
     const error = await response.json()
     throw new Error(error.detail || "Failed to toggle training content")
+  }
+  return response.json()
+}
+
+// ============================================================
+// Trade Outcomes API
+// ============================================================
+
+export interface TradeOutcome {
+  id: string
+  user_id: string
+  symbol: string
+  setup_type?: string
+  entry_price: number
+  exit_price?: number
+  gain_pct?: number
+  outcome: "win" | "loss" | "breakeven" | "open"
+  breakout_score?: number
+  notes?: string
+  traded_at?: string
+  closed_at?: string
+}
+
+export async function logTradeOutcome(data: {
+  symbol: string
+  setup_type?: string
+  entry_price: number
+  exit_price?: number
+  gain_pct?: number
+  outcome?: string
+  breakout_score?: number
+  notes?: string
+}): Promise<TradeOutcome> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/trades/outcome`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to log trade outcome")
+  }
+  return response.json()
+}
+
+export async function updateTradeOutcome(
+  tradeId: string,
+  data: { exit_price?: number; gain_pct?: number; outcome?: string; notes?: string }
+): Promise<TradeOutcome> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/trades/outcome/${tradeId}`, {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to update trade outcome")
+  }
+  return response.json()
+}
+
+export async function getTradeOutcomes(limit = 50): Promise<{ outcomes: TradeOutcome[] }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/trades/outcomes?limit=${limit}`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch trade outcomes")
+  }
+  return response.json()
+}
+
+// ============================================================
+// AI Query Log API
+// ============================================================
+
+export interface AIQueryLog {
+  id: string
+  query_text: string
+  category: string
+  queried_at: string
+}
+
+export async function getAIQueryLog(limit = 50): Promise<{ queries: AIQueryLog[] }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/ai/query-log?limit=${limit}`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to fetch query log")
+  }
+  return response.json()
+}
+
+// ============================================================
+// Symbol Search (SnapTrade)
+// ============================================================
+
+export async function snaptradeSearchSymbols(query: string): Promise<{ symbols: unknown[] }> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/symbols/search`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ query }),
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || "Failed to search symbols")
   }
   return response.json()
 }

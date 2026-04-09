@@ -3,9 +3,10 @@ User-related data models.
 Note: User authentication is handled by Supabase Auth.
 These models are for user-related data stored in our database.
 """
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from datetime import datetime
 from typing import Optional, List
+import re
 
 
 class UserProfile(BaseModel):
@@ -80,6 +81,21 @@ class WatchlistCreate(BaseModel):
     notes: Optional[str] = None
     alert_enabled: bool = False
     alert_price: Optional[float] = None
+
+    @field_validator('symbol')
+    @classmethod
+    def validate_symbol(cls, v):
+        v = v.strip().upper()
+        if not re.match(r'^[A-Z]{1,10}([.-][A-Z]{1,5})?$', v):
+            raise ValueError(f"Invalid symbol: {v}")
+        return v
+
+    @field_validator('alert_price')
+    @classmethod
+    def validate_alert_price(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("Alert price must be positive")
+        return v
 
 
 class WatchlistUpdate(BaseModel):

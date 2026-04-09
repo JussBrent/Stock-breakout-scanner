@@ -3,8 +3,8 @@ SnapTrade API routes for brokerage integration.
 Handles account linking, portfolio, trading, and activity history.
 """
 from fastapi import APIRouter, Request, Security, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, field_validator
+from typing import Optional, Literal
 from middleware.auth import get_current_user
 from middleware.rate_limit import limiter
 from services.snaptrade_service import SnapTradeService
@@ -24,21 +24,42 @@ def get_snaptrade_service() -> SnapTradeService:
 class PlaceOrderRequest(BaseModel):
     account_id: str
     symbol: str  # universal_symbol_id
-    action: str  # BUY or SELL
-    order_type: str  # Market, Limit, StopLimit, StopLoss
+    action: Literal["BUY", "SELL"]
+    order_type: Literal["Market", "Limit", "StopLimit", "StopLoss"]
     quantity: float
     price: Optional[float] = None
     stop_price: Optional[float] = None
-    time_in_force: str = "Day"
+    time_in_force: Literal["Day", "GTC"] = "Day"
+
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError("Quantity must be positive")
+        return v
+
+    @field_validator('price', 'stop_price')
+    @classmethod
+    def validate_prices(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("Price must be positive")
+        return v
 
 
 class OrderImpactRequest(BaseModel):
     account_id: str
     symbol: str
-    action: str
-    order_type: str
+    action: Literal["BUY", "SELL"]
+    order_type: Literal["Market", "Limit", "StopLimit", "StopLoss"]
     quantity: float
     price: Optional[float] = None
+
+    @field_validator('quantity')
+    @classmethod
+    def validate_quantity(cls, v):
+        if v <= 0:
+            raise ValueError("Quantity must be positive")
+        return v
 
 
 class SymbolSearchRequest(BaseModel):

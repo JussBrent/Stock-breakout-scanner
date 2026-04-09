@@ -1,6 +1,11 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Depends, Request
+from pydantic import BaseModel
+from typing import Optional
 import asyncio
+import logging
 from datetime import datetime, timezone
+
+logger = logging.getLogger(__name__)
 
 from schemas.api_models import (
     UniverseScanRequest,
@@ -8,7 +13,13 @@ from schemas.api_models import (
     ScanResponse,
     ScanStatusResponse
 )
-from scan.scan_universe import scan_universe, scan_one_symbol
+
+
+class ContentAnalysisRequest(BaseModel):
+    text_content: Optional[str] = None
+    image_base64: Optional[str] = None
+    media_type: str = "image/png"
+from scan.scan_universe import scan_universe, scan_one_symbol, get_symbol_technicals
 from services.save_results import save_scan_results
 from scan.mock_results import get_mock_results
 from services.task_manager import task_manager
@@ -158,6 +169,56 @@ async def get_scan_status(
         count=count,
         error=task.error
     )
+
+
+@router.post("/symbol/ai")
+@limiter.limit("10/minute", key_func=lambda request: request.client.host)
+async def ai_scan_symbol(
+    request: Request,
+    body: SymbolScanRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Fetch Polygon data for any symbol and return a full Claude AI analysis.
+    Works regardless of whether the symbol passes breakout filters.
+    """
+    try:
+        technicals = await get_symbol_technicals(body.symbol.upper())
+        ai_service = get_ai_service()
+        result = await ai_service.analyze_symbol_technicals(technicals)
+        return {"success": True, "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"AI scan failed for {body.symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/analyze-content")
+@limiter.limit("10/minute", key_func=lambda request: request.client.host)
+async def analyze_content(
+    request: Request,
+    body: ContentAnalysisRequest,
+    user: dict = Depends(get_current_user)
+):
+    """
+    Analyze chart image or news text using Sean AI.
+    Send either text_content or image_base64 (not both).
+    """
+    if not body.text_content and not body.image_base64:
+        raise HTTPException(status_code=422, detail="Provide text_content or image_base64")
+
+    try:
+        ai_service = get_ai_service()
+        analysis = await ai_service.analyze_content(
+            text_content=body.text_content,
+            image_base64=body.image_base64,
+            media_type=body.media_type,
+        )
+        return {"success": True, "analysis": analysis}
+    except Exception as e:
+        logger.error(f"Content analysis failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/ai-analyze")

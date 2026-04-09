@@ -3,22 +3,27 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { getMomentumStocks, MomentumStock } from "@/lib/api"
-import { TrendingUp, TrendingDown, Zap, Activity, Loader2, AlertCircle, RefreshCw } from "lucide-react"
+import { TrendingUp, TrendingDown, Zap, Activity, Loader2, AlertCircle, RefreshCw, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { motion } from "framer-motion"
+import { TradeModal } from "@/components/dashboard/TradeModal"
 
 export default function StockMomentumPage() {
   const [stocks, setStocks] = useState<MomentumStock[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [direction, setDirection] = useState<"gainers" | "losers">("gainers")
+  const [marketOpen, setMarketOpen] = useState(true)
+  const [tradeSymbol, setTradeSymbol] = useState<string | null>(null)
+  const [tradePrice, setTradePrice] = useState<number | undefined>(undefined)
 
   const fetchMomentum = async () => {
     try {
       setLoading(true)
       setError(null)
-      const data = await getMomentumStocks(direction)
+      const { stocks: data, marketOpen: open } = await getMomentumStocks(direction)
       setStocks(data)
+      setMarketOpen(open)
     } catch (err: any) {
       setError(err.message || "Failed to load momentum data")
     } finally {
@@ -93,15 +98,32 @@ export default function StockMomentumPage() {
                 <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
               </button>
 
-              <Badge className="bg-gradient-to-r from-teal-500/20 to-cyan-500/20 text-teal-400 border border-teal-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
-                <Zap className="h-3.5 w-3.5 mr-1.5" />
-                Live Data
-              </Badge>
+              {marketOpen ? (
+                <Badge className="bg-linear-to-r from-teal-500/20 to-cyan-500/20 text-teal-400 border border-teal-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+                  <Zap className="h-3.5 w-3.5 mr-1.5" />
+                  Live Data
+                </Badge>
+              ) : (
+                <Badge className="bg-linear-to-r from-slate-500/20 to-slate-400/10 text-slate-400 border border-slate-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+                  <Moon className="h-3.5 w-3.5 mr-1.5" />
+                  Previous Close
+                </Badge>
+              )}
             </motion.div>
           </div>
         </header>
 
         <main className="pt-24 p-8">
+          {/* Market closed banner */}
+          {!loading && !marketOpen && stocks.length > 0 && (
+            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-500/10 border border-slate-500/20 text-slate-400 text-sm">
+                <Moon className="h-4 w-4 shrink-0" />
+                <span>Market is closed — showing <strong className="text-slate-300">previous session's</strong> data. Scores and volume reflect the last trading day.</span>
+              </div>
+            </motion.div>
+          )}
+
           {/* Error */}
           {error && (
             <Card className="bg-red-500/10 border-red-500/30 p-4 mb-6 flex items-center gap-3">
@@ -219,12 +241,23 @@ export default function StockMomentumPage() {
 
                     {/* Right Section - Action Area */}
                     <div className="ml-6 pl-6 border-l border-white/10 text-right">
-                      <div className="mb-4">
+                      <div className="mb-3">
                         <p className="text-xs text-white/50 mb-1">Overall Score</p>
                         <p className="text-3xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
                           {Math.round((stock.momentum + stock.breakoutStrength + stock.efficiency) / 3)}
                         </p>
                       </div>
+                      <button
+                        onClick={() => { setTradeSymbol(stock.symbol); setTradePrice(stock.price) }}
+                        className={cn(
+                          "px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+                          direction === "gainers"
+                            ? "bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-500/20"
+                            : "bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20"
+                        )}
+                      >
+                        {direction === "gainers" ? "Buy" : "Short"} {stock.symbol}
+                      </button>
                     </div>
                   </div>
                 </Card>
@@ -267,6 +300,15 @@ export default function StockMomentumPage() {
           </Card>
         </main>
       </div>
+
+      {/* Trade Modal */}
+      <TradeModal
+        open={tradeSymbol !== null}
+        onClose={() => setTradeSymbol(null)}
+        symbol={tradeSymbol ?? ""}
+        action={direction === "losers" ? "SELL" : "BUY"}
+        price={tradePrice}
+      />
     </div>
   )
 }

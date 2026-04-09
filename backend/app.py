@@ -5,7 +5,7 @@ import logging
 import os
 
 from config import settings
-from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes, momentum_routes, ai_routes, snaptrade_routes, training_routes
+from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes, momentum_routes, ai_routes, snaptrade_routes, training_routes, trade_routes
 from middleware.error_handler import register_error_handlers
 from middleware.rate_limit import setup_rate_limiting
 
@@ -68,6 +68,7 @@ app.include_router(momentum_routes.router, prefix="/api/momentum", tags=["Moment
 app.include_router(training_routes.router, prefix="/api/ai/training", tags=["AI Training"])
 app.include_router(ai_routes.router, prefix="/api/ai", tags=["AI"])
 app.include_router(snaptrade_routes.router, prefix="/api/snaptrade", tags=["SnapTrade"])
+app.include_router(trade_routes.router, prefix="/api/trades", tags=["Trades"])
 
 
 @app.get("/", tags=["Root"])

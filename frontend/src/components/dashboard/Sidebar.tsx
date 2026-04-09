@@ -13,16 +13,36 @@ interface Links {
   adminOnly?: boolean
 }
 
-const navItems: Links[] = [
-  { icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard", href: "/admin" },
-  { icon: <Brain className="h-5 w-5" />, label: "AI Insights", href: "/ai-insights" },
-  { icon: <Target className="h-5 w-5" />, label: "Scanner", href: "/scanner" },
-  { icon: <TrendingUp className="h-5 w-5" />, label: "Stock Momentum", href: "/stock-momentum" },
-  { icon: <BarChart3 className="h-5 w-5" />, label: "Analytics", href: "/analytics" },
-  { icon: <Wallet className="h-5 w-5" />, label: "Portfolio", href: "/portfolio" },
-  { icon: <Activity className="h-5 w-5" />, label: "Focus List", href: "/focus-list" },
-  { icon: <BookOpen className="h-5 w-5" />, label: "AI Training", href: "/ai-training", adminOnly: true },
-  { icon: <Settings className="h-5 w-5" />, label: "Settings", href: "/settings" },
+interface NavSection {
+  title: string
+  items: Links[]
+}
+
+const navSections: NavSection[] = [
+  {
+    title: "Trading",
+    items: [
+      { icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard", href: "/admin" },
+      { icon: <Wallet className="h-5 w-5" />, label: "Portfolio", href: "/portfolio" },
+      { icon: <Activity className="h-5 w-5" />, label: "Focus List", href: "/focus-list" },
+    ],
+  },
+  {
+    title: "Research",
+    items: [
+      { icon: <Target className="h-5 w-5" />, label: "Scanner", href: "/scanner" },
+      { icon: <Brain className="h-5 w-5" />, label: "AI Insights", href: "/ai-insights" },
+      { icon: <TrendingUp className="h-5 w-5" />, label: "Momentum", href: "/stock-momentum" },
+    ],
+  },
+  {
+    title: "Account",
+    items: [
+      { icon: <BarChart3 className="h-5 w-5" />, label: "Analytics", href: "/analytics" },
+      { icon: <BookOpen className="h-5 w-5" />, label: "AI Training", href: "/ai-training", adminOnly: true },
+      { icon: <Settings className="h-5 w-5" />, label: "Settings", href: "/settings" },
+    ],
+  },
 ]
 
 interface SidebarContextProps {
@@ -230,20 +250,34 @@ export const SidebarLink = ({
 // Nav list used by both desktop and mobile shells
 function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const { isAdmin } = useAuth()
-  const visibleItems = navItems.filter((item) => !item.adminOnly || isAdmin)
+  const { open } = useSidebar()
 
   return (
-    <div className="w-full px-2">
-      <nav className="flex flex-col gap-1">
-        {visibleItems.map((item) => (
-          <SidebarLink
-            key={item.label}
-            link={item}
-            isActive={pathname === item.href}
-            props={{ onClick: () => onNavigate?.() }}
-          />
-        ))}
-      </nav>
+    <div className="w-full px-2 space-y-1">
+      {navSections.map((section, si) => {
+        const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin)
+        if (visibleItems.length === 0) return null
+        return (
+          <div key={section.title}>
+            {si > 0 && <div className="my-2 border-t border-white/[0.06]" />}
+            {open && (
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/25">
+                {section.title}
+              </p>
+            )}
+            <nav className="flex flex-col gap-0.5">
+              {visibleItems.map((item) => (
+                <SidebarLink
+                  key={item.label}
+                  link={item}
+                  isActive={pathname === item.href}
+                  props={{ onClick: () => onNavigate?.() }}
+                />
+              ))}
+            </nav>
+          </div>
+        )
+      })}
     </div>
   )
 }

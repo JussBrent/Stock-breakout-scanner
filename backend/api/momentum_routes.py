@@ -86,50 +86,66 @@ async def get_momentum_stocks(
             )
         except Exception as e:
             logger.warning(f"Polygon snapshot unavailable: {e}")
-            return {"stocks": [], "message": "Momentum data temporarily unavailable"}
+            return {"stocks": [], "marketOpen": False, "message": "Momentum data temporarily unavailable"}
 
         if not data or "tickers" not in data:
-            return {"stocks": [], "message": "No momentum data available"}
+            return {"stocks": [], "marketOpen": False, "message": "No momentum data available"}
 
         stocks = []
+        market_open_count = 0  # track how many tickers have live day data
+
         for ticker in data["tickers"][:20]:  # Top 20
             try:
                 symbol = ticker.get("ticker", "")
                 day = ticker.get("day", {})
                 prev_day = ticker.get("prevDay", {})
                 today_change_pct = ticker.get("todaysChangePerc", 0)
-                today_change = ticker.get("todaysChange", 0)
 
-                price = day.get("c", 0) or prev_day.get("c", 0)
-                volume = day.get("v", 0)
-                high = day.get("h", price)
-                low = day.get("l", price)
-                open_price = day.get("o", price)
-                prev_volume = prev_day.get("v", 1)
+                # Determine if live day data exists
+                day_close = day.get("c", 0)
+                day_volume = day.get("v", 0)
+                has_live_data = bool(day_close and day_volume and day_volume >= 100_000)
 
-                # Skip penny stocks and low volume
+                if has_live_data:
+                    market_open_count += 1
+                    price = day_close
+                    volume = day_volume
+                    high = day.get("h", price)
+                    low = day.get("l", price)
+                    open_price = day.get("o", price)
+                    change_pct = today_change_pct
+                else:
+                    # Market closed — fall back to previous day data
+                    price = prev_day.get("c", 0)
+                    volume = prev_day.get("v", 0)
+                    high = prev_day.get("h", price)
+                    low = prev_day.get("l", price)
+                    open_price = prev_day.get("o", price)
+                    # Compute prev-day change vs the day before (vw as proxy)
+                    prev_open = prev_day.get("o", 0)
+                    change_pct = ((price - prev_open) / max(prev_open, 0.01)) * 100 if prev_open else today_change_pct
+
+                # Skip penny stocks or missing data
                 if price < 5 or volume < 100_000:
                     continue
 
-                rel_volume = volume / max(prev_volume, 1)
+                prev_volume = prev_day.get("v", 1)
+                rel_volume = volume / max(prev_volume, 1) if has_live_data else 1.0
 
-                # Calculate from 52-week high (use min data as approximation)
-                min_data = ticker.get("min", {})
                 from_high_pct = 0
-
-                momentum = _calc_momentum(today_change_pct, rel_volume)
-                breakout = _calc_breakout_strength(today_change_pct, rel_volume, from_high_pct)
-                efficiency = _calc_efficiency(today_change_pct, high, low, open_price)
-                trend = _classify_trend(today_change_pct)
+                momentum = _calc_momentum(change_pct, rel_volume)
+                breakout = _calc_breakout_strength(change_pct, rel_volume, from_high_pct)
+                efficiency = _calc_efficiency(change_pct, high, low, open_price)
+                trend = _classify_trend(change_pct)
 
                 stocks.append({
                     "symbol": symbol,
-                    "company": symbol,  # Polygon snapshot doesn't include name
+                    "company": symbol,
                     "price": round(price, 2),
                     "momentum": momentum,
                     "trend": trend,
                     "volume": _format_volume(volume),
-                    "changePercent": round(today_change_pct, 2),
+                    "changePercent": round(change_pct, 2),
                     "breakoutStrength": breakout,
                     "efficiency": efficiency,
                 })
@@ -140,7 +156,8 @@ async def get_momentum_stocks(
         # Sort by momentum score descending
         stocks.sort(key=lambda s: s["momentum"], reverse=True)
 
-        return {"stocks": stocks}
+        market_open = market_open_count > len(stocks) // 2 if stocks else False
+        return {"stocks": stocks, "marketOpen": market_open}
 
     except Exception as e:
         logger.error(f"Momentum fetch failed: {str(e)}")

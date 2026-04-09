@@ -4,7 +4,7 @@ that gets injected into Sean's system prompt as knowledge context.
 Requires authentication.
 """
 from fastapi import APIRouter, HTTPException, Security, status, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from typing import List, Optional
 import logging
 import re
@@ -20,11 +20,43 @@ router = APIRouter()
 
 # ── Models ────────────────────────────────────────────────────────────
 
+def _strip_html(text: str) -> str:
+    """Remove HTML tags and script content from text."""
+    text = re.sub(r'<script[^>]*>.*?</script>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<style[^>]*>.*?</style>', '', text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r'<[^>]+>', '', text)
+    return text.strip()
+
+
 class TrainingContentCreate(BaseModel):
     title: str
     content: str
     source_type: str = "transcript"
     tags: List[str] = []
+
+    @field_validator('title')
+    @classmethod
+    def sanitize_title(cls, v):
+        v = _strip_html(v)
+        if not v or len(v) > 500:
+            raise ValueError("Title must be 1-500 characters")
+        return v
+
+    @field_validator('content')
+    @classmethod
+    def sanitize_content(cls, v):
+        v = _strip_html(v)
+        if not v:
+            raise ValueError("Content cannot be empty")
+        return v
+
+    @field_validator('source_type')
+    @classmethod
+    def validate_source_type(cls, v):
+        allowed = {"transcript", "notes", "youtube", "article", "manual"}
+        if v not in allowed:
+            raise ValueError(f"source_type must be one of: {allowed}")
+        return v
 
 
 class YouTubeImportRequest(BaseModel):

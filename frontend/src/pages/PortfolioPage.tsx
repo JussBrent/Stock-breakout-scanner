@@ -3,12 +3,14 @@ import { motion } from "framer-motion"
 import {
   Wallet, Link2, TrendingUp, TrendingDown, DollarSign,
   RefreshCw, ExternalLink, Clock, ArrowUpRight, ArrowDownRight,
+  Plus,
 } from "lucide-react"
 
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Sidebar } from "@/components/dashboard/Sidebar"
+import { TradeModal } from "@/components/dashboard/TradeModal"
 import {
   snaptradeGetStatus,
   snaptradeRegister,
@@ -33,6 +35,15 @@ export default function PortfolioPage() {
   const [balances, setBalances] = useState<Record<string, { cash: number; buying_power: number }>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Trade modal state
+  const [tradeModalOpen, setTradeModalOpen] = useState(false)
+  const [tradeSymbol, setTradeSymbol] = useState("")
+
+  const openTradeModal = (symbol = "") => {
+    setTradeSymbol(symbol)
+    setTradeModalOpen(true)
+  }
 
   const checkStatus = useCallback(async () => {
     try {
@@ -183,6 +194,14 @@ export default function PortfolioPage() {
             >
               {connectionState === "connected" && (
                 <>
+                  <Button
+                    size="sm"
+                    onClick={() => openTradeModal()}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    <Plus className="h-3.5 w-3.5 mr-1.5" />
+                    New Order
+                  </Button>
                   <Button
                     variant="outline"
                     size="sm"
@@ -447,6 +466,13 @@ export default function PortfolioPage() {
           )}
         </main>
       </div>
+
+      {/* Trade Modal */}
+      <TradeModal
+        open={tradeModalOpen}
+        onClose={() => setTradeModalOpen(false)}
+        symbol={tradeSymbol}
+      />
     </div>
   )
 }

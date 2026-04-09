@@ -105,6 +105,37 @@ class AIAnalysisService:
 
         return AIAnalysisService._training_cache
 
+    async def _get_trade_outcomes_context(self, user_id: str) -> str:
+        """Fetch recent trade outcomes for AI learning context."""
+        try:
+            from services.supabase_client import supabase
+            rows = await (
+                supabase.table("trade_outcomes")
+                .select("symbol,setup_type,entry_price,exit_price,gain_pct,outcome,breakout_score")
+                .eq("user_id", user_id)
+                .order("closed_at", desc=True)
+                .limit(20)
+                .execute()
+            )
+            if not rows:
+                return ""
+
+            lines = []
+            for r in rows:
+                outcome_icon = {"win": "WIN", "loss": "LOSS", "breakeven": "BE", "open": "OPEN"}.get(r.get("outcome", ""), "?")
+                entry = r.get("entry_price", "?")
+                exit_p = r.get("exit_price", "?")
+                gain = r.get("gain_pct")
+                gain_str = f" ({gain:+.1f}%)" if gain is not None else ""
+                score = r.get("breakout_score", "?")
+                setup = r.get("setup_type", "?")
+                lines.append(f"- {r['symbol']}: {setup} setup, score {score}, entry ${entry} → exit ${exit_p}{gain_str} [{outcome_icon}]")
+
+            return "\n".join(lines)
+        except Exception as e:
+            logger.error(f"Failed to fetch trade outcomes: {e}")
+            return ""
+
     async def analyze_stocks(
         self,
         scan_results: List[ScanResult],
@@ -162,7 +193,8 @@ class AIAnalysisService:
     async def chat(
         self,
         messages: List[Dict[str, str]],
-        scan_context: Optional[str] = None
+        scan_context: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> str:
         """Handle conversational AI chat about stocks."""
         system = SEAN_SYSTEM_PROMPT
@@ -171,6 +203,12 @@ class AIAnalysisService:
         training_context = await self._get_training_context()
         if training_context:
             system += f"\n\n## Trader's Knowledge Base\nThe following is knowledge from the trader's own teachings, video transcripts, and strategies. Use this as your primary reference when answering questions about setups, strategies, and trading approaches.\n\n{training_context}"
+
+        # Inject trade outcome history for learning
+        if user_id:
+            trade_context = await self._get_trade_outcomes_context(user_id)
+            if trade_context:
+                system += f"\n\n## Recent Trade History (learn from these patterns)\nUse this history to calibrate your confidence. Setups that have been winning deserve more confidence; setups that have been losing should get more cautious language.\n\n{trade_context}"
 
         if scan_context:
             system += f"\n\n## User's Current Data\n{scan_context}"
@@ -187,6 +225,181 @@ class AIAnalysisService:
 
         except Exception as e:
             logger.error(f"Claude chat error: {e}")
+            raise
+
+    async def analyze_content(self, text_content: str = None, image_base64: str = None, media_type: str = "image/png") -> str:
+        """
+        Analyze chart image or news text using Sean.
+        Returns markdown analysis string.
+        """
+        training_context = await self._get_training_context()
+        system = SEAN_SYSTEM_PROMPT
+        if training_context:
+            system += f"\n\n## Trader's Knowledge Base\n{training_context}"
+
+        user_content = []
+
+        if image_base64:
+            user_content.append({
+                "type": "image",
+                "source": {
+                    "type": "base64",
+                    "media_type": media_type,
+                    "data": image_base64,
+                },
+            })
+            user_content.append({
+                "type": "text",
+                "text": (
+                    "Analyze this stock chart screenshot. Identify:\n"
+                    "1. The trend direction (uptrend, downtrend, sideways)\n"
+                    "2. Key support and resistance levels\n"
+                    "3. Any chart patterns (flat top, wedge, flag, cup & handle, etc.)\n"
+                    "4. Volume signals if visible\n"
+                    "5. Entry point, stop loss, and target recommendations\n"
+                    "Be specific with price levels where visible."
+                ),
+            })
+        elif text_content:
+            user_content.append({
+                "type": "text",
+                "text": (
+                    "Analyze the following news/content for stock trading opportunities. "
+                    "Identify key stocks mentioned, sentiment (bullish/bearish/neutral), "
+                    "and any potential trade setups or risks:\n\n"
+                    f"{text_content[:4000]}"
+                ),
+            })
+        else:
+            raise ValueError("Provide either text_content or image_base64")
+
+        response = await self.client.messages.create(
+            model=self.model,
+            max_tokens=1024,
+            system=system,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        return response.content[0].text
+
+    async def analyze_symbol_technicals(self, technicals: dict) -> dict:
+        """
+        AI analysis for any symbol given raw technical data.
+        Works whether or not the symbol passes breakout filters.
+        """
+        sym = technicals["symbol"]
+        price = technicals["price"]
+        ema21 = technicals.get("ema21")
+        ema50 = technicals.get("ema50")
+        ema200 = technicals.get("ema200")
+        adr = technicals.get("adr_pct_14", 0)
+        avg_vol = technicals.get("avg_vol_50", 0)
+        market_cap = technicals.get("market_cap")
+        trend = technicals.get("trend", "Unknown")
+        scan_result = technicals.get("scan_result")
+
+        ema_lines = []
+        if ema21:
+            rel = "above" if price > ema21 else "below"
+            ema_lines.append(f"- EMA21: ${ema21:.2f} (price is {rel})")
+        if ema50:
+            rel = "above" if price > ema50 else "below"
+            ema_lines.append(f"- EMA50: ${ema50:.2f} (price is {rel})")
+        if ema200:
+            rel = "above" if price > ema200 else "below"
+            ema_lines.append(f"- EMA200: ${ema200:.2f} (price is {rel})")
+
+        breakout_section = ""
+        if scan_result:
+            breakout_section = f"""
+**Breakout Setup Detected**:
+- Setup Type: {scan_result.setup_type}
+- Breakout Level: ${scan_result.trigger_price:.2f}
+- Distance to Breakout: {scan_result.distance_pct:.2f}%
+- Breakout Score: {scan_result.breakout_score}/100
+- Pattern Notes: {'; '.join(scan_result.notes)}
+"""
+        else:
+            breakout_section = "\n**Breakout Filter**: Did not meet strict breakout criteria (may be in downtrend, low volume, or no clear setup). Provide honest technical assessment.\n"
+
+        vol_quality = "High" if avg_vol > 1_000_000 else "Medium" if avg_vol > 300_000 else "Low"
+        cap_str = f"${market_cap/1e9:.2f}B" if market_cap else "Unknown"
+
+        prompt = f"""Analyze {sym} and provide a technical analysis. Respond with JSON only.
+
+**Symbol**: {sym}
+**Current Price**: ${price:.2f}
+**Trend**: {trend}
+
+**EMA Analysis**:
+{chr(10).join(ema_lines) if ema_lines else "- Insufficient history for EMAs"}
+
+**Volatility & Volume**:
+- ADR (14-day): {adr:.2f}%
+- 50-day Avg Volume: {avg_vol:,.0f} ({vol_quality})
+- Market Cap: {cap_str}
+{breakout_section}
+Respond with this exact JSON:
+{{
+  "opportunity_score": <0-100 integer — 0 if downtrend/avoid, 80-100 if strong setup>,
+  "confidence": <0-100 integer>,
+  "analysis": "<3-4 sentence technical analysis>",
+  "key_factors": ["<factor 1>", "<factor 2>", "<factor 3>"],
+  "risk_level": "<Low|Medium|High>",
+  "recommendation": "<Strong Buy|Buy|Watch|Hold|Avoid>",
+  "direction": "<Long|Short>",
+  "suggested_entry": <exact price number for entry>,
+  "suggested_stop": <exact price number for stop loss>,
+  "suggested_target": <exact price number for take profit>,
+  "suggested_expiry": "<nearest optimal options expiration date as YYYY-MM-DD, or null if stock-only play>",
+  "entry_notes": "<1 sentence on entry — where to buy or what to wait for>",
+  "stop_notes": "<1 sentence on stop loss placement>"
+}}"""
+
+        try:
+            training_context = await self._get_training_context()
+            system = SEAN_SYSTEM_PROMPT
+            if training_context:
+                system += f"\n\n## Trader's Knowledge Base\n{training_context}"
+
+            response = await self.client.messages.create(
+                model=self.model,
+                max_tokens=600,
+                system=system + "\n\nRespond with valid JSON only.",
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = response.content[0].text
+            data = json.loads(content)
+            return {
+                "symbol": sym,
+                "price": price,
+                "ema21": ema21,
+                "ema50": ema50,
+                "ema200": ema200,
+                "adr_pct_14": adr,
+                "avg_vol_50": avg_vol,
+                "market_cap": market_cap,
+                "trend": trend,
+                "passes_breakout_filter": scan_result is not None,
+                "setup_type": scan_result.setup_type if scan_result else None,
+                "trigger_price": scan_result.trigger_price if scan_result else None,
+                "distance_pct": scan_result.distance_pct if scan_result else None,
+                "breakout_score": scan_result.breakout_score if scan_result else None,
+                "opportunity_score": data.get("opportunity_score", 50),
+                "confidence": data.get("confidence", 60),
+                "analysis": data.get("analysis", ""),
+                "key_factors": data.get("key_factors", []),
+                "risk_level": data.get("risk_level", "Medium"),
+                "recommendation": data.get("recommendation", "Hold"),
+                "direction": data.get("direction"),
+                "suggested_entry": data.get("suggested_entry"),
+                "suggested_stop": data.get("suggested_stop"),
+                "suggested_target": data.get("suggested_target"),
+                "suggested_expiry": data.get("suggested_expiry"),
+                "entry_notes": data.get("entry_notes", ""),
+                "stop_notes": data.get("stop_notes", ""),
+            }
+        except Exception as e:
+            logger.error(f"AI analysis failed for {sym}: {e}")
             raise
 
     def _build_analysis_prompt(self, result: ScanResult) -> str:

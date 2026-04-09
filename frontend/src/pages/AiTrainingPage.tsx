@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { BookOpen, Plus, Trash2, Pencil, ToggleLeft, ToggleRight, X, Save, Clock, Tag, ShieldAlert, Youtube, Loader2, FileText } from "lucide-react"
+import { BookOpen, Plus, Trash2, Pencil, ToggleLeft, ToggleRight, X, Save, Clock, Tag, ShieldAlert, Youtube, Loader2, FileText, FlaskConical, ChevronDown, ChevronUp } from "lucide-react"
 import { AppSidebar } from "@/components/dashboard/Sidebar"
 import { useAuth } from "@/hooks/useAuth"
 import {
@@ -12,6 +12,7 @@ import {
   importYoutubeTranscript,
   TrainingContent,
 } from "@/lib/api"
+import { callOpenAI } from "@/lib/openai"
 
 type FormMode = "closed" | "manual" | "youtube" | "edit"
 
@@ -29,6 +30,25 @@ export default function AiTrainingPage() {
   const [formTags, setFormTags] = useState("")
   const [youtubeUrl, setYoutubeUrl] = useState("")
   const [saving, setSaving] = useState(false)
+  const [testOpen, setTestOpen] = useState(false)
+  const [testLoading, setTestLoading] = useState(false)
+  const [testResponse, setTestResponse] = useState<string | null>(null)
+
+  const handleTestSean = async () => {
+    setTestLoading(true)
+    setTestOpen(true)
+    setTestResponse(null)
+    try {
+      const reply = await callOpenAI([
+        { role: "user", content: "What breakout patterns do you know about? List all the setups you can help with and briefly describe each." }
+      ])
+      setTestResponse(reply)
+    } catch (e: unknown) {
+      setTestResponse(`Error: ${e instanceof Error ? e.message : "Failed to reach Sean"}`)
+    } finally {
+      setTestLoading(false)
+    }
+  }
 
   const fetchItems = async () => {
     try {
@@ -159,25 +179,71 @@ export default function AiTrainingPage() {
               {items.length} entries &middot; {activeCount} active
             </p>
           </div>
-          {!isFormOpen && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setFormMode("youtube")}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white/80 hover:text-white rounded-lg border border-white/10 transition-colors"
-              >
-                <Youtube className="h-3.5 w-3.5 text-red-400" />
-                YouTube
-              </button>
-              <button
-                onClick={() => setFormMode("manual")}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Add
-              </button>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleTestSean}
+              disabled={testLoading}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 hover:text-blue-300 rounded-lg border border-blue-500/20 transition-colors"
+              title="Send a test question to Sean to verify training content is loaded"
+            >
+              <FlaskConical className="h-3.5 w-3.5" />
+              Test Sean
+              {testOpen
+                ? <ChevronUp className="h-3 w-3 ml-0.5" />
+                : <ChevronDown className="h-3 w-3 ml-0.5" />
+              }
+            </button>
+            {!isFormOpen && (
+              <>
+                <button
+                  onClick={() => setFormMode("youtube")}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white/80 hover:text-white rounded-lg border border-white/10 transition-colors"
+                >
+                  <Youtube className="h-3.5 w-3.5 text-red-400" />
+                  YouTube
+                </button>
+                <button
+                  onClick={() => setFormMode("manual")}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm bg-emerald-500 hover:bg-emerald-600 text-black font-medium rounded-lg transition-colors"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Add
+                </button>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Test Sean Response Panel */}
+        <AnimatePresence>
+          {testOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-5 overflow-hidden"
+            >
+              <div className="p-4 rounded-xl bg-blue-500/[0.06] border border-blue-500/20">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
+                    Sean's Response — Knowledge Verification
+                  </p>
+                  <button onClick={() => setTestOpen(false)} className="text-white/30 hover:text-white">
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                {testLoading ? (
+                  <div className="flex items-center gap-2 text-white/40 text-sm">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Asking Sean about your training content...
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{testResponse}</p>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Error */}
         <AnimatePresence>
