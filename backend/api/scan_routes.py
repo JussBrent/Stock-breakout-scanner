@@ -60,7 +60,8 @@ async def scan_universe_endpoint(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Universe scan failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Scan failed")
 
 
 @router.post("/symbol", response_model=ScanResponse)
@@ -93,7 +94,8 @@ async def scan_symbol_endpoint(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Symbol scan failed for {body.symbol}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Scan failed")
 
 
 @router.post("/universe/background")
@@ -187,11 +189,11 @@ async def ai_scan_symbol(
         ai_service = get_ai_service()
         result = await ai_service.analyze_symbol_technicals(technicals)
         return {"success": True, "result": result}
-    except ValueError as e:
-        raise HTTPException(status_code=422, detail=str(e))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid symbol or insufficient data")
     except Exception as e:
-        logger.error(f"AI scan failed for {body.symbol}: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"AI scan failed for {body.symbol}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="AI scan failed")
 
 
 @router.post("/analyze-content")
@@ -217,8 +219,8 @@ async def analyze_content(
         )
         return {"success": True, "analysis": analysis}
     except Exception as e:
-        logger.error(f"Content analysis failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Content analysis failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Content analysis failed")
 
 
 @router.post("/ai-analyze")
@@ -259,6 +261,8 @@ async def ai_analyze_scan(
         }
 
     except ValueError as e:
-        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")
+        logger.error(f"AI service error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="AI service error")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"AI analyze scan failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="AI analyze scan failed")

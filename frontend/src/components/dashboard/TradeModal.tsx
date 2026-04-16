@@ -223,7 +223,7 @@ export function TradeModal({ open, onClose, symbol = "", action = "BUY", price }
 
             {connectionState === "unregistered" && (
               <div className="flex flex-col items-center gap-5 py-6 text-center">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
+                <div className="p-3 rounded-2xl bg-linear-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
                   <Wallet className="h-8 w-8 text-emerald-400" />
                 </div>
                 <div>
@@ -238,7 +238,7 @@ export function TradeModal({ open, onClose, symbol = "", action = "BUY", price }
 
             {connectionState === "no_accounts" && (
               <div className="flex flex-col items-center gap-5 py-6 text-center">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
+                <div className="p-3 rounded-2xl bg-linear-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
                   <Link2 className="h-8 w-8 text-blue-400" />
                 </div>
                 <div>
@@ -269,7 +269,7 @@ export function TradeModal({ open, onClose, symbol = "", action = "BUY", price }
 
             {connectionState === "connected" && step === "preview" && (
               <>
-                <div className="rounded-xl bg-white/[0.03] border border-white/10 p-4 space-y-3">
+                <div className="rounded-xl bg-white/3 border border-white/10 p-4 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50">Symbol</span>
                     <span className="text-white font-medium">{form.symbol.toUpperCase()}</span>

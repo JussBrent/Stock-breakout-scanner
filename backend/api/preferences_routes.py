@@ -4,10 +4,13 @@ Requires authentication.
 """
 from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime, timezone
+import logging
 
 from models.user import UserPreferences
 from services.supabase_client import supabase
 from middleware.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -36,9 +39,10 @@ async def get_preferences(user: dict = Depends(get_current_user)):
             )
 
     except Exception as e:
+        logger.error(f"Fetch preferences failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch preferences: {str(e)}"
+            detail="Failed to fetch preferences"
         )
 
 
@@ -85,9 +89,10 @@ async def create_preferences(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Create preferences failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create preferences: {str(e)}"
+            detail="Failed to create preferences"
         )
 
 
@@ -131,9 +136,10 @@ async def update_preferences(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Update preferences failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update preferences: {str(e)}"
+            detail="Failed to update preferences"
         )
 
 
@@ -155,7 +161,8 @@ async def reset_preferences(user: dict = Depends(get_current_user)):
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Reset preferences failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to reset preferences: {str(e)}"
+            detail="Failed to reset preferences"
         )

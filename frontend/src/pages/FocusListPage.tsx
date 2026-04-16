@@ -76,10 +76,10 @@ export default function FocusListPage() {
 
       <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-pink-500/20 to-rose-500/20 ring-1 ring-white/10">
+              <div className="p-2 rounded-lg bg-linear-to-br from-pink-500/20 to-rose-500/20 ring-1 ring-white/10">
                 <Star className="h-5 w-5 text-pink-400" />
               </div>
               <div>
@@ -89,13 +89,13 @@ export default function FocusListPage() {
             </motion.div>
 
             <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-              <Badge className="bg-gradient-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+              <Badge className="bg-linear-to-r from-pink-500/20 to-rose-500/20 text-pink-400 border border-pink-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
                 <Heart className="h-3.5 w-3.5 mr-1.5" />
                 {focusItems.length} Stocks
               </Badge>
               <Button
                 onClick={() => setShowAddForm(!showAddForm)}
-                className="bg-gradient-to-r from-pink-600 to-rose-600 text-white hover:from-pink-700 hover:to-rose-700 shadow-lg"
+                className="bg-linear-to-r from-pink-600 to-rose-600 text-white hover:from-pink-700 hover:to-rose-700 shadow-lg"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Stock
@@ -119,7 +119,7 @@ export default function FocusListPage() {
           {/* Add Form */}
           {showAddForm && (
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 mb-6">
+              <Card className="bg-white/2 border-white/10 shadow-xl p-6 mb-6">
                 <h3 className="text-lg font-semibold text-white mb-4">Add Stock to Focus List</h3>
                 <div className="flex gap-2">
                   <Input
@@ -160,7 +160,7 @@ export default function FocusListPage() {
                     transition={{ delay: 0.1 + index * 0.05 }}
                   >
                     <Card className={cn(
-                      "bg-white/[0.02] border-white/10 shadow-xl overflow-hidden transition-all duration-200",
+                      "bg-white/2 border-white/10 shadow-xl overflow-hidden transition-all duration-200",
                       isExpanded ? "border-pink-500/30" : "hover:border-white/20"
                     )}>
                       {/* Stock Row */}
@@ -241,7 +241,7 @@ export default function FocusListPage() {
               })}
             </motion.div>
           ) : (
-            <Card className="bg-white/[0.02] border-white/10 shadow-xl p-12 text-center">
+            <Card className="bg-white/2 border-white/10 shadow-xl p-12 text-center">
               <Heart className="h-12 w-12 text-white/20 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-white mb-2">No stocks in your focus list</h3>
               <p className="text-white/60 mb-6">Add stocks you want to monitor daily for opportunities</p>

@@ -169,14 +169,14 @@ export default function PortfolioPage() {
 
       <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-[72px] right-0 z-40 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+        <header className="fixed top-0 left-[72px] right-0 z-40 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-3"
             >
-              <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
+              <div className="p-2 rounded-lg bg-linear-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
                 <Wallet className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
@@ -232,7 +232,7 @@ export default function PortfolioPage() {
                   </Button>
                 </>
               )}
-              <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
+              <Badge className="bg-linear-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
                 <Wallet className="h-3.5 w-3.5 mr-1.5" />
                 {accounts.length} {accounts.length === 1 ? "Account" : "Accounts"}
               </Badge>
@@ -252,7 +252,7 @@ export default function PortfolioPage() {
           {/* Onboarding States */}
           {(connectionState === "loading" || connectionState === "unregistered" || connectionState === "no_accounts") && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-              <Card className="bg-white/[0.02] border-white/10 shadow-xl p-12 text-center">
+              <Card className="bg-white/2 border-white/10 shadow-xl p-12 text-center">
                 {connectionState === "loading" && (
                   <div className="flex flex-col items-center gap-4">
                     <RefreshCw className="h-8 w-8 text-white/40 animate-spin" />
@@ -262,7 +262,7 @@ export default function PortfolioPage() {
 
                 {connectionState === "unregistered" && (
                   <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
+                    <div className="p-4 rounded-2xl bg-linear-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">
                       <Wallet className="h-10 w-10 text-emerald-400" />
                     </div>
                     <div>
@@ -283,7 +283,7 @@ export default function PortfolioPage() {
 
                 {connectionState === "no_accounts" && (
                   <div className="flex flex-col items-center gap-6 max-w-md mx-auto">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
+                    <div className="p-4 rounded-2xl bg-linear-to-br from-blue-500/20 to-cyan-500/20 ring-1 ring-white/10">
                       <Link2 className="h-10 w-10 text-blue-400" />
                     </div>
                     <div>
@@ -311,7 +311,7 @@ export default function PortfolioPage() {
             <>
               {/* Summary Cards */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-4 gap-4">
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-6">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-white/60">Portfolio Value</p>
                     <DollarSign className="h-4 w-4 text-emerald-400" />
@@ -322,7 +322,7 @@ export default function PortfolioPage() {
                   <p className="text-xs text-white/40 mt-2">{allPositions.length} positions</p>
                 </Card>
 
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-6">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-white/60">Open P&L</p>
                     {totalPnl >= 0 ? (
@@ -337,7 +337,7 @@ export default function PortfolioPage() {
                   <p className="text-xs text-white/40 mt-2">Unrealized gains/losses</p>
                 </Card>
 
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-6">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-white/60">Cash Available</p>
                     <DollarSign className="h-4 w-4 text-blue-400" />
@@ -348,7 +348,7 @@ export default function PortfolioPage() {
                   <p className="text-xs text-white/40 mt-2">Across all accounts</p>
                 </Card>
 
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-6">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm text-white/60">Linked Accounts</p>
                     <Link2 className="h-4 w-4 text-purple-400" />
@@ -366,7 +366,7 @@ export default function PortfolioPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-white mb-4">Positions</h2>
                   {allPositions.length === 0 ? (
-                    <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8 text-center">
+                    <Card className="bg-white/2 border-white/10 shadow-xl p-8 text-center">
                       <p className="text-white/40">No open positions</p>
                     </Card>
                   ) : (
@@ -378,7 +378,7 @@ export default function PortfolioPage() {
                         const pnl = pos.open_pnl || 0
 
                         return (
-                          <Card key={`${symbol}-${i}`} className="bg-white/[0.02] border-white/10 shadow-xl p-4">
+                          <Card key={`${symbol}-${i}`} className="bg-white/2 border-white/10 shadow-xl p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">
@@ -412,7 +412,7 @@ export default function PortfolioPage() {
                 <div>
                   <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
                   {activities.length === 0 ? (
-                    <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8 text-center">
+                    <Card className="bg-white/2 border-white/10 shadow-xl p-8 text-center">
                       <p className="text-white/40">No recent activity</p>
                     </Card>
                   ) : (
@@ -423,7 +423,7 @@ export default function PortfolioPage() {
                         const isBuy = activity.action?.toLowerCase().includes("buy")
 
                         return (
-                          <Card key={activity.id || i} className="bg-white/[0.02] border-white/10 shadow-xl p-4">
+                          <Card key={activity.id || i} className="bg-white/2 border-white/10 shadow-xl p-4">
                             <div className="flex items-start justify-between">
                               <div className="flex-1">
                                 <div className="flex items-center gap-2 mb-1">

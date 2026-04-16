@@ -42,6 +42,16 @@ app = FastAPI(
 # Split CORS_ORIGINS by comma for multiple origins
 allowed_origins = [origin.strip() for origin in settings.CORS_ORIGINS.split(",")]
 
+# Fail fast if a wildcard origin is combined with allow_credentials=True.
+# Browsers reject this combo, and permitting it on the server is a common
+# credential-leak footgun. Force the operator to set an explicit origin list.
+if "*" in allowed_origins:
+    raise RuntimeError(
+        "CORS misconfiguration: wildcard origin '*' is not allowed with "
+        "allow_credentials=True. Set CORS_ORIGINS to an explicit, "
+        "comma-separated list of origins."
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,

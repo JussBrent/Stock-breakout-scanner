@@ -1,9 +1,13 @@
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Security
 from typing import Optional
 from datetime import datetime, timedelta, timezone
+import logging
 
-from schemas.api_models import ResultsResponse
+from schemas.api_models import ResultsResponse, validate_symbol_path
 from services.supabase_client import supabase
+from middleware.auth import get_current_user
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -13,7 +17,8 @@ async def get_recent_results(
     limit: int = Query(25, ge=1, le=100),
     min_score: Optional[int] = Query(None, ge=0, le=100),
     setup_type: Optional[str] = None,
-    days_back: int = Query(7, ge=1, le=30)
+    days_back: int = Query(7, ge=1, le=30),
+    user: dict = Security(get_current_user, scopes=[])
 ):
     """
     Fetch recent scan results from Supabase.
@@ -55,13 +60,15 @@ async def get_recent_results(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Get recent results failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch results")
 
 
 @router.get("/{symbol}", response_model=ResultsResponse)
 async def get_symbol_results(
     symbol: str,
-    limit: int = Query(10, ge=1, le=50)
+    limit: int = Query(10, ge=1, le=50),
+    user: dict = Security(get_current_user, scopes=[])
 ):
     """
     Get scan results for a specific symbol.
@@ -69,9 +76,8 @@ async def get_symbol_results(
     - **symbol**: Ticker symbol
     - **limit**: Maximum results to return
     """
+    symbol = validate_symbol_path(symbol)
     try:
-        symbol = symbol.upper()
-
         query = supabase.table("breakout_scans").select()
         query = query.eq("symbol", symbol)
         query = query.order("scanned_at", desc=True)
@@ -87,11 +93,15 @@ async def get_symbol_results(
         )
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Get symbol results failed for {symbol}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch results")
 
 
 @router.get("/top/today")
-async def get_top_today(limit: int = Query(10, ge=1, le=50)):
+async def get_top_today(
+    limit: int = Query(10, ge=1, le=50),
+    user: dict = Security(get_current_user, scopes=[])
+):
     """Get top-scoring setups from today's scans."""
     try:
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -111,15 +121,18 @@ async def get_top_today(limit: int = Query(10, ge=1, le=50)):
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Get top today failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch top results")
 
 
 @router.delete("/{symbol}")
-async def delete_symbol_results(symbol: str):
+async def delete_symbol_results(
+    symbol: str,
+    user: dict = Security(get_current_user, scopes=[])
+):
     """Delete all results for a symbol (admin function)."""
+    symbol = validate_symbol_path(symbol)
     try:
-        symbol = symbol.upper()
-
         # Note: DELETE operations in PostgREST need special handling
         # For now, this is a placeholder. Full implementation would need
         # to use httpx directly with DELETE method
@@ -131,4 +144,5 @@ async def delete_symbol_results(symbol: str):
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Delete symbol results failed for {symbol}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Delete failed")

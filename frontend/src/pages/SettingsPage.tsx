@@ -149,14 +149,14 @@ export default function SettingsPage() {
 
       <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-3"
             >
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500/20 to-indigo-500/20 ring-1 ring-white/10">
+              <div className="p-2 rounded-lg bg-linear-to-br from-purple-500/20 to-indigo-500/20 ring-1 ring-white/10">
                 <Sliders className="h-5 w-5 text-purple-400" />
               </div>
               <div>
@@ -210,7 +210,7 @@ export default function SettingsPage() {
               {/* General Settings */}
               {activeTab === "general" && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">General Settings</h2>
 
                   <div className="space-y-6">
@@ -307,7 +307,7 @@ export default function SettingsPage() {
               {/* Notifications Settings */}
               {activeTab === "notifications" && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Notification Preferences</h2>
 
                   <div className="space-y-4">
@@ -377,7 +377,7 @@ export default function SettingsPage() {
               {/* Security Settings */}
               {activeTab === "security" && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Security Settings</h2>
 
                   <div className="space-y-6">
@@ -422,7 +422,7 @@ export default function SettingsPage() {
               {/* Preferences Settings */}
               {activeTab === "preferences" && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="bg-white/[0.02] border-white/10 shadow-xl p-8">
+                <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Trading Preferences</h2>
 
                   <div className="space-y-6">

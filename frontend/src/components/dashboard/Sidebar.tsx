@@ -120,7 +120,7 @@ export const DesktopSidebar = ({
   return (
     <motion.div
       className={cn(
-        "h-full hidden md:flex md:flex-col bg-black/95 backdrop-blur-xl border-r border-white/10 flex-shrink-0 py-4 shadow-lg shadow-black/40",
+        "h-full hidden md:flex md:flex-col bg-black/95 backdrop-blur-xl border-r border-white/10 shrink-0 py-4 shadow-lg shadow-black/40",
         className,
       )}
       animate={{
@@ -216,7 +216,7 @@ export const SidebarLink = ({
       )}
       {...props}
     >
-      <span className={cn("flex-shrink-0", isActive ? "text-emerald-400" : "text-white/70")}>{link.icon}</span>
+      <span className={cn("shrink-0", isActive ? "text-emerald-400" : "text-white/70")}>{link.icon}</span>
       <motion.span
         initial={false}
         animate={{
@@ -259,7 +259,7 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: (
         if (visibleItems.length === 0) return null
         return (
           <div key={section.title}>
-            {si > 0 && <div className="my-2 border-t border-white/[0.06]" />}
+            {si > 0 && <div className="my-2 border-t border-white/6" />}
             {open && (
               <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/25">
                 {section.title}
@@ -307,6 +307,44 @@ function BackLink() {
   )
 }
 
+function LiveStatus() {
+  const { open } = useSidebar()
+  const { user, loading } = useAuth()
+
+  if (loading || !user) return null
+
+  const displayName =
+    (user.user_metadata as { full_name?: string } | undefined)?.full_name ||
+    user.email ||
+    "Signed in"
+
+  return (
+    <div
+      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20"
+      aria-label="User is live"
+      title={open ? undefined : `Live — ${displayName}`}
+    >
+      <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+      </span>
+      <motion.div
+        initial={false}
+        animate={{
+          opacity: open ? 1 : 0,
+          x: open ? 0 : -10,
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="flex flex-col min-w-0 overflow-hidden"
+        style={{ display: open ? "flex" : "none" }}
+      >
+        <span className="text-xs font-semibold text-emerald-400 leading-tight">Live</span>
+        <span className="text-[11px] text-white/60 truncate leading-tight">{displayName}</span>
+      </motion.div>
+    </div>
+  )
+}
+
 export function AppSidebar() {
   const location = useLocation()
 
@@ -318,7 +356,12 @@ export function AppSidebar() {
         <div className="px-2 pb-4 border-b border-white/10">
           <BackLink />
         </div>
-        <SidebarNav pathname={location.pathname} />
+        <div className="flex-1">
+          <SidebarNav pathname={location.pathname} />
+        </div>
+        <div className="mt-auto px-2 pt-3 border-t border-white/10">
+          <LiveStatus />
+        </div>
       </DesktopSidebar>
 
       {/* Mobile trigger bar + sheet */}

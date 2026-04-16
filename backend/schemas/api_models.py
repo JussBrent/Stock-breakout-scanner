@@ -1,7 +1,21 @@
+from fastapi import HTTPException
 from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Literal
 from models.candle import ScanResult
 import re
+
+SYMBOL_RE = re.compile(r'^[A-Z]{1,10}([.-][A-Z]{1,5})?$')
+
+
+def validate_symbol_path(symbol: str) -> str:
+    """Validate a stock symbol passed as a URL path parameter.
+
+    Raises 400 HTTPException if the symbol is malformed. Normalizes to uppercase.
+    """
+    symbol = symbol.strip().upper()
+    if not SYMBOL_RE.match(symbol):
+        raise HTTPException(status_code=400, detail="Invalid symbol format")
+    return symbol
 
 # Request Models
 class UniverseScanRequest(BaseModel):

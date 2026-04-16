@@ -3,7 +3,7 @@ AI Chat API endpoint — conversational stock advisor powered by Claude.
 Requires authentication.
 """
 from fastapi import APIRouter, HTTPException, Security, status, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import logging
 
@@ -17,12 +17,12 @@ router = APIRouter()
 
 class ChatMessage(BaseModel):
     role: str  # "user" or "assistant"
-    content: str
+    content: str = Field(..., max_length=5000)
 
 
 class ChatRequest(BaseModel):
-    messages: List[ChatMessage]
-    scan_context: Optional[str] = None  # Optional scan results / filter context
+    messages: List[ChatMessage] = Field(..., max_length=500)
+    scan_context: Optional[str] = Field(None, max_length=10000)
 
 
 class ChatResponse(BaseModel):
@@ -66,16 +66,16 @@ async def ai_chat(
 
         return ChatResponse(reply=reply)
 
-    except ValueError as e:
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e)
+            detail="AI service temporarily unavailable"
         )
     except Exception as e:
-        logger.error(f"AI chat error: {e}")
+        logger.error(f"AI chat error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"AI chat failed: {str(e)}"
+            detail="AI chat failed"
         )
 
 
@@ -113,5 +113,5 @@ async def get_query_log(
         )
         return {"queries": rows or []}
     except Exception as e:
-        logger.error(f"Get query log failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Get query log failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch query log")

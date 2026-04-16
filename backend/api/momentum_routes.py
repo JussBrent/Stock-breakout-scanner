@@ -195,8 +195,8 @@ async def get_momentum_stocks(
         return {"stocks": stocks, "marketOpen": market_open}
 
     except Exception as e:
-        logger.error(f"Momentum fetch failed: {str(e)}")
+        logger.error(f"Momentum fetch failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch momentum data: {str(e)}"
+            detail="Failed to fetch momentum data"
         )

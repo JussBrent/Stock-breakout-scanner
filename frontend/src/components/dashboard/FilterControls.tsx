@@ -192,10 +192,10 @@ export function FilterControls({ filters, onChange, resultCount, totalCount }: F
     const isExpanded = expandedSections.has(section)
     
     return (
-      <div className="border border-white/10 rounded-lg overflow-hidden bg-white/[0.02]">
+      <div className="border border-white/10 rounded-lg overflow-hidden bg-white/2">
         <button
           onClick={() => toggleSection(section)}
-          className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/[0.03] transition-colors"
+          className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/3 transition-colors"
         >
           <div className="flex items-center gap-2">
             <Icon className="h-4 w-4 text-cyan-400" />
@@ -368,7 +368,7 @@ export function FilterControls({ filters, onChange, resultCount, totalCount }: F
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-zinc-900 via-zinc-900/95 to-zinc-900 border border-white/10 rounded-xl p-6 shadow-xl">
+      <div className="bg-linear-to-r from-zinc-900 via-zinc-900/95 to-zinc-900 border border-white/10 rounded-xl p-6 shadow-xl">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">

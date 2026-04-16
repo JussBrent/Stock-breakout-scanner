@@ -223,7 +223,7 @@ export default function AiTrainingPage() {
               exit={{ opacity: 0, height: 0 }}
               className="mb-5 overflow-hidden"
             >
-              <div className="p-4 rounded-xl bg-blue-500/[0.06] border border-blue-500/20">
+              <div className="p-4 rounded-xl bg-blue-500/6 border border-blue-500/20">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
                     Sean's Response — Knowledge Verification
@@ -271,7 +271,7 @@ export default function AiTrainingPage() {
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
-              className="mb-6 p-5 rounded-xl bg-white/[0.02] border border-white/10"
+              className="mb-6 p-5 rounded-xl bg-white/2 border border-white/10"
             >
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-white/80 uppercase tracking-wider">
@@ -367,7 +367,7 @@ export default function AiTrainingPage() {
                 animate={{ opacity: item.is_active ? 1 : 0.5 }}
                 className={`group p-4 rounded-xl border transition-colors ${
                   item.is_active
-                    ? "bg-white/[0.02] border-white/8 hover:border-white/15"
+                    ? "bg-white/2 border-white/8 hover:border-white/15"
                     : "bg-transparent border-white/5"
                 }`}
               >

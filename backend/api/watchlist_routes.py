@@ -5,11 +5,15 @@ Requires authentication.
 from fastapi import APIRouter, HTTPException, Security, status
 from typing import List
 from datetime import datetime, timezone
+import logging
 
 from models.user import Watchlist, WatchlistCreate, WatchlistUpdate
+from schemas.api_models import validate_symbol_path
 from services.supabase_client import supabase
 from providers.polygon import polygon_get, POLYGON_BASE
 from middleware.auth import get_current_user, security
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -59,9 +63,10 @@ async def get_watchlist(user: dict = Security(get_current_user, scopes=[])):
         return results or []
 
     except Exception as e:
+        logger.error(f"Fetch watchlist failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch watchlist: {str(e)}"
+            detail="Failed to fetch watchlist"
         )
 
 
@@ -127,9 +132,10 @@ async def add_to_watchlist(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Add to watchlist failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to add to watchlist: {str(e)}"
+            detail="Failed to add to watchlist"
         )
 
 
@@ -140,9 +146,9 @@ async def update_watchlist_item(
     user: dict = Security(get_current_user, scopes=[])
 ):
     """Update a watchlist item (notes, alerts, etc.)."""
+    symbol = validate_symbol_path(symbol)
     try:
         user_id = user["user_id"]
-        symbol = symbol.upper()
 
         update_data = {}
         if update.notes is not None:
@@ -181,9 +187,10 @@ async def update_watchlist_item(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Update watchlist item failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to update watchlist item: {str(e)}"
+            detail="Failed to update watchlist item"
         )
 
 
@@ -193,9 +200,9 @@ async def remove_from_watchlist(
     user: dict = Security(get_current_user, scopes=[])
 ):
     """Remove a symbol from user's watchlist."""
+    symbol = validate_symbol_path(symbol)
     try:
         user_id = user["user_id"]
-        symbol = symbol.upper()
 
         await (
             supabase.table("watchlist_items")
@@ -208,9 +215,10 @@ async def remove_from_watchlist(
         return None
 
     except Exception as e:
+        logger.error(f"Remove from watchlist failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to remove from watchlist: {str(e)}"
+            detail="Failed to remove from watchlist"
         )
 
 
@@ -220,9 +228,9 @@ async def check_in_watchlist(
     user: dict = Security(get_current_user, scopes=[])
 ):
     """Check if a symbol is in user's watchlist."""
+    symbol = validate_symbol_path(symbol)
     try:
         user_id = user["user_id"]
-        symbol = symbol.upper()
 
         results = await (
             supabase.table("watchlist_items")
@@ -238,7 +246,8 @@ async def check_in_watchlist(
         }
 
     except Exception as e:
+        logger.error(f"Check watchlist failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to check watchlist: {str(e)}"
+            detail="Failed to check watchlist"
         )

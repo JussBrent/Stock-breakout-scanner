@@ -149,7 +149,7 @@ export function StockScanner() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {/* Input Card */}
-      <Card className="relative overflow-hidden bg-linear-to-br from-white/[0.07] to-white/2 border-white/10 backdrop-blur-xl shadow-2xl">
+      <Card className="relative overflow-hidden bg-linear-to-br from-white/7 to-white/2 border-white/10 backdrop-blur-xl shadow-2xl">
         <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-emerald-500/5 pointer-events-none" />
         <div className="relative p-8">
           <div className="flex items-center justify-between mb-8">
@@ -201,7 +201,7 @@ export function StockScanner() {
                   onChange={(e) => setSymbol(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === "Enter" && handleScan()}
                   maxLength={10}
-                  className="h-14 bg-white/5 border-white/10 text-white text-lg placeholder:text-white/40 focus:bg-white/[0.07] focus:border-primary/50"
+                  className="h-14 bg-white/5 border-white/10 text-white text-lg placeholder:text-white/40 focus:bg-white/7 focus:border-primary/50"
                 />
                 <p className="text-xs text-white/40 flex items-center gap-1.5">
                   <span className="h-1 w-1 rounded-full bg-primary/50 inline-block" />
@@ -256,7 +256,7 @@ export function StockScanner() {
                   placeholder="Paste news articles, earnings reports, analyst opinions, or any market commentary..."
                   value={textContent}
                   onChange={(e) => setTextContent(e.target.value)}
-                  className="w-full h-40 bg-white/5 border border-white/10 text-white placeholder:text-white/40 rounded-xl p-4 resize-none focus:bg-white/[0.07] focus:border-primary/50 transition-all leading-relaxed"
+                  className="w-full h-40 bg-white/5 border border-white/10 text-white placeholder:text-white/40 rounded-xl p-4 resize-none focus:bg-white/7 focus:border-primary/50 transition-all leading-relaxed"
                 />
                 <p className="text-xs text-white/40 flex items-center gap-1.5">
                   <span className="h-1 w-1 rounded-full bg-primary/50 inline-block" />
@@ -297,7 +297,7 @@ export function StockScanner() {
 
       {/* Content result (image / news) */}
       {contentResult && (
-        <Card className="relative overflow-hidden bg-linear-to-br from-white/[0.07] to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
+        <Card className="relative overflow-hidden bg-linear-to-br from-white/7 to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-primary/5 pointer-events-none" />
           <div className="relative p-8 space-y-6">
             <div className="flex items-center gap-2">
@@ -317,7 +317,7 @@ export function StockScanner() {
 
       {/* Symbol result */}
       {symbolResult && (
-        <Card className="relative overflow-hidden bg-linear-to-br from-white/[0.07] to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
+        <Card className="relative overflow-hidden bg-linear-to-br from-white/7 to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
           <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-primary/5 pointer-events-none" />
           <div className="relative p-8 space-y-8">
             <div className="rounded-xl overflow-hidden bg-black/60 border border-white/10 h-[420px]">
@@ -555,8 +555,8 @@ export function StockScanner() {
                   className={cn(
                     "w-full h-12 font-semibold text-base shadow-lg transition-all",
                     symbolResult.direction === "Short"
-                      ? "bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-red-500/25"
-                      : "bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-500/25"
+                      ? "bg-linear-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-red-500/25"
+                      : "bg-linear-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-500/25"
                   )}
                 >
                   <Crosshair className="mr-2 h-4.5 w-4.5" />

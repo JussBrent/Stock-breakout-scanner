@@ -70,16 +70,16 @@ async def verify_token(token: str) -> dict:
             detail="Token has expired"
         )
     except jwt.InvalidTokenError as e:
-        logger.error(f"Invalid JWT token: {str(e)}")
+        logger.error(f"Invalid JWT token: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token: {str(e)}"
+            detail="Invalid token"
         )
     except Exception as e:
-        logger.error(f"Auth failed: {str(e)}")
+        logger.error(f"Auth failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Authentication failed: {str(e)}"
+            detail="Authentication failed"
         )
 
 

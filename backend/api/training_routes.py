@@ -100,8 +100,8 @@ async def list_training_content(
         )
         return rows
     except Exception as e:
-        logger.error(f"List training content failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"List training content failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to list training content")
 
 
 @router.post("/", status_code=201)
@@ -126,8 +126,8 @@ async def create_training_content(
         )
         return rows[0]
     except Exception as e:
-        logger.error(f"Create training content failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Create training content failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create training content")
 
 
 @router.put("/{content_id}")
@@ -156,8 +156,8 @@ async def update_training_content(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Update training content failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Update training content failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update training content")
 
 
 @router.delete("/{content_id}", status_code=204)
@@ -176,8 +176,8 @@ async def delete_training_content(
             .execute()
         )
     except Exception as e:
-        logger.error(f"Delete training content failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Delete training content failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to delete training content")
 
 
 @router.patch("/{content_id}/toggle")
@@ -209,8 +209,8 @@ async def toggle_training_content(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Toggle training content failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Toggle training content failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to toggle training content")
 
 
 # ── YouTube Import ───────────────────────────────────────────────────
@@ -260,7 +260,7 @@ async def import_youtube_transcript(
             raise HTTPException(status_code=400, detail="Transcripts are disabled for this video")
         if "no transcript" in str(e).lower():
             raise HTTPException(status_code=400, detail="No transcript found for this video. It may not have captions.")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch transcript: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to fetch transcript")
 
     # Use video ID as fallback title — frontend can set a real title
     title = f"YouTube: {video_id}"
@@ -292,5 +292,5 @@ async def import_youtube_transcript(
         )
         return rows[0]
     except Exception as e:
-        logger.error(f"Save YouTube training content failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Save YouTube training content failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to save transcript")

@@ -93,8 +93,8 @@ async def log_trade_outcome(
         rows = await supabase.table("trade_outcomes").insert([data]).execute()
         return rows[0] if rows else data
     except Exception as e:
-        logger.error(f"Log trade outcome failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Log trade outcome failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to log trade outcome")
 
 
 @router.put("/outcome/{trade_id}")
@@ -124,8 +124,8 @@ async def update_trade_outcome(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Update trade outcome failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Update trade outcome failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update trade outcome")
 
 
 @router.get("/outcomes")
@@ -147,5 +147,5 @@ async def get_trade_outcomes(
         )
         return {"outcomes": rows or []}
     except Exception as e:
-        logger.error(f"Get trade outcomes failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Get trade outcomes failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch trade outcomes")

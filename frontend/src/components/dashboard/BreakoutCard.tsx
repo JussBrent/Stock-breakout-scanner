@@ -36,7 +36,7 @@ export function BreakoutCard({ scan }: BreakoutCardProps) {
   const quality = getQualityLabel()
 
   return (
-    <div className="border border-zinc-800 rounded-lg overflow-hidden bg-gradient-to-b from-zinc-900/50 to-zinc-900/20 hover:border-zinc-700 transition-all">
+    <div className="border border-zinc-800 rounded-lg overflow-hidden bg-linear-to-b from-zinc-900/50 to-zinc-900/20 hover:border-zinc-700 transition-all">
       {/* Header */}
       <div 
         onClick={() => setExpanded(!expanded)}

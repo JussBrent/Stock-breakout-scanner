@@ -41,14 +41,14 @@ export default function StockMomentumPage() {
 
       <div className="ml-[72px]">
         {/* Header */}
-        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-gradient-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               className="flex items-center gap-3"
             >
-              <div className="p-2 rounded-lg bg-gradient-to-br from-teal-500/20 to-cyan-500/20 ring-1 ring-white/10">
+              <div className="p-2 rounded-lg bg-linear-to-br from-teal-500/20 to-cyan-500/20 ring-1 ring-white/10">
                 <Activity className="h-5 w-5 text-teal-400" />
               </div>
               <div>
@@ -147,7 +147,7 @@ export default function StockMomentumPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.15 + index * 0.05 }}
                 >
-                  <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 hover:border-white/20 transition-all duration-200">
+                  <Card className="bg-white/2 border-white/10 shadow-xl p-6 hover:border-white/20 transition-all duration-200">
                   <div className="flex items-center justify-between">
                     {/* Left Section - Stock Info */}
                     <div className="flex-1">
@@ -203,7 +203,7 @@ export default function StockMomentumPage() {
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-primary to-emerald-400"
+                                className="h-full bg-linear-to-r from-primary to-emerald-400"
                                 style={{ width: `${stock.momentum}%` }}
                               />
                             </div>
@@ -216,7 +216,7 @@ export default function StockMomentumPage() {
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-cyan-400 to-blue-400"
+                                className="h-full bg-linear-to-r from-cyan-400 to-blue-400"
                                 style={{ width: `${stock.breakoutStrength}%` }}
                               />
                             </div>
@@ -229,7 +229,7 @@ export default function StockMomentumPage() {
                           <div className="flex items-center gap-2">
                             <div className="w-16 h-1.5 bg-white/10 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-purple-400 to-pink-400"
+                                className="h-full bg-linear-to-r from-purple-400 to-pink-400"
                                 style={{ width: `${stock.efficiency}%` }}
                               />
                             </div>
@@ -243,7 +243,7 @@ export default function StockMomentumPage() {
                     <div className="ml-6 pl-6 border-l border-white/10 text-right">
                       <div className="mb-3">
                         <p className="text-xs text-white/50 mb-1">Overall Score</p>
-                        <p className="text-3xl font-bold bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
+                        <p className="text-3xl font-bold bg-linear-to-r from-primary to-emerald-400 bg-clip-text text-transparent">
                           {Math.round((stock.momentum + stock.breakoutStrength + stock.efficiency) / 3)}
                         </p>
                       </div>
@@ -265,7 +265,7 @@ export default function StockMomentumPage() {
               ))}
             </motion.div>
           ) : (
-            <Card className="bg-white/[0.02] border-white/10 shadow-xl p-12 text-center">
+            <Card className="bg-white/2 border-white/10 shadow-xl p-12 text-center">
               <Activity className="h-12 w-12 text-white/20 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-white mb-2">No momentum data available</h3>
               <p className="text-white/60">Market may be closed. Try again during trading hours.</p>
@@ -273,7 +273,7 @@ export default function StockMomentumPage() {
           )}
 
           {/* Momentum Legend */}
-          <Card className="bg-white/[0.02] border-white/10 shadow-xl p-6 mt-8">
+          <Card className="bg-white/2 border-white/10 shadow-xl p-6 mt-8">
             <h3 className="text-lg font-semibold text-white mb-4">Understanding Momentum Metrics</h3>
             <div className="grid grid-cols-3 gap-6">
               <div>

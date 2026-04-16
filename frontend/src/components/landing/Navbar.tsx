@@ -2,9 +2,12 @@ import { useState, useEffect, useRef } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Menu, X } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { useAuth } from "@/hooks/useAuth"
 
 export default function Navbar() {
   const navigate = useNavigate()
+  const { user, loading } = useAuth()
+  const isSignedIn = !loading && !!user
   const [scrolled, setScrolled] = useState(false)
   const [isVisible, setIsVisible] = useState(true)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -99,26 +102,58 @@ export default function Navbar() {
 
         {/* Desktop Auth */}
         <div className="hidden items-center gap-3 md:flex">
-          <motion.button 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            onClick={() => navigate("/login")}
-            className="font-mono text-xs uppercase tracking-wider text-white/60 transition-colors hover:text-[#00ff88] px-4 py-2"
-          >
-            Sign In
-          </motion.button>
-          <motion.button 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.6 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate("/signup")}
-            className="border border-[#00ff88] bg-[#00ff88] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
-          >
-            Create Account
-          </motion.button>
+          {isSignedIn ? (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="flex items-center gap-2 border border-[#00ff88]/40 bg-[#00ff88]/10 px-3 py-1.5 font-mono text-xs uppercase tracking-wider text-[#00ff88]"
+                title={user?.email ?? undefined}
+                aria-label="You are live"
+              >
+                <span className="relative flex h-2 w-2" aria-hidden="true">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-[#00ff88] opacity-75 animate-ping" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00ff88]" />
+                </span>
+                Live
+              </motion.div>
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate("/admin")}
+                className="border border-[#00ff88] bg-[#00ff88] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
+              >
+                Dashboard
+              </motion.button>
+            </>
+          ) : (
+            <>
+              <motion.button
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                onClick={() => navigate("/login")}
+                className="font-mono text-xs uppercase tracking-wider text-white/60 transition-colors hover:text-[#00ff88] px-4 py-2"
+              >
+                Sign In
+              </motion.button>
+              <motion.button
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.6 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => navigate("/signup")}
+                className="border border-[#00ff88] bg-[#00ff88] px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
+              >
+                Create Account
+              </motion.button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu Button */}
@@ -155,20 +190,46 @@ export default function Navbar() {
                 </motion.button>
               ))}
               <div className="mt-4 flex flex-col gap-2 border-t border-[#222] pt-4">
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="py-2 text-left text-white/60 transition-colors hover:text-[#00ff88]"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  to="/signup"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="border border-[#00ff88] bg-[#00ff88] px-4 py-2 font-bold text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
-                >
-                  Create Account
-                </Link>
+                {isSignedIn ? (
+                  <>
+                    <div className="flex items-center gap-2 py-2 text-[#00ff88]">
+                      <span className="relative flex h-2 w-2" aria-hidden="true">
+                        <span className="absolute inline-flex h-full w-full rounded-full bg-[#00ff88] opacity-75 animate-ping" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00ff88]" />
+                      </span>
+                      <span>Live</span>
+                      {user?.email && (
+                        <span className="ml-1 truncate normal-case tracking-normal text-white/60">
+                          {user.email}
+                        </span>
+                      )}
+                    </div>
+                    <Link
+                      to="/admin"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="border border-[#00ff88] bg-[#00ff88] px-4 py-2 font-bold text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
+                    >
+                      Dashboard
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="py-2 text-left text-white/60 transition-colors hover:text-[#00ff88]"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      to="/signup"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="border border-[#00ff88] bg-[#00ff88] px-4 py-2 font-bold text-black transition-all hover:bg-transparent hover:text-[#00ff88]"
+                    >
+                      Create Account
+                    </Link>
+                  </>
+                )}
               </div>
             </nav>
           </motion.div>

@@ -361,7 +361,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
   }
 
   return (
-    <div className="flex h-full relative overflow-hidden bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+    <div className="flex h-full relative overflow-hidden bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950">
       {/* Sidebar - Part of main layout */}
       <motion.div
         initial={{ width: 0 }}
@@ -370,12 +370,12 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
         className="bg-neutral-900/95 border-r border-white/10 flex flex-col overflow-hidden"
       >
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-white/10 flex-shrink-0">
+        <div className="p-4 border-b border-white/10 shrink-0">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={createNewConversation}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 rounded-lg border border-white/10 hover:border-emerald-500/30 text-white text-sm font-medium transition-all"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-linear-to-r from-emerald-500/10 to-blue-500/10 rounded-lg border border-white/10 hover:border-emerald-500/30 text-white text-sm font-medium transition-all"
           >
             <Plus className="h-4 w-4" />
             New Chat
@@ -400,7 +400,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
               }}
             >
               <div className="flex items-start gap-2 min-w-0">
-                <Clock className="h-3.5 w-3.5 text-neutral-500 flex-shrink-0 mt-0.5" />
+                <Clock className="h-3.5 w-3.5 text-neutral-500 shrink-0 mt-0.5" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-white truncate font-medium">{conv.title}</p>
                   <p className="text-[11px] text-neutral-500">
@@ -424,7 +424,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-white/10 flex-shrink-0">
+        <div className="p-3 border-t border-white/10 shrink-0">
           <button
             onClick={() => setSidebarOpen(false)}
             className="w-full flex items-center justify-center gap-2 px-4 py-2 text-neutral-400 hover:text-white text-sm transition-colors"
@@ -476,7 +476,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
                 className={cn("flex gap-3.5", message.role === "assistant" ? "justify-start" : "justify-end")}
               >
                 {message.role === "assistant" && (
-                  <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500/10 to-blue-500/10 ring-1 ring-white/5 flex items-center justify-center">
+                  <div className="shrink-0 w-9 h-9 rounded-lg bg-linear-to-br from-emerald-500/10 to-blue-500/10 ring-1 ring-white/5 flex items-center justify-center">
                     <Brain className="h-4 w-4 text-emerald-400" />
                   </div>
                 )}
@@ -496,7 +496,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
                 </div>
 
                 {message.role === "user" && (
-                  <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500/10 to-blue-500/10 ring-1 ring-white/5 flex items-center justify-center">
+                  <div className="shrink-0 w-9 h-9 rounded-lg bg-linear-to-br from-emerald-500/10 to-blue-500/10 ring-1 ring-white/5 flex items-center justify-center">
                     <span className="text-xs font-medium text-emerald-400">You</span>
                   </div>
                 )}
@@ -510,7 +510,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
                 transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                 className="flex gap-3.5 justify-start"
               >
-                <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500/10 to-blue-500/10 ring-1 ring-white/5 flex items-center justify-center">
+                <div className="shrink-0 w-9 h-9 rounded-lg bg-linear-to-br from-emerald-500/10 to-blue-500/10 ring-1 ring-white/5 flex items-center justify-center">
                   <Brain className="h-4 w-4 text-emerald-400" />
                 </div>
                 <div className="flex items-center gap-2.5 px-4 py-3.5 bg-neutral-900/60 rounded-xl ring-1 ring-white/5 backdrop-blur-sm">
@@ -612,7 +612,7 @@ export function AiAdvice({ selectedModel }: AiAdviceProps) {
                   size="sm"
                   onClick={handleSendMessage}
                   disabled={!value.trim() || isTyping}
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed h-8 px-4 rounded-lg"
+                  className="bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg shadow-emerald-500/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed h-8 px-4 rounded-lg"
                 >
                   {isTyping ? (
                     <Loader className="h-3.5 w-3.5 animate-spin" />

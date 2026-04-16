@@ -5,12 +5,15 @@ Handles Stripe integration for premium features.
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 import stripe
 import os
+import logging
 from datetime import datetime, timezone
 
 from models.user import Subscription
 from services.supabase_client import supabase
 from middleware.auth import get_current_user
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -44,9 +47,10 @@ async def get_subscription(user: dict = Depends(get_current_user)):
             )
 
     except Exception as e:
+        logger.error(f"Fetch subscription failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch subscription: {str(e)}"
+            detail="Failed to fetch subscription"
         )
 
 
@@ -89,14 +93,16 @@ async def create_checkout_session(user: dict = Depends(get_current_user)):
         }
 
     except stripe.error.StripeError as e:
+        logger.error(f"Stripe checkout error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Stripe error: {str(e)}"
+            detail="Payment provider error"
         )
     except Exception as e:
+        logger.error(f"Create checkout session failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create checkout session: {str(e)}"
+            detail="Failed to create checkout session"
         )
 
 
@@ -139,16 +145,18 @@ async def create_portal_session(user: dict = Depends(get_current_user)):
         }
 
     except stripe.error.StripeError as e:
+        logger.error(f"Stripe portal error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Stripe error: {str(e)}"
+            detail="Payment provider error"
         )
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Create portal session failed: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create portal session: {str(e)}"
+            detail="Failed to create portal session"
         )
 
 
@@ -205,9 +213,10 @@ async def stripe_webhook(request: Request):
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Stripe webhook error: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Webhook error: {str(e)}"
+            detail="Webhook processing failed"
         )
 
 
