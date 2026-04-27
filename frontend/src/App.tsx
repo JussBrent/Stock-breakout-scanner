@@ -1,6 +1,7 @@
 import { Routes, Route, useLocation } from "react-router-dom"
 import React, { Suspense } from "react"
 import Navbar from "@/components/landing/Navbar"
+import { SeanPopup } from "@/components/dashboard/SeanPopup"
 import Hero from "@/components/landing/Hero"
 import FeatureCards from "@/components/landing/FeatureCards"
 import SplitSection from "@/components/landing/SplitSection"
@@ -76,6 +77,9 @@ function AppContent() {
         <Route path="/settings" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><SettingsPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/contact" element={<Suspense fallback={<div className="p-6">Loading…</div>}><ContactPageLazy /></Suspense>} />
       </Routes>
+
+      {/* Sean AI popup on all app shell pages except /ai-insights (full page there) */}
+      {isAppShellPage && !location.pathname.startsWith("/ai-insights") && <SeanPopup />}
 
       {/* Footer only on the main marketing page */}
       {!isAuthPage && !isDemoPage && !isAppShellPage && <Footer />}
