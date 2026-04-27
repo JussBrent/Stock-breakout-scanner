@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom"
+
 export default function Footer() {
   return (
     <footer className="relative bg-black border-t border-[#222]">
@@ -87,6 +89,7 @@ export default function Footer() {
               <span className="text-white/20">Resources</span>
               <a href="#" className="hover:text-[#00ff88] transition-colors">Documentation</a>
               <a href="#" className="hover:text-[#00ff88] transition-colors">Help Center</a>
+              <Link to="/contact" className="hover:text-[#00ff88] transition-colors">Contact</Link>
             </div>
             <div className="h-4 w-px bg-[#222] hidden md:block" />
             <div className="flex items-center gap-4">

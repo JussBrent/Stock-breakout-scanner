@@ -22,11 +22,12 @@ const AnalyticsPageLazy = React.lazy(() => import("@/pages/AnalyticsPage"))
 const StockMomentumPageLazy = React.lazy(() => import("@/pages/StockMomentumPage"))
 const PortfolioPageLazy = React.lazy(() => import("@/pages/PortfolioPage"))
 const AiTrainingPageLazy = React.lazy(() => import("@/pages/AiTrainingPage"))
+const ContactPageLazy = React.lazy(() => import("@/pages/ContactPage"))
 
 function AppContent() {
   const location = useLocation()
 
-  const isAuthPage = location.pathname === "/login" || location.pathname === "/signup"
+  const isAuthPage = location.pathname === "/login" || location.pathname === "/signup" || location.pathname === "/contact"
   const isDemoPage = location.pathname === "/demo"
   const isAppShellPage = [
     "/admin",
@@ -73,6 +74,7 @@ function AppContent() {
         <Route path="/portfolio" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><PortfolioPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/ai-training" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AiTrainingPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><SettingsPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/contact" element={<Suspense fallback={<div className="p-6">Loading…</div>}><ContactPageLazy /></Suspense>} />
       </Routes>
 
       {/* Footer only on the main marketing page */}
