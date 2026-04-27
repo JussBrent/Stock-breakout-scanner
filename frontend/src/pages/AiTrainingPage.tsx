@@ -150,7 +150,7 @@ export default function AiTrainingPage() {
     return (
       <div className="flex min-h-screen bg-black text-white">
         <AppSidebar />
-        <main className="flex-1 ml-[72px] flex items-center justify-center">
+        <main className="flex-1 ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out flex items-center justify-center">
           <div className="text-center space-y-3">
             <ShieldAlert className="h-12 w-12 text-red-400 mx-auto" />
             <h1 className="text-xl font-bold">Admin Access Required</h1>
@@ -167,7 +167,7 @@ export default function AiTrainingPage() {
   return (
     <div className="flex min-h-screen bg-black text-white">
       <AppSidebar />
-      <main className="flex-1 ml-[72px] p-6 overflow-y-auto max-w-5xl">
+      <main className="flex-1 ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out p-6 overflow-y-auto max-w-5xl">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>

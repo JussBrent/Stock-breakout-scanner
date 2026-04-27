@@ -1,6 +1,6 @@
-import React, { useState, createContext, useContext } from "react"
+import React, { useState, useEffect, createContext, useContext } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { LayoutDashboard, Brain, Target, TrendingUp, Settings, BarChart3, Activity, Menu, X, ArrowLeft, Wallet, BookOpen } from "lucide-react"
+import { LayoutDashboard, Brain, Target, TrendingUp, Settings, BarChart3, Activity, X, ArrowLeft, Wallet, BookOpen, ChevronLeft, PanelLeft } from "lucide-react"
 import { Link, useLocation } from "react-router-dom"
 
 import { cn } from "@/lib/utils"
@@ -22,25 +22,25 @@ const navSections: NavSection[] = [
   {
     title: "Trading",
     items: [
-      { icon: <LayoutDashboard className="h-5 w-5" />, label: "Dashboard", href: "/admin" },
-      { icon: <Wallet className="h-5 w-5" />, label: "Portfolio", href: "/portfolio" },
-      { icon: <Activity className="h-5 w-5" />, label: "Focus List", href: "/focus-list" },
+      { icon: <LayoutDashboard className="h-4 w-4" />, label: "Dashboard", href: "/admin" },
+      { icon: <Wallet className="h-4 w-4" />, label: "Portfolio", href: "/portfolio" },
+      { icon: <Activity className="h-4 w-4" />, label: "Focus List", href: "/focus-list" },
     ],
   },
   {
     title: "Research",
     items: [
-      { icon: <Target className="h-5 w-5" />, label: "Scanner", href: "/scanner" },
-      { icon: <Brain className="h-5 w-5" />, label: "AI Insights", href: "/ai-insights" },
-      { icon: <TrendingUp className="h-5 w-5" />, label: "Momentum", href: "/stock-momentum" },
+      { icon: <Target className="h-4 w-4" />, label: "Scanner", href: "/scanner" },
+      { icon: <Brain className="h-4 w-4" />, label: "AI Insights", href: "/ai-insights" },
+      { icon: <TrendingUp className="h-4 w-4" />, label: "Momentum", href: "/stock-momentum" },
     ],
   },
   {
     title: "Account",
     items: [
-      { icon: <BarChart3 className="h-5 w-5" />, label: "Analytics", href: "/analytics" },
-      { icon: <BookOpen className="h-5 w-5" />, label: "AI Training", href: "/ai-training", adminOnly: true },
-      { icon: <Settings className="h-5 w-5" />, label: "Settings", href: "/settings" },
+      { icon: <BarChart3 className="h-4 w-4" />, label: "Analytics", href: "/analytics" },
+      { icon: <BookOpen className="h-4 w-4" />, label: "AI Training", href: "/ai-training", adminOnly: true },
+      { icon: <Settings className="h-4 w-4" />, label: "Settings", href: "/settings" },
     ],
   },
 ]
@@ -49,19 +49,17 @@ interface SidebarContextProps {
   open: boolean
   setOpen: React.Dispatch<React.SetStateAction<boolean>>
   animate: boolean
-  hovered: boolean
-  setHovered: React.Dispatch<React.SetStateAction<boolean>>
 }
 
 const SidebarContext = createContext<SidebarContextProps | undefined>(undefined)
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext)
-  if (!context) {
-    throw new Error("useSidebar must be used within a SidebarProvider")
-  }
+  if (!context) throw new Error("useSidebar must be used within a SidebarProvider")
   return context
 }
+
+const SIDEBAR_STORAGE_KEY = "sb:open"
 
 export const SidebarProvider = ({
   children,
@@ -74,16 +72,26 @@ export const SidebarProvider = ({
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>
   animate?: boolean
 }) => {
-  const [openState, setOpenState] = useState(false)
-  const [hoveredState, setHoveredState] = useState(false)
+  const [openState, setOpenState] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false
+    return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1"
+  })
 
   const open = openProp !== undefined ? openProp : openState
   const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState
 
-  return <SidebarContext.Provider value={{ open, setOpen, animate, hovered: hoveredState, setHovered: setHoveredState }}>{children}</SidebarContext.Provider>
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, openState ? "1" : "0")
+  }, [openState])
+
+  return (
+    <SidebarContext.Provider value={{ open, setOpen, animate }}>
+      {children}
+    </SidebarContext.Provider>
+  )
 }
 
-// Provider wrapper used internally; renamed to avoid export clashes with AppSidebar
 export const SidebarShell = ({
   children,
   open,
@@ -94,100 +102,11 @@ export const SidebarShell = ({
   open?: boolean
   setOpen?: React.Dispatch<React.SetStateAction<boolean>>
   animate?: boolean
-}) => {
-  return (
-    <SidebarProvider open={open} setOpen={setOpen} animate={animate}>
-      {children}
-    </SidebarProvider>
-  )
-}
-
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
-  return (
-    <>
-      <DesktopSidebar {...props} />
-      <MobileSidebar {...(props as React.ComponentProps<"div">)} />
-    </>
-  )
-}
-
-export const DesktopSidebar = ({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate, setHovered } = useSidebar()
-  return (
-    <motion.div
-      className={cn(
-        "h-full hidden md:flex md:flex-col bg-black/95 backdrop-blur-xl border-r border-white/10 shrink-0 py-4 shadow-lg shadow-black/40",
-        className,
-      )}
-      animate={{
-        width: animate ? (open ? "256px" : "72px") : "256px",
-      }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      onMouseEnter={() => {
-        setHovered(true)
-        setTimeout(() => setOpen(true), 100)
-      }}
-      onMouseLeave={() => {
-        setOpen(false)
-        setHovered(false)
-      }}
-      {...props}
-    >
-      {children}
-    </motion.div>
-  )
-}
-
-export const MobileSidebar = ({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<"div">) => {
-  const { open, setOpen } = useSidebar()
-  return (
-    <>
-      <div
-        className={cn(
-          "h-10 px-4 py-4 flex flex-row md:hidden items-center justify-between bg-black text-white w-full",
-        )}
-        {...props}
-      >
-        <div className="flex justify-end z-20 w-full">
-          <Menu className="text-neutral-800 dark:text-neutral-200 cursor-pointer" onClick={() => setOpen(!open)} />
-        </div>
-        <AnimatePresence>
-          {open && (
-            <motion.div
-              initial={{ x: "-100%", opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "-100%", opacity: 0 }}
-              transition={{
-                duration: 0.3,
-                ease: "easeInOut",
-              }}
-              className={cn(
-                "fixed h-full w-full inset-0 bg-white dark:bg-neutral-900 p-10 z-[100] flex flex-col justify-between",
-                className,
-              )}
-            >
-              <div
-                className="absolute right-10 top-10 z-50 text-neutral-800 dark:text-neutral-200 cursor-pointer"
-                onClick={() => setOpen(!open)}
-              >
-                <X />
-              </div>
-              {children}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </>
-  )
-}
+}) => (
+  <SidebarProvider open={open} setOpen={setOpen} animate={animate}>
+    {children}
+  </SidebarProvider>
+)
 
 export const SidebarLink = ({
   link,
@@ -198,70 +117,62 @@ export const SidebarLink = ({
   link: Links
   className?: string
   isActive?: boolean
-  props?: Omit<React.ComponentProps<typeof Link>, 'to'>
+  props?: Omit<React.ComponentProps<typeof Link>, "to">
 }) => {
-  const { open, hovered } = useSidebar()
-  const showTooltip = hovered && !open
+  const { open } = useSidebar()
 
   return (
     <Link
       to={link.href}
       aria-label={link.label}
       className={cn(
-        "relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors w-full",
+        "relative flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors w-full group",
         isActive
-          ? "bg-white/10 text-white border-l-2 border-emerald-400"
-          : "text-white/70 hover:text-white hover:bg-white/5",
+          ? "bg-neutral-700/60 text-white"
+          : "text-neutral-400 hover:text-white hover:bg-neutral-800/60",
         className,
       )}
       {...props}
     >
-      <span className={cn("shrink-0", isActive ? "text-emerald-400" : "text-white/70")}>{link.icon}</span>
+      <span className={cn("shrink-0", isActive ? "text-white" : "text-neutral-500 group-hover:text-neutral-300")}>
+        {link.icon}
+      </span>
       <motion.span
         initial={false}
-        animate={{
-          opacity: open ? 1 : 0,
-          x: open ? 0 : -10,
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        animate={{ opacity: open ? 1 : 0, x: open ? 0 : -8 }}
+        transition={{ duration: 0.2, ease: "easeInOut" }}
         className="text-sm font-medium whitespace-nowrap overflow-hidden"
         style={{ display: open ? "inline-block" : "none" }}
       >
         {link.label}
       </motion.span>
-      
-      {/* Tooltip shows when sidebar is hovered but not yet expanded */}
-      <motion.span
-        initial={false}
-        animate={{
-          opacity: showTooltip ? 1 : 0,
-          x: showTooltip ? 0 : 4,
-        }}
-        transition={{ duration: 0.15 }}
-        className="pointer-events-none absolute left-full ml-2 px-2 py-1 rounded-md bg-white text-black text-xs font-medium shadow-lg whitespace-nowrap z-50"
-        style={{ display: showTooltip ? "block" : "none" }}
-      >
-        {link.label}
-      </motion.span>
+
+      {/* Hover tooltip when collapsed */}
+      {!open && (
+        <span
+          className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-2 px-2 py-1 rounded-md bg-neutral-800 border border-neutral-700 text-xs font-medium text-white whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-150 shadow-lg z-50"
+        >
+          {link.label}
+        </span>
+      )}
     </Link>
   )
 }
 
-// Nav list used by both desktop and mobile shells
 function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
   const { isAdmin } = useAuth()
   const { open } = useSidebar()
 
   return (
-    <div className="w-full px-2 space-y-1">
+    <div className="w-full px-2 space-y-0.5">
       {navSections.map((section, si) => {
         const visibleItems = section.items.filter((item) => !item.adminOnly || isAdmin)
         if (visibleItems.length === 0) return null
         return (
           <div key={section.title}>
-            {si > 0 && <div className="my-2 border-t border-white/6" />}
+            {si > 0 && <div className="my-2 border-t border-neutral-800" />}
             {open && (
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-widest text-white/25">
+              <p className="px-3 pb-1 pt-0.5 text-[10px] font-semibold uppercase tracking-widest text-neutral-600">
                 {section.title}
               </p>
             )}
@@ -282,31 +193,6 @@ function SidebarNav({ pathname, onNavigate }: { pathname: string; onNavigate?: (
   )
 }
 
-function BackLink() {
-  const { open } = useSidebar()
-  return (
-    <Link
-      to="/"
-      className="flex items-center justify-center w-full p-2.5 rounded-lg hover:bg-white/5 transition-colors text-white/80 hover:text-white group"
-      aria-label="Back to landing page"
-    >
-      <ArrowLeft className="h-5 w-5" />
-      <motion.span
-        initial={false}
-        animate={{
-          opacity: open ? 1 : 0,
-          x: open ? 0 : -10,
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="text-sm font-medium whitespace-nowrap overflow-hidden ml-2"
-        style={{ display: open ? "inline-block" : "none" }}
-      >
-        Back
-      </motion.span>
-    </Link>
-  )
-}
-
 function LiveStatus() {
   const { open } = useSidebar()
   const { user, loading } = useAuth()
@@ -320,26 +206,22 @@ function LiveStatus() {
 
   return (
     <div
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20"
-      aria-label="User is live"
+      className="flex items-center gap-3 px-3 py-2.5 rounded-md bg-neutral-800/50 border border-neutral-700/50"
       title={open ? undefined : `Live — ${displayName}`}
     >
-      <span className="relative flex h-2.5 w-2.5 shrink-0" aria-hidden="true">
-        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
-        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+      <span className="relative flex h-2 w-2 shrink-0" aria-hidden="true">
+        <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60 animate-ping" />
+        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
       </span>
       <motion.div
         initial={false}
-        animate={{
-          opacity: open ? 1 : 0,
-          x: open ? 0 : -10,
-        }}
-        transition={{ duration: 0.3, ease: "easeInOut" }}
+        animate={{ opacity: open ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
         className="flex flex-col min-w-0 overflow-hidden"
         style={{ display: open ? "flex" : "none" }}
       >
-        <span className="text-xs font-semibold text-emerald-400 leading-tight">Live</span>
-        <span className="text-[11px] text-white/60 truncate leading-tight">{displayName}</span>
+        <span className="text-xs font-medium text-white leading-tight">Live</span>
+        <span className="text-[11px] text-neutral-500 truncate leading-tight">{displayName}</span>
       </motion.div>
     </div>
   )
@@ -347,35 +229,109 @@ function LiveStatus() {
 
 export function AppSidebar() {
   const location = useLocation()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
     <SidebarShell animate>
-      {/* Desktop */}
-      <DesktopSidebar className="fixed left-0 top-0 bottom-0 z-50 overflow-y-auto overflow-hidden pt-4">
-        {/* Back Button */}
-        <div className="px-2 pb-4 border-b border-white/10">
-          <BackLink />
-        </div>
-        <div className="flex-1">
-          <SidebarNav pathname={location.pathname} />
-        </div>
-        <div className="mt-auto px-2 pt-3 border-t border-white/10">
-          <LiveStatus />
-        </div>
-      </DesktopSidebar>
+      <DesktopSidebarShell pathname={location.pathname} />
 
-      {/* Mobile trigger bar + sheet */}
-      <MobileSidebar className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-black border-b border-neutral-800 text-white flex items-center justify-end px-4">
-        <MobileNav pathname={location.pathname} />
-      </MobileSidebar>
+      {/* Mobile top bar */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-50 h-14 bg-neutral-900 border-b border-neutral-800 flex items-center px-4 gap-3">
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+          aria-label="Open menu"
+        >
+          <PanelLeft className="h-5 w-5" />
+        </button>
+        <span className="text-sm font-semibold text-white">StockBreakout</span>
+      </div>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="md:hidden fixed inset-0 z-90 bg-black/60"
+              onClick={() => setMobileOpen(false)}
+            />
+            <motion.div
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="md:hidden fixed top-0 left-0 bottom-0 z-100 w-64 bg-neutral-900 border-r border-neutral-800 flex flex-col py-4"
+            >
+              <div className="flex items-center justify-between px-4 pb-4 border-b border-neutral-800">
+                <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-white">
+                  <ArrowLeft className="h-4 w-4 text-neutral-400" />
+                  Back
+                </Link>
+                <button
+                  onClick={() => setMobileOpen(false)}
+                  className="p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto py-3">
+                <SidebarNav pathname={location.pathname} onNavigate={() => setMobileOpen(false)} />
+              </div>
+              <div className="px-2 pt-3 border-t border-neutral-800">
+                <LiveStatus />
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </SidebarShell>
   )
 }
 
-function MobileNav({ pathname }: { pathname: string }) {
-  const { setOpen } = useSidebar()
-  return <SidebarNav pathname={pathname} onNavigate={() => setOpen(false)} />
+function DesktopSidebarShell({ pathname }: { pathname: string }) {
+  const { open, setOpen } = useSidebar()
+
+  useEffect(() => {
+    document.documentElement.style.setProperty("--sidebar-w", open ? "240px" : "60px")
+  }, [open])
+
+  return (
+    <motion.aside
+      className="hidden md:flex flex-col fixed left-0 top-0 bottom-0 z-50 bg-neutral-900 border-r border-neutral-800 overflow-hidden"
+      animate={{ width: open ? "240px" : "60px" }}
+      transition={{ duration: 0.25, ease: "easeInOut" }}
+    >
+      {/* Header: toggle button */}
+      <div className={cn("flex items-center h-14 shrink-0 border-b border-neutral-800", open ? "px-3 justify-between" : "justify-center")}>
+        {open && (
+          <Link to="/" className="flex items-center gap-2 text-sm font-semibold text-white truncate">
+            <ArrowLeft className="h-4 w-4 text-neutral-400 shrink-0" />
+            <span>Back</span>
+          </Link>
+        )}
+        <button
+          onClick={() => setOpen(!open)}
+          className="p-1.5 rounded-md text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors shrink-0"
+          aria-label={open ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {open ? <ChevronLeft className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+        </button>
+      </div>
+
+      {/* Nav */}
+      <div className="flex-1 overflow-y-auto py-3">
+        <SidebarNav pathname={pathname} />
+      </div>
+
+      {/* Footer: live status */}
+      <div className="px-2 py-3 border-t border-neutral-800">
+        <LiveStatus />
+      </div>
+    </motion.aside>
+  )
 }
 
-// For existing imports expecting `Sidebar` as the navigational component
 export { AppSidebar as Sidebar }

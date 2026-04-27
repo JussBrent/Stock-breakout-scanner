@@ -126,8 +126,8 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-black">
       <Sidebar />
 
-      <div className="ml-[72px]">
-        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+      <div className="ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out">
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-linear-to-br from-emerald-500/20 to-teal-500/20 ring-1 ring-white/10">

@@ -1,17 +1,16 @@
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { StockScanner } from "@/components/dashboard/StockScanner"
-import { Sparkles, Target } from "lucide-react"
+import { Target } from "lucide-react"
 import { motion } from "framer-motion"
-import { Badge } from "@/components/ui/badge"
 
 export default function ScannerPage() {
   return (
     <div className="min-h-screen bg-black">
       <Sidebar />
 
-      <div className="ml-[72px]">
+      <div className="ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out">
         {/* Header */}
-        <header className="fixed top-0 left-[72px] right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between px-8">
             <motion.div
               initial={{ opacity: 0, x: -20 }}
@@ -29,16 +28,6 @@ export default function ScannerPage() {
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-4"
-            >
-              <Badge className="bg-linear-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
-                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                AI Powered
-              </Badge>
-            </motion.div>
           </div>
         </header>
 
