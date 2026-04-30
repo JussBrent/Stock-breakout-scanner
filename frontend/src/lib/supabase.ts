@@ -19,9 +19,12 @@ function createMockClient() {
   return {
     auth: {
       async getUser() {
-        return { data: { user: null }, error: new Error("Supabase not configured") }
+        return { data: { user: null }, error: null }
       },
-      onAuthStateChange(callback: any) {
+      async getSession() {
+        return { data: { session: null }, error: null }
+      },
+      onAuthStateChange(_callback: any) {
         return { data: { subscription: { unsubscribe() {} } } }
       },
     },
