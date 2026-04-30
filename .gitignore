@@ -16,3 +16,6 @@ frontend/tsconfig.tsbuildinfo
 backend/.venv/
 __pycache__/
 *.pyc
+# VAPID keys
+backend/vapid_private.pem
+backend/vapid_public.pem

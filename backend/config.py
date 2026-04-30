@@ -67,6 +67,20 @@ class Settings(BaseSettings):
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
     AI_ANALYSIS_MAX_STOCKS: int = 50  # Max stocks to analyze with AI per request
 
+    # Notifications — Email (Resend)
+    RESEND_API_KEY: Optional[str] = None
+    RESEND_FROM_ADDRESS: str = "Orbis <alerts@orbis.app>"
+
+    # Notifications — Web Push (VAPID)
+    VAPID_PRIVATE_KEY: Optional[str] = None
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_CLAIMS_EMAIL: str = "mailto:admin@orbis.app"
+
+    # Notifications — SMS (Twilio)
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_FROM_NUMBER: Optional[str] = None
+
     # Frontend
     FRONTEND_URL: str = "http://localhost:5173"
 

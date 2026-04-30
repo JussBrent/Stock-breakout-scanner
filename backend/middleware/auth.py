@@ -147,6 +147,27 @@ async def get_current_user_optional(
         return None
 
 
+async def get_user_plan(user_id: str) -> str:
+    """
+    Look up a user's subscription plan from the subscriptions table.
+    Returns the plan string (e.g. "free", "premium", "pro").
+    Defaults to "core" if no subscription row exists.
+    """
+    from services.supabase_client import supabase
+    try:
+        results = await (
+            supabase.table("subscriptions")
+            .select("plan")
+            .eq("user_id", user_id)
+            .execute()
+        )
+        if results:
+            return results[0].get("plan", "core")
+    except Exception as e:
+        logger.error("Failed to fetch plan for user %s: %s", user_id, e)
+    return "core"
+
+
 def require_role(required_role: str):
     """
     Decorator to require a specific role for an endpoint.

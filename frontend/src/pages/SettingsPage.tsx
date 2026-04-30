@@ -89,6 +89,9 @@ export default function SettingsPage() {
   })
 
   const [isSaved, setIsSaved] = useState(false)
+  const [pushPermission, setPushPermission] = useState<NotificationPermission>("default")
+  const [pushSubscribed, setPushSubscribed] = useState(false)
+  const [pushLoading, setPushLoading] = useState(false)
 
   // Update settings when user data loads
   useEffect(() => {
@@ -101,6 +104,20 @@ export default function SettingsPage() {
       }))
     }
   }, [user])
+
+  // Register service worker and check existing push subscription on mount
+  useEffect(() => {
+    if (!("Notification" in window) || !("serviceWorker" in navigator)) return
+
+    setPushPermission(Notification.permission)
+
+    navigator.serviceWorker.register("/sw.js").then(async (registration) => {
+      const existing = await registration.pushManager.getSubscription()
+      setPushSubscribed(!!existing)
+    }).catch((err) => {
+      console.error("Service worker registration failed:", err)
+    })
+  }, [])
 
   const handleSave = async () => {
     try {
@@ -131,6 +148,80 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await signOut()
     navigate('/login')
+  }
+
+  function urlBase64ToUint8Array(base64String: string): Uint8Array {
+    const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
+    const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
+    const rawData = atob(base64)
+    return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)))
+  }
+
+  const handleEnablePush = async () => {
+    setPushLoading(true)
+    try {
+      const permission = await Notification.requestPermission()
+      setPushPermission(permission)
+      if (permission !== "granted") return
+
+      const registration = await navigator.serviceWorker.ready
+      const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY as string
+      const subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(vapidKey),
+      })
+
+      const sub = subscription.toJSON()
+      const { data } = await supabase.auth.getSession()
+      const token = data?.session?.access_token
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
+
+      const res = await fetch(`${apiUrl}/api/push/subscribe`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.keys?.p256dh, auth: sub.keys?.auth },
+        }),
+      })
+
+      if (!res.ok) throw new Error("Subscribe request failed")
+      setPushSubscribed(true)
+    } catch (err) {
+      console.error("Failed to enable push notifications:", err)
+    } finally {
+      setPushLoading(false)
+    }
+  }
+
+  const handleDisablePush = async () => {
+    setPushLoading(true)
+    try {
+      const registration = await navigator.serviceWorker.ready
+      const subscription = await registration.pushManager.getSubscription()
+      if (subscription) await subscription.unsubscribe()
+
+      const { data } = await supabase.auth.getSession()
+      const token = data?.session?.access_token
+      const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8000"
+
+      await fetch(`${apiUrl}/api/push/unsubscribe`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+
+      setPushSubscribed(false)
+    } catch (err) {
+      console.error("Failed to disable push notifications:", err)
+    } finally {
+      setPushLoading(false)
+    }
   }
 
   const updateSettings = (path: string[], value: any) => {
@@ -309,6 +400,48 @@ export default function SettingsPage() {
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Notification Preferences</h2>
+
+                  {/* Browser push notifications — requires SW + VAPID */}
+                  {"Notification" in window && (
+                    <div className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10 mb-4">
+                      <div>
+                        <p className="text-sm font-medium text-white">Browser Push Notifications</p>
+                        <p className="text-xs text-white/60 mt-1">
+                          {pushPermission === "denied"
+                            ? "Blocked by your browser — enable in site settings to receive alerts"
+                            : pushSubscribed
+                            ? "Active — breakout alerts will appear in this browser"
+                            : "Get instant breakout alerts directly in your browser"}
+                        </p>
+                      </div>
+                      <div className="ml-4 shrink-0">
+                        {pushPermission === "denied" ? (
+                          <Badge className="bg-red-500/20 text-red-400 border border-red-500/50">
+                            Blocked
+                          </Badge>
+                        ) : pushSubscribed ? (
+                          <Button
+                            onClick={handleDisablePush}
+                            disabled={pushLoading}
+                            size="sm"
+                            variant="outline"
+                            className="border-white/20 text-white/70 hover:bg-white/5"
+                          >
+                            {pushLoading ? "Updating..." : "Unsubscribe"}
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={handleEnablePush}
+                            disabled={pushLoading}
+                            size="sm"
+                            className="bg-primary text-white hover:bg-primary/90"
+                          >
+                            {pushLoading ? "Enabling..." : "Enable"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     {[
