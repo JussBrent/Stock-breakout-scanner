@@ -244,7 +244,7 @@ export function AppSidebar() {
         >
           <PanelLeft className="h-5 w-5" />
         </button>
-        <span className="text-sm font-semibold text-white">StockBreakout</span>
+        <span className="text-sm font-semibold text-white">Orbis</span>
       </div>
 
       {/* Mobile drawer */}

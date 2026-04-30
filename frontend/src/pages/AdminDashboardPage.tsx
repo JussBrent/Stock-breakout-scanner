@@ -358,7 +358,7 @@ export default function AdminDashboardPage() {
                   <div className="p-2 rounded-lg bg-cyan-500/15 group-hover:bg-cyan-500/25 transition-colors">
                     <Target className="h-5 w-5 text-cyan-400" />
                   </div>
-                  <h3 className="font-semibold text-white">Stock Scanner</h3>
+                  <h3 className="font-semibold text-white">Scanner</h3>
                 </div>
                 <p className="text-sm text-white/50">Scan for breakout setups with EMA analysis and quality scores.</p>
               </Card>

@@ -49,7 +49,7 @@ function MiniNavbar() {
       <div className="w-6 h-6 border border-[#00ff88] flex items-center justify-center">
         <span className="text-[#00ff88] font-mono text-xs font-bold">SB</span>
       </div>
-      <span className="text-white font-mono text-sm tracking-wider">STOCKBREAKOUT</span>
+      <span className="text-white font-mono text-sm tracking-wider">ORBIS</span>
     </motion.header>
   )
 }
@@ -210,7 +210,7 @@ export default function LoginPage() {
                           <span className="text-[#00ff88]">{'>>'}</span> SIGN IN
                         </h1>
                         <p className="text-[#666] font-mono text-sm">
-                          Access your StockBreakout terminal
+                          Access your Orbis terminal
                         </p>
                       </div>
 
@@ -380,7 +380,7 @@ export default function LoginPage() {
           className="relative z-10 py-6 text-center"
         >
           <p className="text-[#444] font-mono text-xs">
-            &copy; {new Date().getFullYear()} STOCKBREAKOUT. ALL RIGHTS RESERVED.
+            &copy; {new Date().getFullYear()} ORBIS. ALL RIGHTS RESERVED.
           </p>
         </motion.footer>
       </div>

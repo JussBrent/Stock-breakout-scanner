@@ -21,7 +21,7 @@ export default function ScannerPage() {
                 <Target className="h-5 w-5 text-emerald-400" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">Advanced Stock Scanner</h1>
+                <h1 className="text-lg font-semibold text-white tracking-tight">Advanced Scanner</h1>
                 <p className="text-xs text-neutral-400 font-light">
                   Analyze stocks by name, chart screenshot, or content
                 </p>

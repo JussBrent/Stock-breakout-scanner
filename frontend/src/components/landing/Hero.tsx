@@ -215,7 +215,7 @@ export default function HeroSection() {
           variants={itemVariants}
           className="mb-10 max-w-2xl font-mono text-sm sm:text-base text-white/60 leading-relaxed"
         >
-          StockBreakout brings professional trading tools to everyday investors.
+          Orbis brings professional trading tools to everyday investors.
           Scan 2,000+ stocks in seconds with AI-powered pattern recognition.
         </motion.p>
 
@@ -271,7 +271,7 @@ export default function HeroSection() {
                   <div className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
                   <div className="h-3 w-3 rounded-full bg-[#27c93f]" />
                 </div>
-                <span className="font-mono text-xs text-white/40">stockbreakout_terminal</span>
+                <span className="font-mono text-xs text-white/40">orbis_terminal</span>
               </div>
               
               {/* Prompt Input */}

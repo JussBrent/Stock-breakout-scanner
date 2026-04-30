@@ -139,7 +139,7 @@ export default function ComparisonSection() {
             <span className="text-[#00ff88]">into seconds.</span>
           </h2>
           <p className="mx-auto max-w-2xl font-mono text-sm text-white/60">
-            Stop wasting time on manual chart analysis. StockBreakout Scanner automates your entire scanning workflow with AI-powered pattern recognition.
+            Stop wasting time on manual chart analysis. Orbis automates your entire scanning workflow with AI-powered pattern recognition.
           </p>
         </motion.div>
 

@@ -18,7 +18,7 @@ function MiniNavbar() {
       <div className="w-6 h-6 border border-[#00ff88] flex items-center justify-center">
         <span className="text-[#00ff88] font-mono text-xs font-bold">SB</span>
       </div>
-      <span className="text-white font-mono text-sm tracking-wider">STOCKBREAKOUT</span>
+      <span className="text-white font-mono text-sm tracking-wider">ORBIS</span>
     </motion.header>
   )
 }
@@ -183,7 +183,7 @@ export default function SignUpPage() {
                           <span className="text-[#00ff88]">{'>>'}</span> CREATE ACCOUNT
                         </h1>
                         <p className="text-[#666] font-mono text-sm">
-                          Initialize your StockBreakout terminal
+                          Initialize your Orbis terminal
                         </p>
                       </div>
 
@@ -411,7 +411,7 @@ export default function SignUpPage() {
                         ACCOUNT_CREATED
                       </h2>
                       <p className="text-[#666] font-mono text-sm mb-6">
-                        Welcome to StockBreakout, {formData.fullName.split(' ')[0]}!
+                        Welcome to Orbis, {formData.fullName.split(' ')[0]}!
                       </p>
                       
                       <div className="font-mono text-xs text-[#00ff88] mb-6">

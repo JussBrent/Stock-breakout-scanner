@@ -161,7 +161,7 @@ export function StockScanner() {
                 </div>
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white tracking-tight">AI Stock Scanner</h3>
+                <h3 className="text-2xl font-bold text-white tracking-tight">AI Scanner</h3>
                 <p className="text-sm text-white/50 mt-0.5">Multi-modal analysis powered by advanced AI</p>
               </div>
             </div>

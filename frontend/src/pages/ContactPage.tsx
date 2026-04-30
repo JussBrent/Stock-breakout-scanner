@@ -17,7 +17,7 @@ export default function ContactPage() {
     const body = encodeURIComponent(
       `Name: ${form.name}\nEmail: ${form.email}\n\n${form.message}`
     )
-    const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(form.subject || "Contact from StockBreakout")}&body=${body}`
+    const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(form.subject || "Contact from Orbis")}&body=${body}`
     window.location.href = mailto
 
     setTimeout(() => {
@@ -45,7 +45,7 @@ export default function ContactPage() {
               <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
             </svg>
           </div>
-          <span className="font-mono text-sm font-bold tracking-tight text-white uppercase">StockBreakout</span>
+          <span className="font-mono text-sm font-bold tracking-tight text-white uppercase">Orbis</span>
         </Link>
       </motion.header>
 

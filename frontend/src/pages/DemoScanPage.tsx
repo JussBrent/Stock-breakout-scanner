@@ -223,7 +223,7 @@ export default function DemoScanPage() {
                 <Settings className="w-4 h-4 text-[#666]" />
               </div>
             </div>
-            <span className="font-mono text-xs text-[#666]">STOCKBREAKOUT</span>
+            <span className="font-mono text-xs text-[#666]">ORBIS</span>
           </div>
           
           {/* Price Info */}

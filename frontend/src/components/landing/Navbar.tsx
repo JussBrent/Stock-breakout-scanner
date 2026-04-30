@@ -79,7 +79,7 @@ export default function Navbar() {
             </svg>
           </motion.div>
           <span className="font-mono text-sm font-bold tracking-tight text-white uppercase">
-            StockBreakout
+            Orbis
           </span>
         </Link>
 

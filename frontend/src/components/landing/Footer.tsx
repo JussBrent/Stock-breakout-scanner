@@ -14,7 +14,7 @@ export default function Footer() {
           </div>
 
           <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight max-w-4xl">
-            StockBreakout aims to bridge the gap between retail trading and{" "}
+            Orbis aims to bridge the gap between retail trading and{" "}
             <span className="text-[#00ff88]">institutional-grade quantitative analysis.</span>
           </h2>
 
@@ -79,7 +79,7 @@ export default function Footer() {
               </svg>
             </div>
             <span className="font-mono text-sm font-bold text-white uppercase">
-              StockBreakout
+              Orbis
             </span>
           </div>
 
@@ -101,7 +101,7 @@ export default function Footer() {
 
           {/* Copyright */}
           <p className="font-mono text-xs text-white/30">
-            © 2026 StockBreakout. All rights reserved.
+            © 2026 Orbis. All rights reserved.
           </p>
         </div>
       </div>

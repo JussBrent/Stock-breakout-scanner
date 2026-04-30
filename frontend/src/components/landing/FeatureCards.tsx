@@ -127,7 +127,7 @@ export default function FeaturesSection() {
           </h2>
 
           <p className="mt-4 max-w-2xl font-mono text-sm text-white/60">
-            StockBreakout consolidates research, charting, and strategy building into one AI-driven platform.
+            Orbis consolidates research, charting, and strategy building into one AI-driven platform.
           </p>
         </motion.div>
 
@@ -253,7 +253,7 @@ export default function FeaturesSection() {
                 </h3>
 
                 <p className="font-mono text-sm text-white/60 mb-6">
-                  Discover, copy, and modify profitable strategies from the StockBreakout community.
+                  Discover, copy, and modify profitable strategies from the Orbis community.
                 </p>
 
                 <motion.div
