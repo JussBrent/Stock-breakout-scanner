@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { BreakoutScan } from '@/hooks/useScanResults'
-import { OptionsTradePanel } from './OptionsTradePanel'
 
 interface ScanResultsTableProps {
   results: BreakoutScan[]
@@ -10,7 +9,6 @@ interface ScanResultsTableProps {
 export function ScanResultsTable({ results, onRowClick }: ScanResultsTableProps) {
   const [sortColumn, setSortColumn] = useState<keyof BreakoutScan>('breakout_score')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
-  const [optionsTicker, setOptionsTicker] = useState<string | null>(null)
 
   const handleSort = (column: keyof BreakoutScan) => {
     if (sortColumn === column) {
@@ -142,9 +140,6 @@ export function ScanResultsTable({ results, onRowClick }: ScanResultsTableProps)
             >
               Score {sortColumn === 'breakout_score' && (sortDirection === 'asc' ? '↑' : '↓')}
             </th>
-            <th className="px-4 py-3 text-center text-xs font-medium text-zinc-400 uppercase">
-              Actions
-            </th>
           </tr>
         </thead>
         <tbody className="divide-y divide-zinc-800/50">
@@ -227,14 +222,6 @@ export function ScanResultsTable({ results, onRowClick }: ScanResultsTableProps)
                     {scan.breakout_score}
                   </span>
                 </td>
-                <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-                  <button
-                    onClick={() => setOptionsTicker(scan.symbol)}
-                    className="px-2 py-1 text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded hover:bg-emerald-500/25 transition-colors whitespace-nowrap"
-                  >
-                    Options
-                  </button>
-                </td>
               </tr>
             )
           })}
@@ -245,9 +232,6 @@ export function ScanResultsTable({ results, onRowClick }: ScanResultsTableProps)
         <div className="text-center py-12 text-zinc-500">
           No breakout setups found matching your filters
         </div>
-      )}
-      {optionsTicker && (
-        <OptionsTradePanel ticker={optionsTicker} isOpen={!!optionsTicker} onClose={() => setOptionsTicker(null)} />
       )}
     </div>
   )

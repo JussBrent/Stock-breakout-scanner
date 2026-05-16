@@ -25,6 +25,9 @@ import {
 import { cn } from "@/lib/utils"
 import { TradeModal } from "./TradeModal"
 import { TradingViewWidget } from "./TradingViewWidget"
+import { EmbeddedOptionsChain } from "./EmbeddedOptionsChain"
+import { OptionsTradePanel } from "./OptionsTradePanel"
+import type { OptionsContract } from "./OptionsChain"
 
 type ScanMode = "symbol" | "image" | "content"
 
@@ -39,6 +42,8 @@ export function StockScanner() {
   const [error, setError] = useState<string | null>(null)
   const [tradeModalOpen, setTradeModalOpen] = useState(false)
   const [focusAdded, setFocusAdded] = useState(false)
+  const [optionsPanelContract, setOptionsPanelContract] = useState<OptionsContract | null>(null)
+  const [optionsPanelOpen, setOptionsPanelOpen] = useState(false)
 
   const resetResults = () => {
     setSymbolResult(null)
@@ -333,6 +338,55 @@ export function StockScanner() {
               />
             </div>
 
+            {/* Options recommendation banner */}
+            {(() => {
+              const dir = symbolResult.direction
+              if (!dir || dir === null) {
+                return (
+                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 flex items-center gap-3">
+                    <span className="text-lg">⚠️</span>
+                    <p className="text-sm text-white/50">No strong options signal detected</p>
+                  </div>
+                )
+              }
+              const isLong = dir === "Long"
+              const reason = symbolResult.key_factors?.[0] || symbolResult.trend || (isLong ? "Bullish signal" : "Bearish signal")
+              return (
+                <div className={cn(
+                  "rounded-xl border px-4 py-3 flex items-center justify-between gap-4 flex-wrap",
+                  isLong
+                    ? "bg-emerald-500/10 border-emerald-500/20"
+                    : "bg-red-500/10 border-red-500/20"
+                )}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl shrink-0">{isLong ? "📈" : "📉"}</span>
+                    <div className="min-w-0">
+                      <p className={cn("font-semibold text-sm", isLong ? "text-emerald-400" : "text-red-400")}>
+                        {isLong ? "CALLS recommended" : "PUTS recommended"}
+                      </p>
+                      <p className="text-xs text-white/50 truncate">{reason}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-5 text-xs shrink-0">
+                    <div className="text-center">
+                      <p className="text-white/40 mb-0.5">Strike</p>
+                      <p className="text-white font-semibold">ATM / Slight OTM</p>
+                    </div>
+                    {symbolResult.suggested_expiry && (
+                      <div className="text-center">
+                        <p className="text-white/40 mb-0.5">Expiry</p>
+                        <p className="text-white font-semibold">{symbolResult.suggested_expiry}</p>
+                      </div>
+                    )}
+                    <div className="text-center">
+                      <p className="text-white/40 mb-0.5">Confidence</p>
+                      <p className={cn("font-semibold", scoreColor(symbolResult.confidence))}>{symbolResult.confidence}%</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Header */}
             <div className="flex items-start justify-between">
               <div>
@@ -566,6 +620,24 @@ export function StockScanner() {
               </div>
             )}
 
+            {/* Embedded options chain */}
+            {symbolResult.direction && (
+              <div className="bg-white/3 border border-white/10 rounded-xl p-4">
+                <EmbeddedOptionsChain
+                  ticker={symbolResult.symbol}
+                  currentPrice={symbolResult.price}
+                  entryPrice={symbolResult.suggested_entry}
+                  stopPrice={symbolResult.suggested_stop}
+                  suggestedExpiry={symbolResult.suggested_expiry}
+                  direction={symbolResult.direction as "Long" | "Short" | null}
+                  onTradeClick={(contract) => {
+                    setOptionsPanelContract(contract)
+                    setOptionsPanelOpen(true)
+                  }}
+                />
+              </div>
+            )}
+
             {/* Footer */}
             <div className="flex items-center justify-between pt-4 border-t border-white/10">
               <p className="text-xs text-white/30">Not financial advice. Always use a stop-loss and size positions appropriately.</p>
@@ -584,6 +656,14 @@ export function StockScanner() {
           symbol={symbolResult.symbol}
           action={symbolResult.direction === "Short" ? "SELL" : "BUY"}
           price={symbolResult.suggested_entry ?? undefined}
+        />
+      )}
+      {symbolResult && optionsPanelOpen && (
+        <OptionsTradePanel
+          ticker={symbolResult.symbol}
+          isOpen={optionsPanelOpen}
+          onClose={() => { setOptionsPanelOpen(false); setOptionsPanelContract(null) }}
+          initialContract={optionsPanelContract ?? undefined}
         />
       )}
     </div>

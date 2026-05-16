@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { BreakoutScan } from '@/hooks/useScanResults'
 import { ChevronDown, ChevronUp, TrendingUp } from 'lucide-react'
 import { StockChart } from './StockChart'
-import { OptionsTradePanel } from './OptionsTradePanel'
 
 interface BreakoutCardProps {
   scan: BreakoutScan
@@ -10,8 +9,7 @@ interface BreakoutCardProps {
 
 export function BreakoutCard({ scan }: BreakoutCardProps) {
   const [expanded, setExpanded] = useState(false)
-  const [optionsOpen, setOptionsOpen] = useState(false)
-  
+
   const emaAligned = scan.price > scan.ema21 && scan.ema21 > scan.ema50 && scan.ema50 > scan.ema200
   const distancePercent = scan.distance_pct
   const isActionable = distancePercent <= 3 // Within 3% of trigger
@@ -56,12 +54,6 @@ export function BreakoutCard({ scan }: BreakoutCardProps) {
               {quality.label}
             </div>
             <p className="text-2xl font-bold text-cyan-400">${scan.price.toFixed(2)}</p>
-            <button
-              onClick={e => { e.stopPropagation(); setOptionsOpen(true) }}
-              className="px-2.5 py-1 text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full hover:bg-emerald-500/25 transition-colors"
-            >
-              Options
-            </button>
           </div>
         </div>
 
@@ -177,7 +169,6 @@ export function BreakoutCard({ scan }: BreakoutCardProps) {
           </div>
         </div>
       )}
-      <OptionsTradePanel ticker={scan.symbol} isOpen={optionsOpen} onClose={() => setOptionsOpen(false)} />
     </div>
   )
 }
