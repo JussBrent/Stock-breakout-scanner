@@ -2,16 +2,19 @@
 Watchlist API endpoints - user-specific stock tracking.
 Requires authentication.
 """
-from fastapi import APIRouter, HTTPException, Security, status
+from fastapi import APIRouter, HTTPException, Security, status, Query, Request
 from typing import List
 from datetime import datetime, timezone
 import logging
+import httpx
+import os
 
 from models.user import Watchlist, WatchlistCreate, WatchlistUpdate
 from schemas.api_models import validate_symbol_path
 from services.supabase_client import supabase
 from providers.polygon import polygon_get, POLYGON_BASE
 from middleware.auth import get_current_user, security
+from middleware.rate_limit import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +47,45 @@ async def _get_or_create_default_watchlist(user_id: str) -> str:
     if result and len(result) > 0:
         return result[0]["id"]
     raise Exception("Failed to create default watchlist")
+
+
+@router.get("/prices")
+@limiter.limit("20/minute")
+async def get_watchlist_prices(
+    request: Request,
+    symbols: str = Query(..., description="Comma-separated list of symbols"),
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """Fetch current price + day change % from Polygon snapshot for given tickers."""
+    api_key = os.getenv("POLYGON_API_KEY", "")
+    sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()][:50]
+    if not sym_list:
+        return {"prices": {}}
+
+    url = "https://api.polygon.io/v2/snapshot/locale/us/markets/stocks/tickers"
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params={"tickers": ",".join(sym_list), "apiKey": api_key})
+        if resp.status_code != 200:
+            return {"prices": {}}
+        data = resp.json()
+        prices = {}
+        for item in data.get("tickers", []):
+            sym = item.get("ticker", "")
+            day = item.get("day", {})
+            prev = item.get("prevDay", {})
+            last_price = item.get("lastTrade", {}).get("p") or day.get("c") or 0
+            prev_close = prev.get("c") or 0
+            change_pct = ((last_price - prev_close) / prev_close * 100) if prev_close else 0
+            prices[sym] = {
+                "price": round(float(last_price), 2),
+                "change_pct": round(float(change_pct), 2),
+                "volume": day.get("v", 0),
+            }
+        return {"prices": prices}
+    except Exception as e:
+        logger.error("Price fetch failed: %s", e)
+        return {"prices": {}}
 
 
 @router.get("/", response_model=List[Watchlist])
@@ -155,7 +197,10 @@ async def update_watchlist_item(
             update_data["notes"] = update.notes
         if update.alert_enabled is not None:
             update_data["alert_enabled"] = update.alert_enabled
-        if update.alert_price is not None:
+        # Allow explicit null to clear alert_price; only skip if key was not sent at all.
+        # Since WatchlistUpdate has alert_price: Optional[float] = None, we check
+        # if it was explicitly provided by checking the model_fields_set (Pydantic v2).
+        if "alert_price" in update.model_fields_set:
             update_data["alert_price"] = update.alert_price
 
         if not update_data:
@@ -192,6 +237,32 @@ async def update_watchlist_item(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update watchlist item"
         )
+
+
+@router.get("/{symbol}/last-scan")
+@limiter.limit("20/minute")
+async def get_last_scan(
+    symbol: str,
+    request: Request,
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """Return the most recent breakout scan for this ticker from Supabase."""
+    symbol = validate_symbol_path(symbol)
+    try:
+        results = await (
+            supabase.table("breakout_scans")
+            .select("*")
+            .eq("symbol", symbol.upper())
+            .order("scanned_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        if results and len(results) > 0:
+            return {"scan": results[0]}
+        return {"scan": None}
+    except Exception as e:
+        logger.error("Last scan fetch failed for %s: %s", symbol, e)
+        return {"scan": None}
 
 
 @router.delete("/{symbol}", status_code=status.HTTP_204_NO_CONTENT)

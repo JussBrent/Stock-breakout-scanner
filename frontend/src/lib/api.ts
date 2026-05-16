@@ -821,3 +821,68 @@ export async function getPaperTrades(limit = 50): Promise<{ trades: Record<strin
   }
   return response.json()
 }
+
+// ============================================================
+// Focus List: Prices + Last Scan
+// ============================================================
+
+export interface TickerPrice {
+  price: number
+  change_pct: number
+  volume: number
+}
+
+export async function getWatchlistPrices(
+  symbols: string[]
+): Promise<Record<string, TickerPrice>> {
+  if (!symbols.length) return {}
+  const headers = await getAuthHeaders()
+  const response = await fetch(
+    `${API_URL}/api/watchlist/prices?symbols=${symbols.join(",")}`,
+    { headers }
+  )
+  if (!response.ok) return {}
+  const data = await response.json()
+  return data.prices ?? {}
+}
+
+export interface LastScan {
+  id: string
+  symbol: string
+  price: number
+  trigger_price: number
+  distance_pct: number
+  adr_pct_14: number
+  ema21: number
+  ema50: number
+  ema200: number
+  avg_vol_50: number
+  market_cap?: number
+  setup_type: string
+  breakout_score: number
+  notes?: string[]
+  scanned_at: string
+}
+
+export async function getLastScan(symbol: string): Promise<LastScan | null> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(
+    `${API_URL}/api/watchlist/${symbol.toUpperCase()}/last-scan`,
+    { headers }
+  )
+  if (!response.ok) return null
+  const data = await response.json()
+  return data.scan ?? null
+}
+
+export async function updateWatchlistItem(
+  symbol: string,
+  updates: { notes?: string; alert_enabled?: boolean; alert_price?: number | null }
+): Promise<void> {
+  const headers = await getAuthHeaders()
+  await fetch(`${API_URL}/api/watchlist/${symbol.toUpperCase()}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(updates),
+  })
+}
