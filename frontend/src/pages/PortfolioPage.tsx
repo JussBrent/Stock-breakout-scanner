@@ -8,7 +8,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar"
 import { TradeModal } from "@/components/dashboard/TradeModal"
 import { OptionsChain } from "@/components/dashboard/OptionsChain"
 import { supabase } from "@/lib/supabase"
-import { snaptradeGetStatus, snaptradeRegister, snaptradeGetConnectUrl, snaptradeGetHoldings, snaptradeGetActivities, snaptradeGetBalances, snaptradeUnlinkAccount, type SnapTradeAccount, type SnapTradeActivity } from "@/lib/api"
+import { snaptradeGetStatus, snaptradeRegister, snaptradeGetConnectUrl, snaptradeGetHoldings, snaptradeGetActivities, snaptradeGetBalances, snaptradeUnlinkAccount, snaptradeListAuthorizations, type SnapTradeAccount, type SnapTradeActivity, type SnapTradeAuthorization } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const API_URL = import.meta.env.VITE_API_URL ?? ""
@@ -47,13 +47,17 @@ export default function PortfolioPage() {
   const [paperQty, setPaperQty] = useState(1)
   const [optionsSymbol, setOptionsSymbol] = useState("AAPL")
   const [optionsPaper, setOptionsPaper] = useState(true)
+  const [authorizations, setAuthorizations] = useState<SnapTradeAuthorization[]>([])
 
   const checkStatus = useCallback(async () => {
     try {
       const status = await snaptradeGetStatus()
-      if (!status.registered) setConnectionState("unregistered")
-      else if (status.accounts_linked === 0) setConnectionState("no_accounts")
-      else { setConnectionState("connected"); setAccounts(status.accounts) }
+      if (!status.registered) { setConnectionState("unregistered"); return }
+      if (status.accounts_linked === 0) { setConnectionState("no_accounts"); return }
+      setConnectionState("connected")
+      setAccounts(status.accounts)
+      // Fetch authorizations so we always have the correct IDs for unlinking
+      snaptradeListAuthorizations().then(setAuthorizations).catch(() => {})
     } catch { setConnectionState("unregistered") }
   }, [])
 
@@ -220,31 +224,39 @@ export default function PortfolioPage() {
                       <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />Refresh
                     </Button>
                   </div>
-                  {/* Connected Accounts — with Unlink */}
+                  {/* Connected Brokerages — authorizations list is the source of truth for unlink IDs */}
                   <Card className="bg-white/2 border-white/10 p-4">
                     <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Connected Brokerages</p>
                     <div className="space-y-2">
-                      {accounts.map(acct => (
-                        <div key={acct.id} className="flex items-center justify-between px-3 py-2.5 bg-white/3 border border-white/8 rounded-lg">
-                          <div>
-                            <p className="text-sm font-semibold text-white">{acct.institution_name || acct.name}</p>
-                            <p className="text-xs text-white/40">{acct.name}{acct.number ? ` · ${acct.number}` : ""}</p>
+                      {(authorizations.length > 0 ? authorizations : accounts).map((item, i) => {
+                        const isAuth = authorizations.length > 0
+                        const authId = isAuth ? (item as SnapTradeAuthorization).id : (item as SnapTradeAccount).brokerage_authorization
+                        const label = isAuth
+                          ? ((item as SnapTradeAuthorization).brokerage?.name ?? "Brokerage")
+                          : ((item as SnapTradeAccount).institution_name || (item as SnapTradeAccount).name)
+                        const sub = isAuth ? "" : (item as SnapTradeAccount).number
+                        return (
+                          <div key={isAuth ? (item as SnapTradeAuthorization).id : (item as SnapTradeAccount).id} className="flex items-center justify-between px-3 py-2.5 bg-white/3 border border-white/8 rounded-lg">
+                            <div>
+                              <p className="text-sm font-semibold text-white">{label}</p>
+                              {sub && <p className="text-xs text-white/40">{sub}</p>}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (!authId) { setError("Authorization ID not found — try refreshing the page."); return }
+                                if (!confirm(`Unlink ${label}? This will remove the brokerage connection.`)) return
+                                try { await snaptradeUnlinkAccount(authId); await checkStatus() }
+                                catch (e) { setError(e instanceof Error ? e.message : "Failed to unlink") }
+                              }}
+                              className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-7 px-3 text-xs"
+                            >
+                              Unlink
+                            </Button>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={async () => {
-                              const authId = acct.brokerage_authorization_id || acct.id
-                              if (!confirm(`Unlink ${acct.institution_name || acct.name}? This will remove the connection.`)) return
-                              try { await snaptradeUnlinkAccount(authId); await checkStatus() }
-                              catch (e) { setError(e instanceof Error ? e.message : "Failed to unlink") }
-                            }}
-                            className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-7 px-3 text-xs"
-                          >
-                            Unlink
-                          </Button>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </Card>
 

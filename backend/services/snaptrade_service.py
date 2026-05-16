@@ -92,6 +92,18 @@ class SnapTradeService:
             logger.error(f"SnapTrade list accounts failed: {e}")
             raise
 
+    async def list_user_brokerage_authorizations(self, user_id: str, user_secret: str):
+        """List active brokerage authorizations (connections) for a user."""
+        try:
+            response = self.client.connections.list_brokerage_authorizations(
+                user_id=user_id,
+                user_secret=user_secret,
+            )
+            return response.body
+        except Exception as e:
+            logger.error(f"SnapTrade list authorizations failed: {e}")
+            raise
+
     async def remove_brokerage_authorization(self, user_id: str, user_secret: str, authorization_id: str):
         """Remove a brokerage authorization (unlinks the brokerage account)."""
         try:

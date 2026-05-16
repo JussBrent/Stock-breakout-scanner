@@ -303,7 +303,7 @@ export async function checkInWatchlist(
 
 export interface SnapTradeAccount {
   id: string
-  brokerage_authorization_id?: string
+  brokerage_authorization?: string   // authorization UUID — use this for unlink, not id
   name: string
   number: string
   institution_name?: string
@@ -363,12 +363,30 @@ export async function snaptradeGetConnectUrl(redirectUri?: string): Promise<{ re
   return response.json()
 }
 
+export interface SnapTradeAuthorization {
+  id: string
+  brokerage?: { name?: string; slug?: string }
+  type?: string
+  created_date?: string
+}
+
 /**
- * Unlink a brokerage by removing its authorization
+ * List the user's active brokerage authorizations (each has an id for unlinking)
+ */
+export async function snaptradeListAuthorizations(): Promise<SnapTradeAuthorization[]> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/authorizations`, { headers })
+  if (!response.ok) return []
+  const data = await response.json()
+  return data.authorizations ?? []
+}
+
+/**
+ * Unlink a brokerage by removing its authorization ID (NOT the account id)
  */
 export async function snaptradeUnlinkAccount(authorizationId: string): Promise<void> {
   const headers = await getAuthHeaders()
-  const response = await fetch(`${API_URL}/api/snaptrade/accounts/${encodeURIComponent(authorizationId)}`, {
+  const response = await fetch(`${API_URL}/api/snaptrade/authorizations/${encodeURIComponent(authorizationId)}`, {
     method: "DELETE",
     headers,
   })
