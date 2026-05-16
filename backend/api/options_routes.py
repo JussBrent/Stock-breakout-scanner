@@ -10,6 +10,7 @@ from typing import Literal, Optional
 import asyncio
 import httpx
 import logging
+import random
 import threading
 import time
 from datetime import date, datetime, timedelta, timezone
@@ -24,16 +25,29 @@ router = APIRouter()
 
 POLYGON_BASE = "https://api.polygon.io"
 
-# ── Yahoo Finance fallback cache + persistent session ─────────────────────────
+# ── Yahoo Finance fallback cache + persistent session + concurrency gate ───────
 # Cache avoids re-hitting Yahoo Finance on every request.
 # Persistent session reuses TCP connections (keep-alive) so Yahoo doesn't see
 # a flood of new-connection requests from the Railway IP.
+# Semaphore prevents concurrent requests from saturating Yahoo's rate limit
+# (multiple tickers loading at once all fall back to yfinance simultaneously).
 _YF_CACHE: dict = {}
-_YF_CACHE_TTL = 900          # 15 minutes
+_YF_CACHE_TTL = 1800         # 30 minutes — options data is slow-moving
 _YF_CACHE_LOCK = threading.Lock()
 
 _YF_SESSION = None           # module-level, shared across all requests
 _YF_SESSION_LOCK = threading.Lock()
+
+# Only 2 yfinance calls may run concurrently; extras queue until a slot is free.
+# Created lazily on first awaitable use so it binds to the running event loop.
+_YF_SEMAPHORE: asyncio.Semaphore | None = None
+
+
+def _get_yf_semaphore() -> asyncio.Semaphore:
+    global _YF_SEMAPHORE
+    if _YF_SEMAPHORE is None:
+        _YF_SEMAPHORE = asyncio.Semaphore(2)
+    return _YF_SEMAPHORE
 
 def _cache_get(key: str):
     with _YF_CACHE_LOCK:
@@ -352,16 +366,22 @@ async def _fetch_options_chain_yfinance(
         return rows[:limit], all_expirations
 
     loop = asyncio.get_event_loop()
-    try:
-        result = await loop.run_in_executor(None, _sync_fetch)
-        _cache_set(cache_key, result)
-        return result
-    except Exception as exc:
-        logger.error("yfinance fallback failed for %s: %s", symbol, exc, exc_info=True)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Options data unavailable: {exc}",
-        )
+    sem = _get_yf_semaphore()
+    async with sem:
+        # Jitter spreads concurrent callers across time so they don't burst Yahoo
+        # Finance simultaneously even after acquiring the semaphore in sequence.
+        jitter = random.uniform(0.3, 1.5)
+        await asyncio.sleep(jitter)
+        try:
+            result = await loop.run_in_executor(None, _sync_fetch)
+            _cache_set(cache_key, result)
+            return result
+        except Exception as exc:
+            logger.error("yfinance fallback failed for %s: %s", symbol, exc, exc_info=True)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Options data unavailable: {exc}",
+            )
 
 
 async def _fetch_expiries_yfinance(symbol: str) -> list[str]:
@@ -401,13 +421,17 @@ async def _fetch_expiries_yfinance(symbol: str) -> list[str]:
         return []
 
     loop = asyncio.get_event_loop()
-    try:
-        result = await loop.run_in_executor(None, _sync)
-        _cache_set(cache_key, result)
-        return result
-    except Exception as exc:
-        logger.warning("yfinance expiries executor failed for %s: %s", symbol, exc)
-        return []
+    sem = _get_yf_semaphore()
+    async with sem:
+        jitter = random.uniform(0.3, 1.5)
+        await asyncio.sleep(jitter)
+        try:
+            result = await loop.run_in_executor(None, _sync)
+            _cache_set(cache_key, result)
+            return result
+        except Exception as exc:
+            logger.warning("yfinance expiries executor failed for %s: %s", symbol, exc)
+            return []
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
