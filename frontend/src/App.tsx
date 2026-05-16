@@ -30,6 +30,7 @@ const PricingPageLazy = React.lazy(() => import("@/pages/PricingPage"))
 const TermsPageLazy = React.lazy(() => import("@/pages/TermsPage"))
 const PrivacyPageLazy = React.lazy(() => import("@/pages/PrivacyPage"))
 const VerifyEmailPageLazy = React.lazy(() => import("@/pages/VerifyEmailPage"))
+const SnapTradeCallbackPageLazy = React.lazy(() => import("@/pages/SnapTradeCallbackPage"))
 
 function ScrollToTop() {
   const { pathname } = useLocation()
@@ -93,6 +94,7 @@ function AppContent() {
         <Route path="/terms" element={<Suspense fallback={<div className="p-6">Loading…</div>}><TermsPageLazy /></Suspense>} />
         <Route path="/privacy" element={<Suspense fallback={<div className="p-6">Loading…</div>}><PrivacyPageLazy /></Suspense>} />
         <Route path="/verify-email" element={<Suspense fallback={<div className="p-6">Loading…</div>}><VerifyEmailPageLazy /></Suspense>} />
+        <Route path="/snaptrade-callback" element={<Suspense fallback={<div className="p-6 bg-black min-h-screen" />}><SnapTradeCallbackPageLazy /></Suspense>} />
       </Routes>
 
       {/* Sean AI popup on all app shell pages except /ai-insights (full page there) */}

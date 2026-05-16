@@ -178,8 +178,30 @@ export default function PortfolioPage() {
                       <Link2 className="h-12 w-12 text-blue-400" />
                       <h2 className="text-xl font-semibold text-white">Link a Brokerage Account</h2>
                       <Button onClick={async () => {
-                        const { redirect_url } = await snaptradeGetConnectUrl()
-                        window.open(redirect_url, "_blank", "width=800,height=700")
+                        const callbackUrl = `${window.location.origin}/snaptrade-callback`
+                        const { redirect_url } = await snaptradeGetConnectUrl(callbackUrl)
+                        const popup = window.open(redirect_url, "snaptrade-connect", "width=800,height=700,left=200,top=100")
+
+                        // Primary: listen for postMessage from our /snaptrade-callback page
+                        const onMessage = (e: MessageEvent) => {
+                          if (e.origin !== window.location.origin) return
+                          if (e.data?.type === "SNAPTRADE_CONNECTED") {
+                            cleanup()
+                            checkStatus()
+                          }
+                        }
+                        window.addEventListener("message", onMessage)
+
+                        // Fallback: detect popup close (user closed manually or SnapTrade
+                        // redirected somewhere we don't control)
+                        const pollInterval = setInterval(() => {
+                          if (popup?.closed) { cleanup(); checkStatus() }
+                        }, 800)
+
+                        function cleanup() {
+                          window.removeEventListener("message", onMessage)
+                          clearInterval(pollInterval)
+                        }
                       }} className="bg-blue-600 hover:bg-blue-700 text-white">
                         <ExternalLink className="h-4 w-4 mr-2" />Connect Brokerage
                       </Button>

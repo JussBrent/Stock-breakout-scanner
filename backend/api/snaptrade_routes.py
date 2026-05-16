@@ -2,7 +2,7 @@
 SnapTrade API routes for brokerage integration.
 Handles account linking, portfolio, trading, and activity history.
 """
-from fastapi import APIRouter, Request, Security, HTTPException
+from fastapi import APIRouter, Request, Security, HTTPException, Query
 from pydantic import BaseModel, field_validator
 from typing import Optional, Literal
 from middleware.auth import get_current_user
@@ -123,6 +123,7 @@ async def register_snaptrade_user(
 @limiter.limit("10/minute")
 async def get_connect_url(
     request: Request,
+    redirect_uri: Optional[str] = Query(None, description="URL to redirect the popup to after OAuth completes"),
     user: dict = Security(get_current_user, scopes=[]),
 ):
     """Get SnapTrade Connect redirect URL for brokerage linking."""
@@ -130,7 +131,7 @@ async def get_connect_url(
     user_id = user["user_id"]
     user_secret = await get_user_secret(user_id)
 
-    result = await service.get_login_redirect_url(user_id, user_secret)
+    result = await service.get_login_redirect_url(user_id, user_secret, custom_redirect=redirect_uri)
     redirect_url = result.get("redirectURI") or result.get("loginLink")
 
     if not redirect_url:

@@ -58,16 +58,22 @@ class SnapTradeService:
             raise
 
     # ── Connection / Linking ───────────────────────────────────────────
-    async def get_login_redirect_url(self, user_id: str, user_secret: str):
+    async def get_login_redirect_url(
+        self,
+        user_id: str,
+        user_secret: str,
+        custom_redirect: Optional[str] = None,
+    ):
         """
         Generate a redirect URL so the user can link their brokerage
         account through SnapTrade Connect.
+        custom_redirect: where SnapTrade should send the popup after OAuth completes.
         """
         try:
-            response = self.client.authentication.login_snap_trade_user(
-                user_id=user_id,
-                user_secret=user_secret,
-            )
+            kwargs: dict = {"user_id": user_id, "user_secret": user_secret}
+            if custom_redirect:
+                kwargs["custom_redirect"] = custom_redirect
+            response = self.client.authentication.login_snap_trade_user(**kwargs)
             return response.body
         except Exception as e:
             logger.error(f"SnapTrade login redirect failed: {e}")
