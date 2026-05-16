@@ -42,6 +42,7 @@ export function EmbeddedOptionsChain({
   currentPrice,
   entryPrice,
   stopPrice,
+  suggestedExpiry,
   direction,
   onTradeClick,
 }: EmbeddedOptionsChainProps) {
@@ -91,8 +92,17 @@ export function EmbeddedOptionsChain({
     )
   }
 
-  // Show nearest 2 expiry dates
-  const expiryDates = chain.expirations.slice(0, 2)
+  // Prioritise the AI-suggested expiry, then fill up to 2 from the available list.
+  // If suggestedExpiry isn't an exact match, pick the nearest available date on or after it.
+  const expiryDates = (() => {
+    const all = chain.expirations // already sorted ascending by backend
+    if (!suggestedExpiry) return all.slice(0, 2)
+
+    // Find the closest available expiry on or after the suggested date
+    const match = all.find(e => e >= suggestedExpiry) ?? all[0]
+    const rest = all.filter(e => e !== match)
+    return [match, ...rest].slice(0, 2)
+  })()
 
   const nearestStrike = (contracts: OptionsContract[], price: number): number | null => {
     const sorted = contracts
@@ -175,6 +185,9 @@ export function EmbeddedOptionsChain({
           <div key={expiry} className="space-y-2">
             <div className="flex items-center gap-2">
               <span className="text-xs font-mono text-white/50 bg-white/5 px-2 py-0.5 rounded">{expiry}</span>
+              {suggestedExpiry && expiry >= suggestedExpiry && expiry === expiryDates[0] && (
+                <span className="text-[9px] font-semibold uppercase tracking-wider text-purple-400 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">AI pick</span>
+              )}
             </div>
             <div className="grid grid-cols-2 gap-2">
               {/* Calls */}
