@@ -3,7 +3,8 @@ from pydantic import BaseModel
 from typing import Optional
 import asyncio
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +27,67 @@ from services.task_manager import task_manager
 from services.ai_analysis import get_ai_service
 from middleware.rate_limit import limiter
 from middleware.auth import get_current_user, security
+from config import settings
+from providers.polygon import POLYGON_BASE
 
 router = APIRouter()
+
+
+async def _pick_live_expiry(symbol: str, desired_dte: int) -> str | None:
+    """
+    Return the real options expiration date whose DTE is closest to desired_dte.
+    Tries Polygon first, falls back to yfinance. Returns None on failure.
+    """
+    today = date.today()
+    today_str = str(today)
+    expirations: list[str] = []
+
+    # Polygon: fetch distinct expiration dates from the options reference endpoint
+    try:
+        url = f"{POLYGON_BASE}/v3/reference/options/contracts"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url, params={
+                "underlying_ticker": symbol.upper(),
+                "expired": "false",
+                "limit": 250,
+                "apiKey": settings.POLYGON_API_KEY,
+            })
+        if resp.status_code == 200:
+            seen: set[str] = set()
+            for r in resp.json().get("results", []):
+                exp = r.get("expiration_date", "")
+                if exp and exp >= today_str and exp not in seen:
+                    seen.add(exp)
+                    expirations.append(exp)
+            expirations.sort()
+    except Exception as exc:
+        logger.debug("Polygon expiry fetch failed for %s: %s", symbol, exc)
+
+    # yfinance fallback
+    if not expirations:
+        try:
+            from api.options_routes import _fetch_expiries_yfinance
+            raw = await _fetch_expiries_yfinance(symbol)
+            expirations = sorted(e for e in raw if e >= today_str)
+        except Exception as exc:
+            logger.debug("yfinance expiry fallback failed for %s: %s", symbol, exc)
+
+    if not expirations:
+        return None
+
+    # Pick the expiry whose DTE is closest to desired_dte; skip < 5 DTE (expiry risk)
+    best: str | None = None
+    best_diff = float("inf")
+    for exp in expirations:
+        dte = (date.fromisoformat(exp) - today).days
+        if dte < 5:
+            continue
+        diff = abs(dte - desired_dte)
+        if diff < best_diff:
+            best_diff = diff
+            best = exp
+
+    return best
 
 
 @router.post("/universe", response_model=ScanResponse)
@@ -188,6 +248,24 @@ async def ai_scan_symbol(
         technicals = await get_symbol_technicals(body.symbol.upper())
         ai_service = get_ai_service()
         result = await ai_service.analyze_symbol_technicals(technicals)
+
+        # Replace AI-generated expiry with a real live options chain date.
+        # Only include contract expiry when confidence is high enough to be actionable.
+        if result.get("confidence", 0) < 75:
+            result["suggested_expiry"] = None
+        else:
+            # Use the AI's suggested date only as a DTE target, then snap to a real exchange date.
+            ai_expiry = result.get("suggested_expiry")
+            if ai_expiry:
+                try:
+                    desired_dte = max(7, (date.fromisoformat(ai_expiry) - date.today()).days)
+                except Exception:
+                    desired_dte = 30
+            else:
+                desired_dte = 30  # medium-term default
+
+            result["suggested_expiry"] = await _pick_live_expiry(body.symbol.upper(), desired_dte)
+
         return {"success": True, "result": result}
     except ValueError:
         raise HTTPException(status_code=422, detail="Invalid symbol or insufficient data")
