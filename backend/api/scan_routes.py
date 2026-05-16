@@ -254,16 +254,10 @@ async def ai_scan_symbol(
         if result.get("confidence", 0) < 75:
             result["suggested_expiry"] = None
         else:
-            # Use the AI's suggested date only as a DTE target, then snap to a real exchange date.
-            ai_expiry = result.get("suggested_expiry")
-            if ai_expiry:
-                try:
-                    desired_dte = max(7, (date.fromisoformat(ai_expiry) - date.today()).days)
-                except Exception:
-                    desired_dte = 30
-            else:
-                desired_dte = 30  # medium-term default
-
+            # Use the AI's suggested DTE directly — each stock gets its own value based
+            # on setup timeframe, giving unique expiry dates per ticker.
+            desired_dte = int(result.get("suggested_dte") or 30)
+            desired_dte = max(7, desired_dte)
             result["suggested_expiry"] = await _pick_live_expiry(body.symbol.upper(), desired_dte)
 
         return {"success": True, "result": result}

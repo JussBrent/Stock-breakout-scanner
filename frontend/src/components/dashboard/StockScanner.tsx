@@ -338,17 +338,11 @@ export function StockScanner() {
               />
             </div>
 
-            {/* Options recommendation banner */}
+            {/* Options recommendation banner — only shown when score is high (green ≥ 70) */}
             {(() => {
               const dir = symbolResult.direction
-              if (!dir || dir === null) {
-                return (
-                  <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 flex items-center gap-3">
-                    <span className="text-lg">⚠️</span>
-                    <p className="text-sm text-white/50">No strong options signal detected</p>
-                  </div>
-                )
-              }
+              const score = symbolResult.opportunity_score
+              if (!dir || score < 70) return null
               const isLong = dir === "Long"
               const reason = symbolResult.key_factors?.[0] || symbolResult.trend || (isLong ? "Bullish signal" : "Bearish signal")
               return (

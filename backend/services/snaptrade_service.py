@@ -92,6 +92,18 @@ class SnapTradeService:
             logger.error(f"SnapTrade list accounts failed: {e}")
             raise
 
+    async def remove_brokerage_authorization(self, user_id: str, user_secret: str, authorization_id: str):
+        """Remove a brokerage authorization (unlinks the brokerage account)."""
+        try:
+            self.client.connections.remove_brokerage_authorization(
+                authorization_id=authorization_id,
+                user_id=user_id,
+                user_secret=user_secret,
+            )
+        except Exception as e:
+            logger.error(f"SnapTrade remove authorization failed: {e}")
+            raise
+
     async def get_account_balances(self, user_id: str, user_secret: str, account_id: str):
         """Get balances for a specific account."""
         try:

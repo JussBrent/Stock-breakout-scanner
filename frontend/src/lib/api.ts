@@ -364,6 +364,21 @@ export async function snaptradeGetConnectUrl(redirectUri?: string): Promise<{ re
 }
 
 /**
+ * Unlink a brokerage by removing its authorization
+ */
+export async function snaptradeUnlinkAccount(authorizationId: string): Promise<void> {
+  const headers = await getAuthHeaders()
+  const response = await fetch(`${API_URL}/api/snaptrade/accounts/${encodeURIComponent(authorizationId)}`, {
+    method: "DELETE",
+    headers,
+  })
+  if (!response.ok && response.status !== 204) {
+    const err = await response.json().catch(() => ({}))
+    throw new Error((err as any).detail || "Failed to unlink account")
+  }
+}
+
+/**
  * Check SnapTrade connection status
  */
 export async function snaptradeGetStatus(): Promise<{

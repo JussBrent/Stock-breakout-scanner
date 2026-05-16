@@ -182,6 +182,20 @@ async def list_accounts(
     return {"accounts": accounts or []}
 
 
+@router.delete("/accounts/{authorization_id}", status_code=204)
+@limiter.limit("10/minute")
+async def remove_brokerage_account(
+    authorization_id: str,
+    request: Request,
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """Unlink a brokerage by removing its authorization."""
+    service = get_snaptrade_service()
+    user_id = user["user_id"]
+    user_secret = await get_user_secret(user_id)
+    await service.remove_brokerage_authorization(user_id, user_secret, authorization_id)
+
+
 @router.get("/accounts/{account_id}/balances")
 @limiter.limit("20/minute")
 async def get_account_balances(

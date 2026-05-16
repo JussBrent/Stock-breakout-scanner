@@ -3,7 +3,6 @@ import os
 import json
 import time
 import logging
-from datetime import date
 from typing import List, Dict, Optional
 from models.candle import ScanResult
 from pydantic import BaseModel
@@ -325,10 +324,7 @@ class AIAnalysisService:
         vol_quality = "High" if avg_vol > 1_000_000 else "Medium" if avg_vol > 300_000 else "Low"
         cap_str = f"${market_cap/1e9:.2f}B" if market_cap else "Unknown"
 
-        today_str = date.today().strftime("%Y-%m-%d")
-
         prompt = f"""Analyze {sym} and provide a technical analysis. Respond with JSON only.
-Today's date is {today_str}. All suggested expiry dates must be AFTER today.
 
 **Symbol**: {sym}
 **Current Price**: ${price:.2f}
@@ -354,7 +350,7 @@ Respond with this exact JSON:
   "suggested_entry": <exact price number for entry>,
   "suggested_stop": <exact price number for stop loss>,
   "suggested_target": <exact price number for take profit>,
-  "suggested_expiry": "<nearest optimal options expiration date as YYYY-MM-DD that is strictly after today ({today_str}), or null if stock-only play>",
+  "suggested_dte": <integer days-to-expiry for the options play — e.g. 7 for very short-term, 14-21 for momentum, 30-45 for medium setups, 60+ for longer-term. Vary this based on the specific setup timeframe. Use null for stock-only plays>,
   "entry_notes": "<1 sentence on entry — where to buy or what to wait for>",
   "stop_notes": "<1 sentence on stop loss placement>"
 }}"""
@@ -405,7 +401,8 @@ Respond with this exact JSON:
                 "suggested_entry": data.get("suggested_entry"),
                 "suggested_stop": data.get("suggested_stop"),
                 "suggested_target": data.get("suggested_target"),
-                "suggested_expiry": data.get("suggested_expiry"),
+                "suggested_dte": data.get("suggested_dte"),
+                "suggested_expiry": None,  # resolved from live options chain in scan_routes
                 "entry_notes": data.get("entry_notes", ""),
                 "stop_notes": data.get("stop_notes", ""),
             }

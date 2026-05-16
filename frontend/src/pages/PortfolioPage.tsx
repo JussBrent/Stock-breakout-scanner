@@ -8,7 +8,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar"
 import { TradeModal } from "@/components/dashboard/TradeModal"
 import { OptionsChain } from "@/components/dashboard/OptionsChain"
 import { supabase } from "@/lib/supabase"
-import { snaptradeGetStatus, snaptradeRegister, snaptradeGetConnectUrl, snaptradeGetHoldings, snaptradeGetActivities, snaptradeGetBalances, type SnapTradeAccount, type SnapTradeActivity } from "@/lib/api"
+import { snaptradeGetStatus, snaptradeRegister, snaptradeGetConnectUrl, snaptradeGetHoldings, snaptradeGetActivities, snaptradeGetBalances, snaptradeUnlinkAccount, type SnapTradeAccount, type SnapTradeActivity } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 const API_URL = import.meta.env.VITE_API_URL ?? ""
@@ -220,6 +220,34 @@ export default function PortfolioPage() {
                       <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />Refresh
                     </Button>
                   </div>
+                  {/* Connected Accounts — with Unlink */}
+                  <Card className="bg-white/2 border-white/10 p-4">
+                    <p className="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">Connected Brokerages</p>
+                    <div className="space-y-2">
+                      {accounts.map(acct => (
+                        <div key={acct.id} className="flex items-center justify-between px-3 py-2.5 bg-white/3 border border-white/8 rounded-lg">
+                          <div>
+                            <p className="text-sm font-semibold text-white">{acct.institution_name || acct.name}</p>
+                            <p className="text-xs text-white/40">{acct.name}{acct.number ? ` · ${acct.number}` : ""}</p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={async () => {
+                              const authId = acct.brokerage_authorization_id || acct.id
+                              if (!confirm(`Unlink ${acct.institution_name || acct.name}? This will remove the connection.`)) return
+                              try { await snaptradeUnlinkAccount(authId); await checkStatus() }
+                              catch (e) { setError(e instanceof Error ? e.message : "Failed to unlink") }
+                            }}
+                            className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300 h-7 px-3 text-xs"
+                          >
+                            Unlink
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+
                   <div className="grid grid-cols-4 gap-4">
                     <Card className="bg-white/2 border-white/10 p-6">
                       <p className="text-sm text-white/60 mb-2">Portfolio Value</p>

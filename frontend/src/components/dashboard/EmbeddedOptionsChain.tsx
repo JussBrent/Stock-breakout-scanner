@@ -146,7 +146,7 @@ export function EmbeddedOptionsChain({
 
         const ColHeader = () => (
           <tr className="border-b border-white/10">
-            {["Strike", "Bid", "Ask", "IV", "Δ"].map(h => (
+            {["Strike", "Bid", "Ask", "IV", "Δ", ""].map(h => (
               <th key={h} className="px-1.5 py-1 text-left text-[9px] font-mono uppercase text-white/30">{h}</th>
             ))}
           </tr>
@@ -158,11 +158,10 @@ export function EmbeddedOptionsChain({
           return (
             <tr
               className={cn(
-                "text-[11px] cursor-pointer transition-colors hover:bg-white/5",
+                "text-[11px] transition-colors hover:bg-white/5 group",
                 isRec && "bg-emerald-500/10 border-l-2 border-emerald-500",
                 isStop && !isRec && "bg-red-500/10 border-l-2 border-red-500"
               )}
-              onClick={() => onTradeClick(c)}
             >
               <td className={cn("px-1.5 py-1 font-semibold", isRec ? "text-emerald-300" : isStop ? "text-red-300" : "text-white")}>
                 ${fmt(c.strike)}
@@ -172,6 +171,19 @@ export function EmbeddedOptionsChain({
               <td className="px-1.5 py-1 text-blue-300">{fmtPct(c.iv)}</td>
               <td className={cn("px-1.5 py-1", isCall ? "text-emerald-400" : "text-red-400")}>
                 {fmt(c.delta)}
+              </td>
+              <td className="px-1 py-0.5">
+                <button
+                  onClick={() => onTradeClick(c)}
+                  className={cn(
+                    "opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 rounded text-[9px] font-bold",
+                    isCall
+                      ? "bg-emerald-600/80 hover:bg-emerald-500 text-white"
+                      : "bg-red-600/80 hover:bg-red-500 text-white"
+                  )}
+                >
+                  {isCall ? "Buy" : "Buy"}
+                </button>
               </td>
             </tr>
           )
