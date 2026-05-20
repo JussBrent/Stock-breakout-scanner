@@ -727,6 +727,7 @@ export interface TradeOutcome {
   notes?: string
   traded_at?: string
   closed_at?: string
+  is_crowdsource_eligible?: boolean
 }
 
 export async function logTradeOutcome(data: {
@@ -739,6 +740,7 @@ export async function logTradeOutcome(data: {
   breakout_score?: number
   notes?: string
   traded_at?: string
+  is_crowdsource_eligible?: boolean
 }): Promise<TradeOutcome> {
   const headers = await getAuthHeaders()
   const response = await apiFetch(`${API_URL}/api/trades/outcome`, {
