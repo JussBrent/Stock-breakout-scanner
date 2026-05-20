@@ -1126,3 +1126,38 @@ export async function deleteSeanTrade(id: string): Promise<void> {
     throw new Error((error as any).detail || "Failed to delete trade")
   }
 }
+
+// ── Phase 3: Pattern Summaries ──────────────────────────────────────
+
+export interface PatternSummariesResponse {
+  summaries: string
+  has_data: boolean
+}
+
+export interface RefreshSummariesResponse {
+  message: string
+  results: Record<string, boolean>
+}
+
+export async function getPatternSummaries(): Promise<PatternSummariesResponse> {
+  const headers = await getAuthHeaders()
+  const response = await apiFetch(`${API_URL}/api/ai/training/pattern-summaries`, { headers })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to fetch pattern summaries')
+  }
+  return response.json()
+}
+
+export async function refreshPatternSummaries(): Promise<RefreshSummariesResponse> {
+  const headers = await getAuthHeaders()
+  const response = await apiFetch(`${API_URL}/api/ai/training/refresh-summaries`, {
+    method: 'POST',
+    headers,
+  })
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.detail || 'Failed to refresh pattern summaries')
+  }
+  return response.json()
+}
