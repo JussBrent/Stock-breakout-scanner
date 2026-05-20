@@ -294,3 +294,53 @@ async def import_youtube_transcript(
     except Exception as e:
         logger.error(f"Save YouTube training content failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to save transcript")
+
+
+# ── Phase 3: Pattern Summaries ──────────────────────────────────────
+
+@router.get('/pattern-summaries')
+@limiter.limit('30/minute')
+async def get_pattern_summaries(
+    request: Request,
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """Return the latest non-expired pattern summaries as formatted text.
+    Used by the frontend to show 'what the data says' per setup type.
+    """
+    try:
+        from services.pattern_summary_service import get_fresh_pattern_summaries
+        text = await get_fresh_pattern_summaries()
+        return {'summaries': text, 'has_data': bool(text)}
+    except Exception as e:
+        logger.error(f'Get pattern summaries failed: {e}', exc_info=True)
+        raise HTTPException(status_code=500, detail='Failed to fetch pattern summaries')
+
+
+@router.post('/refresh-summaries', status_code=200)
+@limiter.limit('5/minute')
+async def refresh_pattern_summaries(
+    request: Request,
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """Admin-triggered: regenerate all pattern summaries using Sean's trades + crowdsource data.
+    Runs synchronously (can take 10-30s). Frontend should show a loading state.
+    """
+    # Admin-only guard
+    try:
+        from api.admin_routes import _require_admin
+        await _require_admin(user)
+    except Exception:
+        raise HTTPException(status_code=403, detail='Admin access required')
+
+    try:
+        from services.pattern_summary_service import refresh_all_pattern_summaries
+        results = await refresh_all_pattern_summaries()
+        generated = {k: bool(v) for k, v in results.items()}
+        count = sum(1 for v in generated.values() if v)
+        return {
+            'message': f'Refreshed {count}/{len(generated)} pattern summaries',
+            'results': generated,
+        }
+    except Exception as e:
+        logger.error(f'Refresh pattern summaries failed: {e}', exc_info=True)
+        raise HTTPException(status_code=500, detail='Failed to refresh pattern summaries')
