@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Navigate } from "react-router-dom"
-import { BookOpen, Plus, Trash2, Pencil, ToggleLeft, ToggleRight, X, Save, Clock, Tag, Youtube, Loader2, FileText, FlaskConical, ChevronDown, ChevronUp } from "lucide-react"
+import { BookOpen, Plus, Trash2, Pencil, ToggleLeft, ToggleRight, X, Save, Clock, Tag, Youtube, Loader2, FileText, FlaskConical, ChevronDown, ChevronUp, Sparkles, RefreshCw } from "lucide-react"
 import { AppSidebar } from "@/components/dashboard/Sidebar"
 import { useAuth } from "@/hooks/useAuth"
 import {
@@ -12,6 +12,8 @@ import {
   toggleTrainingContent,
   importYoutubeTranscript,
   TrainingContent,
+  refreshPatternSummaries,
+  getPatternSummaries,
 } from "@/lib/api"
 import { callOpenAI } from "@/lib/openai"
 import SeanTradesTab from "@/components/SeanTradesTab"
@@ -37,6 +39,31 @@ export default function AiTrainingPage() {
   const [testOpen, setTestOpen] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [testResponse, setTestResponse] = useState<string | null>(null)
+
+  // Phase 3: Pattern Summaries
+  const [summaryRefreshing, setSummaryRefreshing] = useState(false)
+  const [summaryResult, setSummaryResult] = useState<string | null>(null)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [showSummaries, setShowSummaries] = useState(false)
+  const [summaryText, setSummaryText] = useState<string>('')
+
+  const handleRefreshSummaries = async () => {
+    setSummaryRefreshing(true)
+    setSummaryError(null)
+    setSummaryResult(null)
+    try {
+      const res = await refreshPatternSummaries()
+      setSummaryResult(res.message)
+      // Reload summaries to show updated text
+      const fresh = await getPatternSummaries()
+      setSummaryText(fresh.summaries)
+      setShowSummaries(true)
+    } catch (e: unknown) {
+      setSummaryError(e instanceof Error ? e.message : 'Refresh failed')
+    } finally {
+      setSummaryRefreshing(false)
+    }
+  }
 
   const handleTestSean = async () => {
     setTestLoading(true)
@@ -186,7 +213,17 @@ export default function AiTrainingPage() {
                 : <ChevronDown className="h-3 w-3 ml-0.5" />
               }
             </button>
-            {!isFormOpen && (
+            {!isFormOpen && 
+        <button
+          onClick={handleRefreshSummaries}
+          disabled={summaryRefreshing}
+          className="flex items-center gap-1.5 px-3 py-2 text-sm bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 hover:text-purple-300 rounded-lg border border-purple-500/20 transition-colors"
+          title="Generate AI summaries from trades + community data"
+        >
+          {summaryRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+          {summaryRefreshing ? 'Generating...' : 'AI Summaries'}
+          <RefreshCw className="h-3 w-3 ml-0.5 opacity-50" />
+        </button>(
               <>
                 <button
                   onClick={() => setFormMode("youtube")}
@@ -261,7 +298,40 @@ export default function AiTrainingPage() {
           )}
         </AnimatePresence>
 
-        {/* Error */}
+        {/* Phase 3: Pattern Summaries panel */}
+      <AnimatePresence>
+        {(summaryResult || summaryError || showSummaries) && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="mb-5 overflow-hidden"
+          >
+            <div className="p-4 rounded-xl bg-purple-500/6 border border-purple-500/20">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3" />
+                  Pattern Summaries
+                </p>
+                <button onClick={() => { setShowSummaries(false); setSummaryResult(null); setSummaryError(null) }} className="text-white/30 hover:text-white"><X className="h-3.5 w-3.5" /></button>
+              </div>
+              {summaryError && <p className="text-sm text-red-400">{summaryError}</p>}
+              {summaryResult && <p className="text-xs text-purple-300 mb-3">{summaryResult}</p>}
+              {summaryText ? (
+                <div className="space-y-3">
+                  {summaryText.split('\n\n').map((block, i) => (
+                    <p key={i} className="text-sm text-white/70 leading-relaxed">{block}</p>
+                  ))}
+                </div>
+              ) : (summaryResult && !summaryText) ? (
+                <p className="text-xs text-white/30">No summaries yet — add trade data per setup type first.</p>
+              ) : null}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Error */}
         <AnimatePresence>
           {error && (
             <motion.div
