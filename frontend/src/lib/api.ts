@@ -1161,3 +1161,96 @@ export async function refreshPatternSummaries(): Promise<RefreshSummariesRespons
   }
   return response.json()
 }
+
+// ── Dashboard Intelligence ─────────────────────────────────────────────────
+
+export interface DashboardTopSetup {
+  id?: string
+  scan_date?: string
+  rank: number
+  symbol: string
+  company_name?: string
+  sector?: string
+  industry?: string
+  setup_type: string
+  ai_score: number
+  opportunity_score?: number
+  confidence?: string
+  price?: number
+  price_change_pct?: number
+  volume?: number
+  market_cap?: number
+  etf_group?: string
+  leading_theme?: string
+  analysis?: string
+  key_factors?: string[]
+  risk_level?: string
+  recommendation?: string
+  is_extended?: boolean
+  is_sideways?: boolean
+  group_breakout?: boolean
+}
+
+export interface DashboardSector {
+  id?: string
+  scan_date?: string
+  sector: string
+  etf_symbol?: string
+  change_pct?: number
+  volume?: number
+  relative_volume?: number
+  price?: number
+  top_stocks?: string[]
+  is_breaking_out?: boolean
+  setup_type?: string
+}
+
+export interface DashboardSentiment {
+  id?: string
+  scan_date?: string
+  sentiment: string
+  sentiment_score: number
+  vix?: number
+  spy_change?: number
+  qqq_change?: number
+  iwm_change?: number
+  advance_decline_ratio?: number
+  new_highs?: number
+  new_lows?: number
+  above_50ma_pct?: number
+  above_200ma_pct?: number
+  leading_themes?: string[]
+  market_notes?: string
+}
+
+export interface DashboardAllResponse {
+  success: boolean
+  top_setups: DashboardTopSetup[]
+  sectors: DashboardSector[]
+  sentiment: DashboardSentiment | null
+}
+
+export async function getDashboardAll(): Promise<DashboardAllResponse> {
+  const res = await apiFetch('/api/dashboard/all')
+  return parseResponse<DashboardAllResponse>(res)
+}
+
+export async function getDashboardTopSetups(): Promise<{ success: boolean; setups: DashboardTopSetup[]; count: number }> {
+  const res = await apiFetch('/api/dashboard/top-setups')
+  return parseResponse(res)
+}
+
+export async function getDashboardSectors(): Promise<{ success: boolean; sectors: DashboardSector[]; count: number }> {
+  const res = await apiFetch('/api/dashboard/sectors')
+  return parseResponse(res)
+}
+
+export async function getDashboardSentiment(): Promise<{ success: boolean; sentiment: DashboardSentiment }> {
+  const res = await apiFetch('/api/dashboard/sentiment')
+  return parseResponse(res)
+}
+
+export async function refreshDashboard(): Promise<{ success: boolean; message: string }> {
+  const res = await apiFetch('/api/dashboard/refresh', { method: 'POST' })
+  return parseResponse(res)
+}
