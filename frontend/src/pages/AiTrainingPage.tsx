@@ -14,8 +14,10 @@ import {
   TrainingContent,
 } from "@/lib/api"
 import { callOpenAI } from "@/lib/openai"
+import SeanTradesTab from "@/components/SeanTradesTab"
 
 type FormMode = "closed" | "manual" | "youtube" | "edit"
+type TabId = "knowledge" | "sean-trades"
 
 export default function AiTrainingPage() {
   const { isAdmin, loading: authLoading } = useAuth()
@@ -24,6 +26,7 @@ export default function AiTrainingPage() {
   const [error, setError] = useState<string | null>(null)
 
   // Unified form state
+  const [activeTab, setActiveTab] = useState<TabId>("knowledge")
   const [formMode, setFormMode] = useState<FormMode>("closed")
   const [editingId, setEditingId] = useState<string | null>(null)
   const [formTitle, setFormTitle] = useState("")
@@ -159,14 +162,14 @@ export default function AiTrainingPage() {
       <AppSidebar />
       <main className="flex-1 ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out p-6 overflow-y-auto max-w-5xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-xl font-bold flex items-center gap-2.5">
               <BookOpen className="h-6 w-6 text-emerald-400" />
-              Sean's Knowledge Base
+              AI Training
             </h1>
             <p className="text-white/40 text-sm mt-0.5">
-              {items.length} entries &middot; {activeCount} active
+              {activeTab === "knowledge" ? `${items.length} entries · ${activeCount} active` : "Sean's personal verified trades"}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -203,6 +206,29 @@ export default function AiTrainingPage() {
             )}
           </div>
         </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-5 border-b border-white/8 pb-0">
+          {([
+            { id: "knowledge" as TabId, label: "Knowledge Base" },
+            { id: "sean-trades" as TabId, label: "Sean's Trades" },
+          ]).map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
+                activeTab === tab.id
+                  ? "border-emerald-400 text-white font-medium"
+                  : "border-transparent text-white/40 hover:text-white/70"
+              }`}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Sean's Trades Tab */}
+        {activeTab === "sean-trades" && <SeanTradesTab />}
+
+        {/* Knowledge Base Tab */}
+        {activeTab === "knowledge" && <>
 
         {/* Test Sean Response Panel */}
         <AnimatePresence>
@@ -428,6 +454,8 @@ export default function AiTrainingPage() {
             ))}
           </div>
         )}
+      </></>
+      }
       </main>
     </div>
   )
