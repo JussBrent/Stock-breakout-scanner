@@ -66,6 +66,11 @@ class AIAnalysisService:
     _training_cache_time: float = 0
     TRAINING_CACHE_TTL = 300  # seconds
 
+    # Cache Sean's verified personal trades for 10 minutes
+    _sean_trades_cache: Optional[str] = None
+    _sean_trades_cache_time: float = 0
+    SEAN_TRADES_CACHE_TTL = 600  # seconds
+
     def __init__(self):
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
@@ -136,6 +141,106 @@ class AIAnalysisService:
             logger.error(f"Failed to fetch trade outcomes: {e}")
             return ""
 
+    async def _get_sean_trades_context(self) -> str:
+        """Fetch Sean's verified personal trades from DB, cached for 10 min.
+        Injected as ground-truth examples into every chat."""
+        now = time.time()
+        if (
+            self._sean_trades_cache is not None
+            and (now - self._sean_trades_cache_time) < self.SEAN_TRADES_CACHE_TTL
+        ):
+            return self._sean_trades_cache
+
+        try:
+            from services.supabase_client import supabase
+            rows = await (
+                supabase.table("sean_trades")
+                .select(
+                    "symbol,direction,setup_type,breakout_score,"
+                    "entry_price,exit_price,stop_price,gain_pct,outcome,"
+                    "contract_type,strike_price,expiration_date,"
+                    "contracts_held,premium_paid,premium_exit,"
+                    "why_took_trade,looked_wrong_but,looked_right_but,key_lesson"
+                )
+                .order("traded_at", desc=True)
+                .limit(60)
+                .execute()
+            )
+
+            if not rows:
+                AIAnalysisService._sean_trades_cache = ""
+                AIAnalysisService._sean_trades_cache_time = now
+                return ""
+
+            wins   = [t for t in rows if t.get("outcome") == "win"]
+            losses = [t for t in rows if t.get("outcome") == "loss"]
+            open_t = [t for t in rows if t.get("outcome") == "open"]
+            other  = [t for t in rows if t.get("outcome") not in ("win", "loss", "open")]
+
+            def _fmt_sean_trade(t: dict) -> str:
+                icons     = {"win": "WIN", "loss": "LOSS", "breakeven": "BE", "open": "OPEN"}
+                icon      = icons.get(t.get("outcome", ""), "?")
+                sym       = t.get("symbol", "?")
+                setup     = t.get("setup_type") or "N/A"
+                score     = t.get("breakout_score")
+                score_str = f"score {score}" if score is not None else "no score"
+                direction = t.get("direction", "long").upper()
+                entry     = t.get("entry_price", "?")
+                exit_p    = t.get("exit_price")
+                gain      = t.get("gain_pct")
+                opt_parts = []
+                if t.get("contract_type"):
+                    ct      = t.get("contract_type", "?").upper()
+                    strike  = t.get("strike_price", "?")
+                    exp     = t.get("expiration_date", "?")
+                    premium = t.get("premium_paid", "?")
+                    p_exit  = t.get("premium_exit")
+                    opt_parts.append(f" | {ct} strike={strike} exp={exp} premium_in={premium}")
+                    if p_exit:
+                        opt_parts.append(f" premium_out={p_exit}")
+                opt_str  = "".join(opt_parts)
+                gain_str = f" ({gain:+.1f}%)" if gain is not None else ""
+                exit_str = f" -> {exit_p}" if exit_p else ""
+                line = (
+                    f"- {sym} [{direction}] {setup} ({score_str})"
+                    f" entry={entry}{exit_str}{gain_str}{opt_str} [{icon}]"
+                )
+                lessons = []
+                if t.get("why_took_trade"):
+                    lessons.append(f"  Took because: {t['why_took_trade']}")
+                if t.get("looked_wrong_but"):
+                    lessons.append(f"  Looked wrong but worked: {t['looked_wrong_but']}")
+                if t.get("looked_right_but"):
+                    lessons.append(f"  Looked right but failed: {t['looked_right_but']}")
+                if t.get("key_lesson"):
+                    lessons.append(f"  Key lesson: {t['key_lesson']}")
+                return line + ("\n" + "\n".join(lessons) if lessons else "")
+
+            sections = []
+            if wins:
+                sections.append("### Sean's Winning Trades (study these setups)\n"
+                                 + "\n".join(_fmt_sean_trade(t) for t in wins))
+            if losses:
+                sections.append("### Sean's Losing Trades (understand what to avoid)\n"
+                                 + "\n".join(_fmt_sean_trade(t) for t in losses))
+            if other:
+                sections.append("### Sean's Breakeven / Scratch Trades\n"
+                                 + "\n".join(_fmt_sean_trade(t) for t in other))
+            if open_t:
+                sections.append("### Sean's Currently Open Positions\n"
+                                 + "\n".join(_fmt_sean_trade(t) for t in open_t))
+
+            result = "\n\n".join(sections)
+            AIAnalysisService._sean_trades_cache = result
+            AIAnalysisService._sean_trades_cache_time = now
+            return result
+
+        except Exception as e:
+            logger.error(f"Failed to fetch Sean's trades: {e}")
+            AIAnalysisService._sean_trades_cache = ""
+            AIAnalysisService._sean_trades_cache_time = now
+            return ""
+
     async def analyze_stocks(
         self,
         scan_results: List[ScanResult],
@@ -204,11 +309,28 @@ class AIAnalysisService:
         if training_context:
             system += f"\n\n## Trader's Knowledge Base\nThe following is knowledge from the trader's own teachings, video transcripts, and strategies. Use this as your primary reference when answering questions about setups, strategies, and trading approaches.\n\n{training_context}"
 
-        # Inject trade outcome history for learning
+        # Inject Sean's verified personal trades as highest-weight training signal
+        sean_trades_context = await self._get_sean_trades_context()
+        if sean_trades_context:
+            system += (
+                "\n\n## Sean's Personal Verified Trades (ground-truth training data)\n"
+                "These are real trades Sean personally took. Use wins to recognise high-quality "
+                "setups and losses to understand what to avoid. Options strike/premium data shows "
+                "exactly how he sized each play — factor this into your contract recommendations.\n\n"
+                + sean_trades_context
+            )
+
+        # Inject this user's own trade outcome history for personalised calibration
         if user_id:
             trade_context = await self._get_trade_outcomes_context(user_id)
             if trade_context:
-                system += f"\n\n## Recent Trade History (learn from these patterns)\nUse this history to calibrate your confidence. Setups that have been winning deserve more confidence; setups that have been losing should get more cautious language.\n\n{trade_context}"
+                system += (
+                    "\n\n## This User's Recent Trade History\n"
+                    "Use this to personalise your confidence. Setups winning for this user "
+                    "deserve more confidence; setups that have been losing should get more "
+                    "cautious language.\n\n"
+                    + trade_context
+                )
 
         if scan_context:
             system += f"\n\n## User's Current Data\n{scan_context}"
