@@ -9,7 +9,7 @@ import logging
 import os
 
 from config import settings
-from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes, momentum_routes, ai_routes, snaptrade_routes, training_routes, trade_routes, push_routes, admin_routes, options_routes, paper_trading_routes, chart_routes, sean_trades_routes
+from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes, momentum_routes, ai_routes, snaptrade_routes, training_routes, trade_routes, push_routes, admin_routes, options_routes, paper_trading_routes, chart_routes, sean_trades_routes, dashboard_routes
 from middleware.error_handler import register_error_handlers
 from middleware.rate_limit import setup_rate_limiting
 
@@ -91,6 +91,7 @@ app.include_router(ai_routes.router, prefix="/api/ai", tags=["AI"])
 app.include_router(snaptrade_routes.router, prefix="/api/snaptrade", tags=["SnapTrade"])
 app.include_router(trade_routes.router, prefix="/api/trades", tags=["Trades"])
 app.include_router(sean_trades_routes.router, prefix="/api/sean-trades", tags=["Sean Trades"])
+app.include_router(dashboard_routes.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(push_routes.router, prefix="/api/push", tags=["Push"])
 app.include_router(admin_routes.router, prefix="/api/admin", tags=["Admin"])
 app.include_router(options_routes.router, prefix="/api/options", tags=["Options"])
