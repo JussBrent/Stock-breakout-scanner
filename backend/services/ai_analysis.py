@@ -76,6 +76,11 @@ class AIAnalysisService:
     _crowdsource_cache_time: float = 0
     CROWDSOURCE_CACHE_TTL = 900  # 15 minutes
 
+    # Cache Phase 3 pattern summaries for 30 minutes
+    _pattern_summaries_cache: Optional[str] = None
+    _pattern_summaries_cache_time: float = 0
+    PATTERN_SUMMARIES_CACHE_TTL = 1800  # 30 minutes
+
     def __init__(self):
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
@@ -145,6 +150,31 @@ class AIAnalysisService:
         except Exception as e:
             logger.error(f"Failed to fetch trade outcomes: {e}")
             return ""
+
+    async def _get_pattern_summaries_context(self) -> str:
+        """Fetch pre-computed Phase 3 AI-generated pattern summaries from DB.
+        These are daily 'what the data says' narratives per setup type,
+        written by Claude from Sean's trades + community data combined.
+        Cached for 30 minutes. Empty if no summaries have been generated yet.
+        """
+        now = time.time()
+        if (
+            self._pattern_summaries_cache is not None
+            and (now - self._pattern_summaries_cache_time) < self.PATTERN_SUMMARIES_CACHE_TTL
+        ):
+            return self._pattern_summaries_cache
+
+        try:
+            from services.pattern_summary_service import get_fresh_pattern_summaries
+            result = await get_fresh_pattern_summaries()
+            AIAnalysisService._pattern_summaries_cache = result
+            AIAnalysisService._pattern_summaries_cache_time = now
+            return result
+        except Exception as e:
+            logger.error(f'Failed to fetch pattern summaries: {e}')
+            AIAnalysisService._pattern_summaries_cache = ''
+            AIAnalysisService._pattern_summaries_cache_time = now
+            return ''
 
     async def _get_crowdsource_context(self) -> str:
         """Query anonymized crowdsource aggregate stats from the crowdsource_stats view.
@@ -393,6 +423,17 @@ class AIAnalysisService:
                 "confident; if it's low, add appropriate caution. Do NOT attribute stats "
                 "to specific users — these are fully anonymized.\n\n"
                 + crowdsource_context
+            )
+
+        # Inject Phase 3 pre-computed pattern summaries (AI-distilled wisdom, refreshed daily)
+        pattern_summaries = await self._get_pattern_summaries_context()
+        if pattern_summaries:
+            system += (
+                "\n\n## Pattern Summaries — What The Data Says\n"
+                "These are AI-generated summaries synthesizing Sean's personal trade history "
+                "and community data for each setup type. Use these as your primary calibration "
+                "layer when assessing a specific setup type's historical success.\n\n"
+                + pattern_summaries
             )
 
         # Inject this user's own trade outcome history for personalised calibration
