@@ -29,6 +29,7 @@ class TradeOutcomeCreate(BaseModel):
     breakout_score: Optional[int] = None
     notes: Optional[str] = None
     traded_at: Optional[str] = None
+    is_crowdsource_eligible: bool = False
 
     @field_validator('symbol')
     @classmethod
@@ -89,6 +90,7 @@ async def log_trade_outcome(
             "breakout_score": body.breakout_score,
             "notes": body.notes,
             "traded_at": body.traded_at or datetime.utcnow().isoformat(),
+        "is_crowdsource_eligible": body.is_crowdsource_eligible,
         }
         rows = await supabase.table("trade_outcomes").insert([data]).execute()
         return rows[0] if rows else data
