@@ -24,11 +24,13 @@ type TabId = "dashboard" | "trades" | "log" | "ai"
 interface JournalFormState {
   symbol: string; setup_type: SetupTag; entry_price: string; exit_price: string
   outcome: Outcome; notes: string; traded_at: string; shares: string
+  is_crowdsource_eligible: boolean
 }
 
 const BLANK: JournalFormState = {
   symbol: "", setup_type: "BREAKOUT", entry_price: "", exit_price: "",
   outcome: "open", notes: "", traded_at: new Date().toISOString().split("T")[0], shares: "",
+  is_crowdsource_eligible: false,
 }
 
 const SETUP_LABELS: Record<SetupTag, string> = {
@@ -475,6 +477,26 @@ function TradeForm({ initial, onSave, onCancel, saving }: {
             placeholder="What was the setup? What worked? What didn't? Emotions? Execution mistakes? Lessons for next time?"
             className="w-full bg-black/40 border border-white/10 text-white text-sm rounded-lg px-3 py-2.5 focus:border-sky-500 focus:outline-none placeholder-white/20 resize-none" />
         </div>
+        <div className="col-span-3">
+          <div className="flex items-start gap-3 bg-sky-500/8 border border-sky-500/20 rounded-xl px-4 py-3">
+            <input
+              type="checkbox"
+              id="crowdsource-toggle"
+              checked={form.is_crowdsource_eligible}
+              onChange={e => setForm(f => ({ ...f, is_crowdsource_eligible: e.target.checked }))}
+              className="mt-0.5 w-4 h-4 rounded accent-sky-500 cursor-pointer shrink-0"
+            />
+            <label htmlFor="crowdsource-toggle" className="cursor-pointer">
+              <span className="text-xs font-semibold text-sky-400 block mb-0.5">
+                Contribute anonymously to AI training
+              </span>
+              <span className="text-[10px] text-white/40 leading-relaxed">
+                Share this trade anonymously with the community pool. Your identity is never shared —
+                only setup type, score, and outcome are used to improve Sean AI for everyone.
+              </span>
+            </label>
+          </div>
+        </div>
       </div>
 
       <div className="flex justify-end gap-3 mt-5 pt-4 border-t border-white/6">
@@ -521,7 +543,7 @@ export default function JournalAnalyticsPage() {
       if (editTarget) {
         await updateTradeOutcome(editTarget.id, { exit_price: exit, gain_pct: g, outcome: form.outcome, notes: form.notes })
       } else {
-        await logTradeOutcome({ symbol: form.symbol, setup_type: form.setup_type, entry_price: entry, exit_price: exit, gain_pct: g, outcome: form.outcome, notes: form.notes, traded_at: tradedAt })
+        await logTradeOutcome({ symbol: form.symbol, setup_type: form.setup_type, entry_price: entry, exit_price: exit, gain_pct: g, outcome: form.outcome, notes: form.notes, traded_at: tradedAt, is_crowdsource_eligible: form.is_crowdsource_eligible })
       }
       setShowForm(false); setEditTarget(null); await load()
     } catch (e) { setError(e instanceof Error ? e.message : "Save failed") }
@@ -712,6 +734,7 @@ export default function JournalAnalyticsPage() {
                         notes: editTarget.notes ?? "",
                         traded_at: editTarget.traded_at ? editTarget.traded_at.split("T")[0] : new Date().toISOString().split("T")[0],
                         shares: "",
+                        is_crowdsource_eligible: false,
                       } : undefined}
                       onSave={handleSave}
                       onCancel={() => { setShowForm(false); setEditTarget(null) }}
