@@ -16,6 +16,7 @@ import Login from "@/pages/login"
 import Signup from "@/pages/signup"
 import Demo from "@/pages/DemoScanPage"
 const AdminDashboardPageLazy = React.lazy(() => import("@/pages/AdminDashboardPage"))
+const DashboardPageLazy = React.lazy(() => import("@/pages/DashboardPage"))
 const AdminPanelPageLazy = React.lazy(() => import("@/pages/AdminPanelPage"))
 const SettingsPageLazy = React.lazy(() => import("@/pages/SettingsPage"))
 const ScannerPageLazy = React.lazy(() => import("@/pages/ScannerPage"))
@@ -79,7 +80,7 @@ function AppContent() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
         <Route path="/demo" element={<Demo />} />
-        <Route path="/dashboard" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AdminDashboardPageLazy /></Suspense></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><DashboardPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AdminPanelPageLazy /></Suspense></AdminRoute>} />
         <Route path="/ai-insights" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><AiInsightsPageLazy /></Suspense></ProtectedRoute>} />
         <Route path="/scanner" element={<ProtectedRoute><Suspense fallback={<div className="p-6">Loading…</div>}><ScannerPageLazy /></Suspense></ProtectedRoute>} />
