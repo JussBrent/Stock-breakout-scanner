@@ -986,3 +986,141 @@ export async function updateWatchlistItem(
     body: JSON.stringify(updates),
   })
 }
+
+// ============================================================
+// Sean's Verified Trades API
+// ============================================================
+
+export interface SeanTrade {
+  id: string
+  symbol: string
+  direction: "long" | "short"
+  setup_type?: string | null
+  breakout_score?: number | null
+  entry_price: number
+  exit_price?: number | null
+  stop_price?: number | null
+  gain_pct?: number | null
+  contract_type?: "call" | "put" | null
+  strike_price?: number | null
+  expiration_date?: string | null
+  contracts_held?: number | null
+  premium_paid?: number | null
+  premium_exit?: number | null
+  outcome: "win" | "loss" | "breakeven" | "open"
+  why_took_trade?: string | null
+  looked_wrong_but?: string | null
+  looked_right_but?: string | null
+  key_lesson?: string | null
+  chart_image_url?: string | null
+  traded_at: string
+  closed_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface SeanTradeCreate {
+  symbol: string
+  direction?: "long" | "short"
+  setup_type?: string
+  breakout_score?: number
+  entry_price: number
+  exit_price?: number
+  stop_price?: number
+  gain_pct?: number
+  contract_type?: "call" | "put"
+  strike_price?: number
+  expiration_date?: string
+  contracts_held?: number
+  premium_paid?: number
+  premium_exit?: number
+  outcome?: "win" | "loss" | "breakeven" | "open"
+  why_took_trade?: string
+  looked_wrong_but?: string
+  looked_right_but?: string
+  key_lesson?: string
+  chart_image_url?: string
+  traded_at?: string
+}
+
+export interface SeanTradeUpdate {
+  exit_price?: number
+  stop_price?: number
+  gain_pct?: number
+  outcome?: "win" | "loss" | "breakeven"
+  premium_exit?: number
+  contracts_held?: number
+  why_took_trade?: string
+  looked_wrong_but?: string
+  looked_right_but?: string
+  key_lesson?: string
+  chart_image_url?: string
+  closed_at?: string
+}
+
+/** Admin: list all of Sean's verified trades */
+export async function getSeanTrades(opts: {
+  outcome?: string
+  setup_type?: string
+  symbol?: string
+  limit?: number
+} = {}): Promise<{ trades: SeanTrade[]; count: number }> {
+  const headers = await getAuthHeaders()
+  const params = new URLSearchParams()
+  if (opts.outcome) params.set("outcome", opts.outcome)
+  if (opts.setup_type) params.set("setup_type", opts.setup_type)
+  if (opts.symbol) params.set("symbol", opts.symbol)
+  if (opts.limit) params.set("limit", String(opts.limit))
+  const response = await apiFetch(`${API_URL}/api/sean-trades/?${params}`, { headers })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error((error as any).detail || "Failed to fetch Sean's trades")
+  }
+  return response.json()
+}
+
+/** Admin: submit a new verified trade */
+export async function submitSeanTrade(data: SeanTradeCreate): Promise<SeanTrade> {
+  const headers = await getAuthHeaders()
+  const response = await apiFetch(`${API_URL}/api/sean-trades/`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error((error as any).detail || "Failed to submit trade")
+  }
+  return response.json()
+}
+
+/** Admin: update or close an existing Sean trade */
+export async function updateSeanTrade(
+  id: string,
+  data: SeanTradeUpdate
+): Promise<SeanTrade> {
+  const headers = await getAuthHeaders()
+  const response = await apiFetch(`${API_URL}/api/sean-trades/${id}`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(data),
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error((error as any).detail || "Failed to update trade")
+  }
+  return response.json()
+}
+
+/** Admin: permanently delete a Sean trade */
+export async function deleteSeanTrade(id: string): Promise<void> {
+  const headers = await getAuthHeaders()
+  const response = await apiFetch(`${API_URL}/api/sean-trades/${id}`, {
+    method: "DELETE",
+    headers,
+  })
+  if (!response.ok && response.status !== 204) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error((error as any).detail || "Failed to delete trade")
+  }
+}
