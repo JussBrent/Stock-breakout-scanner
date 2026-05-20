@@ -71,6 +71,11 @@ class AIAnalysisService:
     _sean_trades_cache_time: float = 0
     SEAN_TRADES_CACHE_TTL = 600  # seconds
 
+    # Cache Phase 2 crowdsource aggregate stats for 15 minutes
+    _crowdsource_cache: Optional[str] = None
+    _crowdsource_cache_time: float = 0
+    CROWDSOURCE_CACHE_TTL = 900  # 15 minutes
+
     def __init__(self):
         self.api_key = os.getenv("ANTHROPIC_API_KEY")
         if not self.api_key:
@@ -140,6 +145,64 @@ class AIAnalysisService:
         except Exception as e:
             logger.error(f"Failed to fetch trade outcomes: {e}")
             return ""
+
+    async def _get_crowdsource_context(self) -> str:
+        """Query anonymized crowdsource aggregate stats from the crowdsource_stats view.
+        Cached for 15 minutes. Injected into Sean AI after Sean's personal trades.
+        Only shows buckets with >= 5 contributing trades (enforced in the DB view).
+        Returns empty string if no data yet.
+        """
+        now = time.time()
+        if (
+            self._crowdsource_cache is not None
+            and (now - self._crowdsource_cache_time) < self.CROWDSOURCE_CACHE_TTL
+        ):
+            return self._crowdsource_cache
+
+        try:
+            from services.supabase_client import supabase
+            rows = await (
+                supabase.table('crowdsource_stats')
+                .select('setup_type,score_range,trade_count,win_rate_pct,avg_gain_pct,avg_winner_pct,avg_loser_pct')
+                .order('trade_count', desc=True)
+                .limit(50)
+                .execute()
+            )
+
+            if not rows:
+                AIAnalysisService._crowdsource_cache = ''
+                AIAnalysisService._crowdsource_cache_time = now
+                return ''
+
+            lines = []
+            for r in rows:
+                setup = r.get('setup_type', '?')
+                band = r.get('score_range', '?')
+                count = r.get('trade_count', 0)
+                win_rate = r.get('win_rate_pct')
+                avg_gain = r.get('avg_gain_pct')
+                avg_win = r.get('avg_winner_pct')
+                avg_loss = r.get('avg_loser_pct')
+                win_str = f'{win_rate:.1f}% win rate' if win_rate is not None else 'n/a win rate'
+                gain_str = f', avg gain {avg_gain:+.1f}%' if avg_gain is not None else ''
+                win_detail = f' (avg winner {avg_win:+.1f}%' if avg_win is not None else ''
+                loss_detail = f', avg loser {avg_loss:+.1f}%)' if avg_loss is not None else (')' if win_detail else '')
+                lines.append(
+                    f'- {setup} score {band}: {win_str}{gain_str}{win_detail}{loss_detail}'
+                    f' — {count} user trades'
+                )
+
+            result = '
+'.join(lines)
+            AIAnalysisService._crowdsource_cache = result
+            AIAnalysisService._crowdsource_cache_time = now
+            return result
+
+        except Exception as e:
+            logger.error(f'Failed to fetch crowdsource stats: {e}')
+            AIAnalysisService._crowdsource_cache = ''
+            AIAnalysisService._crowdsource_cache_time = now
+            return ''
 
     async def _get_sean_trades_context(self) -> str:
         """Fetch Sean's verified personal trades from DB, cached for 10 min.
@@ -318,6 +381,18 @@ class AIAnalysisService:
                 "setups and losses to understand what to avoid. Options strike/premium data shows "
                 "exactly how he sized each play — factor this into your contract recommendations.\n\n"
                 + sean_trades_context
+            )
+
+        # Inject Phase 2 crowdsource aggregate stats (anonymized, >= 5 trades per bucket)
+        crowdsource_context = await self._get_crowdsource_context()
+        if crowdsource_context:
+            system += (
+                "\n\n## Community Crowdsource Data (anonymized aggregate stats)\n"
+                "These statistics come from opted-in user trades. Use them to calibrate "
+                "confidence: if the community win rate for a setup is high, be more "
+                "confident; if it's low, add appropriate caution. Do NOT attribute stats "
+                "to specific users — these are fully anonymized.\n\n"
+                + crowdsource_context
             )
 
         # Inject this user's own trade outcome history for personalised calibration
