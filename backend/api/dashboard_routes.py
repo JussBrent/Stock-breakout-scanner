@@ -11,7 +11,8 @@ Endpoints:
 import logging
 from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 
-from middleware.auth import get_current_user, _require_admin
+from middleware.auth import get_current_user
+from api.admin_routes import _require_admin
 from services.dashboard_service import (
     get_today_top_setups,
     get_today_sectors,
