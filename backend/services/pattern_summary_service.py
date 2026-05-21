@@ -135,8 +135,10 @@ def _build_summary_prompt(setup_type: str, sean: dict, community: List[dict]) ->
             parts.append(f"  - Score {band}: {wr_str}{ag_str} ({count} trades)")
 
     parts.append("")
-    parts.append("Write a 2-3 sentence summary (under 120 words) of what this data tells us
-about trading this setup. Be specific with numbers. Note any score-range differences if present.")
+    parts.append(
+        "Write a 2-3 sentence summary (under 120 words) of what this data tells us "
+        "about trading this setup. Be specific with numbers. Note any score-range differences if present."
+    )
 
     return "\n".join(parts)
 
