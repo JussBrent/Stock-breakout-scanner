@@ -222,8 +222,7 @@ class AIAnalysisService:
                     f' — {count} user trades'
                 )
 
-            result = '
-'.join(lines)
+            result = '\n'.join(lines)
             AIAnalysisService._crowdsource_cache = result
             AIAnalysisService._crowdsource_cache_time = now
             return result
