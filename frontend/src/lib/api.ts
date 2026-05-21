@@ -982,7 +982,7 @@ export async function updateWatchlistItem(
   updates: { notes?: string; alert_enabled?: boolean; alert_price?: number | null }
 ): Promise<void> {
   const headers = await getAuthHeaders()
-  await fetch(`${API_URL}/api/watchlist/${symbol.toUpperCase()}`, {
+  await apiFetch(`${API_URL}/api/watchlist/${symbol.toUpperCase()}`, {
     method: "PATCH",
     headers,
     body: JSON.stringify(updates),
