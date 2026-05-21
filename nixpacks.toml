@@ -1,0 +1,18 @@
+# Nixpacks configuration — builds both React frontend and Python backend
+[phases.setup]
+nixPkgs = ["nodejs_20", "python313"]
+
+[phases.install]
+cmds = [
+  "cd frontend && npm ci",
+  "pip install -r backend/requirements.txt"
+]
+
+[phases.build]
+cmds = [
+  "cd frontend && npm run build",
+  "mkdir -p frontend/dist"
+]
+
+[start]
+cmd = "cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT"
