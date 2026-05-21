@@ -7,36 +7,39 @@ on:
       - 'frontend/**'
       - '.github/workflows/build-frontend.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build-frontend:
     runs-on: ubuntu-latest
     # Don't run if the commit was made by the workflow itself
     if: "!contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, 'chore: build frontend dist')"
-    
+
     steps:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-      
+
       - name: Install dependencies
         working-directory: frontend
         run: npm install
-      
+
       - name: Build frontend
         working-directory: frontend
         run: npx vite build
         env:
           VITE_API_URL: https://stock-breakout-scanner-production-b5c4.up.railway.app
-      
+
       - name: Commit and push dist
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f frontend/dist
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add frontend/dist
           git diff --staged --quiet || git commit -m "chore: build frontend dist [skip ci]"
           git push
