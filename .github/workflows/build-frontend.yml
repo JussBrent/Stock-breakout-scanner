@@ -29,7 +29,7 @@ jobs:
       
       - name: Build frontend
         working-directory: frontend
-        run: npm run build
+        run: npx vite build
         env:
           VITE_API_URL: https://stock-breakout-scanner-production-b5c4.up.railway.app
       
