@@ -3,7 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response, RedirectResponse
+from starlette.responses import Response, RedirectResponse, FileResponse
+from starlette.staticfiles import StaticFiles
+from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
 import os
@@ -98,8 +100,17 @@ app.include_router(options_routes.router, prefix="/api/options", tags=["Options"
 app.include_router(paper_trading_routes.router, prefix="/api/paper", tags=["Paper Trading"])
 app.include_router(chart_routes.router, prefix="/api/chart", tags=["Chart"])
 
+# ── Static frontend (React build) ──────────────────────────────────────────
+_FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
+
+if _FRONTEND_DIST.exists():
+    # Serve hashed asset files (JS/CSS/images)
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
+
 @app.get("/", tags=["Root"])
 async def root():
+    if _FRONTEND_DIST.exists():
+        return FileResponse(str(_FRONTEND_DIST / "index.html"))
     return {"name": "Stock Scanner API", "version": "2.0.0", "status": "operational", "docs": "/docs"}
 
 @app.get("/health", tags=["Health"])
@@ -114,3 +125,15 @@ async def health_check():
     snaptrade_configured = bool(settings.SNAPTRADE_CLIENT_ID)
     status = "healthy" if polygon_configured and supabase_configured else "degraded" if polygon_configured or supabase_configured else "unhealthy"
     return {"status": status, "polygon_api": polygon_configured, "supabase": supabase_configured, "snaptrade": snaptrade_configured}
+
+@app.get("/{full_path:path}", tags=["SPA"])
+async def spa_fallback(full_path: str):
+    """Catch-all: serve React app for all non-API routes (SPA client-side routing)."""
+    if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi"):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Not Found")
+    if _FRONTEND_DIST.exists():
+        index = _FRONTEND_DIST / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+    return {"name": "Stock Scanner API", "version": "2.0.0", "status": "operational", "docs": "/docs"}
