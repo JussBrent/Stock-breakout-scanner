@@ -223,8 +223,7 @@ export default function AiTrainingPage() {
           {summaryRefreshing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
           {summaryRefreshing ? 'Generating...' : 'AI Summaries'}
           <RefreshCw className="h-3 w-3 ml-0.5 opacity-50" />
-        </button>(
-              <>
+        </button>
                 <button
                   onClick={() => setFormMode("youtube")}
                   className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white/5 hover:bg-white/10 text-white/80 hover:text-white rounded-lg border border-white/10 transition-colors"
@@ -239,8 +238,6 @@ export default function AiTrainingPage() {
                   <Plus className="h-3.5 w-3.5" />
                   Add
                 </button>
-              </>
-            )}
           </div>
         </div>
 
