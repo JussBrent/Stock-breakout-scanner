@@ -11,6 +11,7 @@ import { Sidebar } from "@/components/dashboard/Sidebar"
 import {
   getDashboardAll,
   refreshDashboard,
+  snaptradeGetBalances,
   type DashboardTopSetup,
   type DashboardSector,
   type DashboardSentiment,
@@ -70,6 +71,7 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [lastUpdated, setLastUpdated] = useState<string>("")
+  const [buyingPower, setBuyingPower] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -101,14 +103,21 @@ export default function DashboardPage() {
 
   useEffect(() => { load() }, [load])
 
+  useEffect(() => {
+    snaptradeGetBalances("all").then((data: any) => {
+      const cash = (data?.balances || []).reduce((s: number, b: any) => s + (b?.cash || 0), 0)
+      if (cash > 0) setBuyingPower(cash)
+    }).catch(() => {})
+  }, [])
+
   const sentConfig = sentiment ? (SENTIMENT_CONFIG[sentiment.sentiment] || SENTIMENT_CONFIG.neutral) : null
   const topSectors = [...sectors].sort((a, b) => (b.change_pct || 0) - (a.change_pct || 0)).slice(0, 5)
   const breakoutSectors = sectors.filter(s => s.is_breaking_out)
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-background">
       <Sidebar />
-      <div className="flex-1 overflow-y-auto">
+      <div className="min-h-screen ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out overflow-y-auto">
         <div className="p-6 space-y-6">
 
           {/* ── Header ── */}
@@ -137,6 +146,17 @@ export default function DashboardPage() {
             <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-sm text-red-300 flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               {error}
+            </div>
+          )}
+
+          {buyingPower !== null && (
+            <div className="flex justify-end">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-900/20 border border-emerald-700/40">
+                <span className="text-xs text-emerald-400/70 font-medium">Buying Power</span>
+                <span className="text-base font-bold text-emerald-400">
+                  ${buyingPower.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
             </div>
           )}
 
