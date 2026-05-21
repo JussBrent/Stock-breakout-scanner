@@ -213,7 +213,7 @@ export default function AiTrainingPage() {
                 : <ChevronDown className="h-3 w-3 ml-0.5" />
               }
             </button>
-            {!isFormOpen && 
+            {!isFormOpen && <>
         <button
           onClick={handleRefreshSummaries}
           disabled={summaryRefreshing}
@@ -238,6 +238,8 @@ export default function AiTrainingPage() {
                   <Plus className="h-3.5 w-3.5" />
                   Add
                 </button>
+            </>
+            }
           </div>
         </div>
 
