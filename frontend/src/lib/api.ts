@@ -1231,26 +1231,31 @@ export interface DashboardAllResponse {
 }
 
 export async function getDashboardAll(): Promise<DashboardAllResponse> {
-  const res = await apiFetch('/api/dashboard/all')
+  const headers = await getAuthHeaders()
+  const res = await apiFetch(`${API_URL}/api/dashboard/all`, { headers })
   return parseResponse<DashboardAllResponse>(res)
 }
 
 export async function getDashboardTopSetups(): Promise<{ success: boolean; setups: DashboardTopSetup[]; count: number }> {
-  const res = await apiFetch('/api/dashboard/top-setups')
+  const headers = await getAuthHeaders()
+  const res = await apiFetch(`${API_URL}/api/dashboard/top-setups`, { headers })
   return parseResponse(res)
 }
 
 export async function getDashboardSectors(): Promise<{ success: boolean; sectors: DashboardSector[]; count: number }> {
-  const res = await apiFetch('/api/dashboard/sectors')
+  const headers = await getAuthHeaders()
+  const res = await apiFetch(`${API_URL}/api/dashboard/sectors`, { headers })
   return parseResponse(res)
 }
 
 export async function getDashboardSentiment(): Promise<{ success: boolean; sentiment: DashboardSentiment }> {
-  const res = await apiFetch('/api/dashboard/sentiment')
+  const headers = await getAuthHeaders()
+  const res = await apiFetch(`${API_URL}/api/dashboard/sentiment`, { headers })
   return parseResponse(res)
 }
 
 export async function refreshDashboard(): Promise<{ success: boolean; message: string }> {
-  const res = await apiFetch('/api/dashboard/refresh', { method: 'POST' })
+  const headers = await getAuthHeaders()
+  const res = await apiFetch(`${API_URL}/api/dashboard/refresh`, { method: 'POST', headers })
   return parseResponse(res)
 }
