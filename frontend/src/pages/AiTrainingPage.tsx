@@ -523,7 +523,7 @@ export default function AiTrainingPage() {
             ))}
           </div>
         )}
-      </></>
+     </>
       }
       </main>
     </div>
