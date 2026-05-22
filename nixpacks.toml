@@ -1,13 +1,4 @@
-# Nixpacks configuration — frontend/dist is pre-built by GitHub Actions
-# Railway only needs to install Python backend dependencies
-
-providers = ["python"]
-
-[phases.setup]
-nixPkgs = ["python313"]
-
-[phases.install]
-cmds = ["pip install --break-system-packages -r backend/requirements.txt"]
+# frontend/dist pre-built by GitHub Actions — Nixpacks auto-detects Python from requirements.txt
 
 [start]
 cmd = "cd backend && uvicorn app:app --host 0.0.0.0 --port $PORT"
