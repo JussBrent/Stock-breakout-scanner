@@ -1,3 +1,4 @@
+// v2 — dashboard: buying power + market sentiment + top setups + sectors + heatmap
 import { useEffect, useState, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
