@@ -1,8 +1,10 @@
 # Nixpacks configuration — frontend/dist is pre-built by GitHub Actions
 # Railway only needs to install Python backend dependencies
 
+providers = ["python"]
+
 [phases.setup]
-nixPkgs = ["python313"]
+nixPkgs = ["python313", "python313Packages.pip"]
 
 [phases.install]
 cmds = ["pip install -r backend/requirements.txt"]
