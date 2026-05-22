@@ -1,4 +1,8 @@
-# frontend/dist pre-built by GitHub Actions — Nixpacks auto-detects Python from requirements.txt
+# Force Python provider + use virtualenv to avoid externally-managed-environment error
+providers = ["python"]
+
+[phases.install]
+cmds = ["python -m venv /opt/venv", "/opt/venv/bin/pip install -r backend/requirements.txt"]
 
 [start]
-cmd = "cd backend && python -m uvicorn app:app --host 0.0.0.0 --port $PORT"
+cmd = "cd backend && /opt/venv/bin/python -m uvicorn app:app --host 0.0.0.0 --port $PORT"
