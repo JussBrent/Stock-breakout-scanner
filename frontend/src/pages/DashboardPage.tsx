@@ -505,4 +505,4 @@ function StatPill({
                             </div>
                       </div>
                     )
-}</></></div>
+}
