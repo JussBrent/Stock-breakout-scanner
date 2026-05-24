@@ -171,47 +171,47 @@ export default function DashboardPage() {
                         {/* ── Header ── */}
                                 <div className="flex items-center justify-between">
                                             <div>
-                                                          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>h1>
+                                                          <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
                                                           <p className="text-sm text-muted-foreground mt-0.5">
                                                                           Daily intelligence · AI-scored setups · Market heatmap
-                                                            {lastUpdated && <span className="ml-2 opacity-60">· Updated {lastUpdated}</span>span>}
-                                                          </p>p>
-                                            </div>div>
+                                                            {lastUpdated && <span className="ml-2 opacity-60">· Updated {lastUpdated}</span>}
+                                                          </p>
+                                            </div>
                                             <div className="flex gap-2 items-center">
                                               {scanning && (
                           <span className="text-xs text-blue-400 flex items-center gap-1 animate-pulse">
                                             <RefreshCw className="h-3 w-3 animate-spin" />
                                             Scanning market…
-                          </span>span>
+                          </span>
                                                           )}
                                                           <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
                                                                           <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", loading && "animate-spin")} />
                                                                           Reload
-                                                          </Button>Button>
+                                                          </Button>
                                                           <Button size="sm" onClick={handleRefresh} disabled={refreshing || scanning}
                                                                             className="bg-blue-600 hover:bg-blue-700 text-white">
                                                                           <Zap className={cn("h-3.5 w-3.5 mr-1.5", (refreshing || scanning) && "animate-pulse")} />
                                                             {refreshing ? "Starting…" : scanning ? "Scanning…" : "Refresh Scan"}
-                                                          </Button>Button>
-                                            </div>div>
-                                </div>div>
+                                                          </Button>
+                                            </div>
+                                </div>
                       
                         {error && (
                       <div className="rounded-lg bg-red-900/30 border border-red-700 p-3 text-sm text-red-300 flex items-center gap-2">
                                     <AlertTriangle className="h-4 w-4 shrink-0" />
                         {error}
-                      </div>div>
+                      </div>
                                 )}
                       
                         {buyingPower !== null && (
                       <div className="flex justify-end">
                                     <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-900/20 border border-emerald-700/40">
-                                                    <span className="text-xs text-emerald-400/70 font-medium">Buying Power</span>span>
+                                                    <span className="text-xs text-emerald-400/70 font-medium">Buying Power</span>
                                                     <span className="text-base font-bold text-emerald-400">
                                                                       ${buyingPower.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                                    </span>span>
-                                    </div>div>
-                      </div>div>
+                                                    </span>
+                                    </div>
+                      </div>
                                 )}
                       
                         {/* ── Market Sentiment ── */}
@@ -222,9 +222,9 @@ export default function DashboardPage() {
                                                                       <div className="flex items-center gap-3">
                                                                                           <Activity className={cn("h-5 w-5", sentConfig.color)} />
                                                                                           <div>
-                                                                                                                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Market Sentiment</div>div>
-                                                                                                                <div className={cn("text-xl font-bold", sentConfig.color)}>{sentConfig.label}</div>div>
-                                                                                            </div>div>
+                                                                                                                <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Market Sentiment</div>
+                                                                                                                <div className={cn("text-xl font-bold", sentConfig.color)}>{sentConfig.label}</div>
+                                                                                            </div>
                                                                         {/* Score gauge */}
                                                                                           <div className="flex items-center gap-2 ml-4">
                                                                                                                 <div className="w-32 h-2.5 rounded-full bg-zinc-700 overflow-hidden">
@@ -232,24 +232,24 @@ export default function DashboardPage() {
                                                                                                                                                                     className="h-full rounded-full transition-all duration-700"
                                                                                                                                                                     style={{ width: `${sentiment.sentiment_score}%`, backgroundColor: sentimentColor(sentiment.sentiment_score) }}
                                                                                                                                                                   />
-                                                                                                                  </div>div>
+                                                                                                                  </div>
                                                                                                                 <span className={cn("text-sm font-semibold tabular-nums", sentConfig.color)}>
                                                                                                                   {sentiment.sentiment_score?.toFixed(0)}/100
-                                                                                                                  </span>span>
-                                                                                            </div>div>
-                                                                      </div>div>
+                                                                                                                  </span>
+                                                                                            </div>
+                                                                      </div>
                                                                       <div className="flex gap-6 text-sm">
                                                                                           <StatPill label="SPY" value={sentiment.spy_change} isPercent />
                                                                                           <StatPill label="QQQ" value={sentiment.qqq_change} isPercent />
                                                                                           <StatPill label="IWM" value={sentiment.iwm_change} isPercent />
                                                                                           <StatPill label="VIX" value={sentiment.vix} color="text-zinc-300" />
-                                                                      </div>div>
-                                                    </div>div>
+                                                                      </div>
+                                                    </div>
                                       {sentiment.market_notes && (
-                                          <div className="mt-2 text-xs text-muted-foreground">{sentiment.market_notes}</div>div>
+                                          <div className="mt-2 text-xs text-muted-foreground">{sentiment.market_notes}</div>
                                                     )}
-                                    </Card>Card>
-                      </motion.div>motion.div>
+                                    </Card>
+                      </motion.div>
                     )}
                       
                         {sentiment === null && !loading && (
@@ -258,9 +258,9 @@ export default function DashboardPage() {
                                                     <Activity className={cn("h-4 w-4", scanning ? "text-blue-400 animate-pulse" : "text-muted-foreground")} />
                                                     <span className={scanning ? "text-blue-400" : "text-muted-foreground"}>
                                                       {scanning ? "Scanning market data… check back in ~30 seconds" : 'No sentiment data yet — click "Refresh Scan" to generate'}
-                                                    </span>span>
-                                    </div>div>
-                      </Card>Card>
+                                                    </span>
+                                    </div>
+                      </Card>
                                 )}
                       
                         {/* ── Main 2-column grid ── */}
@@ -270,18 +270,18 @@ export default function DashboardPage() {
                                             <div className="xl:col-span-2 space-y-3">
                                                           <div className="flex items-center gap-2">
                                                                           <Star className="h-4 w-4 text-yellow-400" />
-                                                                          <h2 className="text-base font-semibold">Top 5 AI-Rated Setups Today</h2>h2>
+                                                                          <h2 className="text-base font-semibold">Top 5 AI-Rated Setups Today</h2>
                                                                           <Badge variant="outline" className="text-xs ml-auto">
                                                                             {topSetups.length} / 5
-                                                                          </Badge>Badge>
-                                                          </div>div>
+                                                                          </Badge>
+                                                          </div>
                                             
                                               {loading && (
                           <div className="space-y-3">
                             {[1, 2, 3, 4, 5].map(i => (
                                                 <div key={i} className="h-24 rounded-xl bg-zinc-800/50 animate-pulse" />
                                               ))}
-                          </div>div>
+                          </div>
                                                           )}
                                             
                                               {!loading && topSetups.length === 0 && (
@@ -289,17 +289,17 @@ export default function DashboardPage() {
                             {scanning ? (
                                                 <>
                                                                       <RefreshCw className="h-8 w-8 text-blue-400 mx-auto mb-2 animate-spin" />
-                                                                      <p className="text-blue-400 text-sm font-medium">AI scanner running…</p>p>
-                                                                      <p className="text-xs text-muted-foreground mt-1">Top setups will appear here in ~30–60 seconds</p>p>
+                                                                      <p className="text-blue-400 text-sm font-medium">AI scanner running…</p>
+                                                                      <p className="text-xs text-muted-foreground mt-1">Top setups will appear here in ~30–60 seconds</p>
                                                 </>>
                                               ) : (
                                                 <>
                                                                       <Target className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                                                                      <p className="text-muted-foreground text-sm">No setups generated yet for today.</p>p>
-                                                                      <p className="text-xs text-muted-foreground mt-1">Click "Refresh Scan" to run the AI scanner.</p>p>
+                                                                      <p className="text-muted-foreground text-sm">No setups generated yet for today.</p>
+                                                                      <p className="text-xs text-muted-foreground mt-1">Click "Refresh Scan" to run the AI scanner.</p>
                                                 </>>
                                               )}
-                          </Card>Card>
+                          </Card>
                                                           )}
                                             
                                               {!loading && topSetups.map((setup, idx) => (
@@ -315,133 +315,133 @@ export default function DashboardPage() {
                                                                                         {/* Rank badge */}
                                                                                                               <div className={cn("w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5", rankBadgeColor(setup.rank))}>
                                                                                                                 {setup.rank}
-                                                                                                                </div>div>
+                                                                                                                </div>
                                                                                                               <div>
                                                                                                                                         <div className="flex items-center gap-2 flex-wrap">
-                                                                                                                                                                    <span className="text-base font-bold">{setup.symbol}</span>span>
+                                                                                                                                                                    <span className="text-base font-bold">{setup.symbol}</span>
                                                                                                                                           {setup.company_name && setup.company_name !== setup.symbol && (
-                                                                            <span className="text-xs text-muted-foreground">{setup.company_name}</span>span>
+                                                                            <span className="text-xs text-muted-foreground">{setup.company_name}</span>
                                                                                                                                                                     )}
-                                                                                                                                                                    <Badge variant="secondary" className="text-xs">{setup.setup_type}</Badge>Badge>
+                                                                                                                                                                    <Badge variant="secondary" className="text-xs">{setup.setup_type}</Badge>
                                                                                                                                           {setup.group_breakout && (
                                                                             <Badge className="bg-blue-700/50 text-blue-300 border-blue-600 text-xs">
                                                                                                             <Zap className="h-2.5 w-2.5 mr-1" />Group Breakout
-                                                                              </Badge>Badge>
+                                                                              </Badge>
                                                                                                                                                                     )}
                                                                                                                                           {setup.is_sideways && (
-                                                                            <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-600">Sideways</Badge>Badge>
+                                                                            <Badge variant="outline" className="text-xs text-yellow-400 border-yellow-600">Sideways</Badge>
                                                                                                                                                                     )}
                                                                                                                                           {setup.is_extended && (
-                                                                            <Badge variant="outline" className="text-xs text-orange-400 border-orange-600">Extended</Badge>Badge>
+                                                                            <Badge variant="outline" className="text-xs text-orange-400 border-orange-600">Extended</Badge>
                                                                                                                                                                     )}
-                                                                                                                                          </div>div>
+                                                                                                                                          </div>
                                                                                                                                         <div className="flex gap-4 mt-1.5 text-xs text-muted-foreground flex-wrap">
-                                                                                                                                          {setup.sector && <span>{setup.sector}</span>span>}
-                                                                                                                                          {setup.etf_group && <span className="text-blue-400">ETF: {setup.etf_group}</span>span>}
+                                                                                                                                          {setup.sector && <span>{setup.sector}</span>}
+                                                                                                                                          {setup.etf_group && <span className="text-blue-400">ETF: {setup.etf_group}</span>}
                                                                                                                                           {setup.price != null && (
-                                                                            <span className="text-foreground font-medium">${setup.price?.toFixed(2)}</span>span>
+                                                                            <span className="text-foreground font-medium">${setup.price?.toFixed(2)}</span>
                                                                                                                                                                     )}
                                                                                                                                           {setup.price_change_pct != null && (
                                                                             <span className={setup.price_change_pct >= 0 ? "text-emerald-400" : "text-red-400"}>
                                                                               {setup.price_change_pct >= 0 ? "+" : ""}{setup.price_change_pct?.toFixed(2)}%
-                                                                              </span>span>
+                                                                              </span>
                                                                                                                                                                     )}
-                                                                                                                                          </div>div>
+                                                                                                                                          </div>
                                                                                                                 {setup.analysis && (
-                                                                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{setup.analysis}</p>p>
+                                                                          <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">{setup.analysis}</p>
                                                                                                                                         )}
-                                                                                                                </div>div>
-                                                                                        </div>div>
+                                                                                                                </div>
+                                                                                        </div>
                                                                                       <div className="text-right shrink-0">
                                                                                                               <div className={cn("text-2xl font-bold tabular-nums", scoreColor(setup.ai_score))}>
                                                                                                                 {setup.ai_score?.toFixed(0)}
-                                                                                                                </div>div>
-                                                                                                              <div className="text-xs text-muted-foreground">AI Score</div>div>
+                                                                                                                </div>
+                                                                                                              <div className="text-xs text-muted-foreground">AI Score</div>
                                                                                         {setup.confidence && (
-                                                                        <Badge variant="outline" className="text-xs mt-1">{setup.confidence}</Badge>Badge>
+                                                                        <Badge variant="outline" className="text-xs mt-1">{setup.confidence}</Badge>
                                                                                                               )}
                                                                                         {setup.risk_level && (
-                                                                        <div className="text-xs text-muted-foreground mt-1">Risk: {setup.risk_level}</div>div>
+                                                                        <div className="text-xs text-muted-foreground mt-1">Risk: {setup.risk_level}</div>
                                                                                                               )}
-                                                                                        </div>div>
-                                                                </div>div>
-                                            </Card>Card>
-                          </motion.div>motion.div>
+                                                                                        </div>
+                                                                </div>
+                                            </Card>
+                          </motion.div>
                         ))}
-                                            </div>div>
+                                            </div>
                                 
                                   {/* ── Best Sectors sidebar (1/3 width) ── */}
                                             <div className="space-y-3">
                                                           <div className="flex items-center gap-2">
                                                                           <BarChart2 className="h-4 w-4 text-blue-400" />
-                                                                          <h2 className="text-base font-semibold">Best Sectors</h2>h2>
-                                                          </div>div>
+                                                                          <h2 className="text-base font-semibold">Best Sectors</h2>
+                                                          </div>
                                             
-                                              {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 rounded-lg bg-zinc-800/50 animate-pulse" />)}</div>div>}
+                                              {loading && <div className="space-y-2">{[1,2,3,4,5].map(i => <div key={i} className="h-12 rounded-lg bg-zinc-800/50 animate-pulse" />)}</div>}
                                             
                                               {!loading && topSectors.length === 0 && (
                           <Card className={cn("border p-4 text-center text-sm", scanning ? "border-blue-700/50 text-blue-400" : "border-zinc-700 text-muted-foreground")}>
                             {scanning ? "Scanning sectors…" : "No data yet"}
-                          </Card>Card>
+                          </Card>
                                                           )}
                                             
                                               {!loading && topSectors.map((s, idx) => (
                           <motion.div key={s.sector} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.06 }}>
                                             <Card className="border border-zinc-700 p-3 flex items-center justify-between hover:border-zinc-500 transition-colors">
                                                                 <div>
-                                                                                      <div className="text-sm font-medium">{s.sector}</div>div>
-                                                                                      <div className="text-xs text-muted-foreground">{s.etf_symbol}</div>div>
-                                                                </div>div>
+                                                                                      <div className="text-sm font-medium">{s.sector}</div>
+                                                                                      <div className="text-xs text-muted-foreground">{s.etf_symbol}</div>
+                                                                </div>
                                                                 <div className="text-right">
                                                                                       <div className={cn("text-sm font-bold tabular-nums flex items-center gap-1",
                                                                                                                                  (s.change_pct || 0) >= 0 ? "text-emerald-400" : "text-red-400",
                                                                                                                                )}>
                                                                                         {(s.change_pct || 0) >= 0 ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />}
                                                                                         {(s.change_pct || 0) >= 0 ? "+" : ""}{(s.change_pct || 0).toFixed(2)}%
-                                                                                        </div>div>
+                                                                                        </div>
                                                                   {s.is_breaking_out && (
-                                                    <Badge className="bg-blue-800/50 text-blue-300 border-blue-700 text-xs mt-0.5">Breakout</Badge>Badge>
+                                                    <Badge className="bg-blue-800/50 text-blue-300 border-blue-700 text-xs mt-0.5">Breakout</Badge>
                                                                                       )}
-                                                                </div>div>
-                                            </Card>Card>
-                          </motion.div>motion.div>
+                                                                </div>
+                                            </Card>
+                          </motion.div>
                         ))}
                                             
                                               {breakoutSectors.length > 0 && (
                           <div className="mt-4">
                                             <div className="text-xs font-medium text-blue-400 uppercase tracking-wider mb-2 flex items-center gap-1">
                                                                 <Zap className="h-3 w-3" /> Sector Breakouts
-                                            </div>div>
+                                            </div>
                                             <div className="flex flex-wrap gap-1.5">
                                               {breakoutSectors.map(s => (
                                                   <Badge key={s.sector} className="bg-blue-800/40 text-blue-300 border-blue-700 text-xs">
                                                     {s.etf_symbol} +{(s.change_pct || 0).toFixed(1)}%
-                                                  </Badge>Badge>
+                                                  </Badge>
                                                 ))}
-                                            </div>div>
-                          </div>div>
+                                            </div>
+                          </div>
                                                           )}
-                                            </div>div>
-                                </div>div>
+                                            </div>
+                                </div>
                       
                         {/* ── Sector Heatmap ── */}
                                 <div>
                                             <div className="flex items-center gap-2 mb-3">
                                                           <Activity className="h-4 w-4 text-purple-400" />
-                                                          <h2 className="text-base font-semibold">Sector Heatmap</h2>h2>
-                                                          <span className="text-xs text-muted-foreground ml-1">— performance today</span>span>
-                                            </div>div>
+                                                          <h2 className="text-base font-semibold">Sector Heatmap</h2>
+                                                          <span className="text-xs text-muted-foreground ml-1">— performance today</span>
+                                            </div>
                                 
                                   {loading && <div className="h-40 rounded-xl bg-zinc-800/50 animate-pulse" />}
                                 
                                   {!loading && sectors.length === 0 && (
                         <Card className={cn("border p-8 text-center", scanning ? "border-blue-700/50 bg-blue-900/10" : "border-zinc-700")}>
                           {scanning ? (
-                                            <p className="text-blue-400 text-sm animate-pulse">Fetching sector data…</p>p>
+                                            <p className="text-blue-400 text-sm animate-pulse">Fetching sector data…</p>
                                           ) : (
-                                            <p className="text-muted-foreground text-sm">No sector data yet. Click "Refresh Scan" to generate.</p>p>
+                                            <p className="text-muted-foreground text-sm">No sector data yet. Click "Refresh Scan" to generate.</p>
                                         )}
-                        </Card>Card>
+                        </Card>
                                             )}
                                 
                                   {!loading && sectors.length > 0 && (
@@ -459,23 +459,23 @@ export default function DashboardPage() {
                                                                                                                       heatmapColor(s.change_pct || 0),
                                                                                                                     )}
                                                                                           >
-                                                                                          <div className="text-xs font-bold text-white">{s.etf_symbol}</div>div>
-                                                                                          <div className="text-xs text-white/80 mt-0.5 truncate">{s.sector}</div>div>
+                                                                                          <div className="text-xs font-bold text-white">{s.etf_symbol}</div>
+                                                                                          <div className="text-xs text-white/80 mt-0.5 truncate">{s.sector}</div>
                                                                                           <div className={cn("text-sm font-bold mt-1", (s.change_pct || 0) >= 0 ? "text-white" : "text-white")}>
                                                                                             {(s.change_pct || 0) >= 0 ? "+" : ""}{(s.change_pct || 0).toFixed(2)}%
-                                                                                            </div>div>
+                                                                                            </div>
                                                                       {s.is_breaking_out && (
-                                                                                                                    <div className="text-xs mt-0.5 text-yellow-300">⚡ BO</div>div>
+                                                                                                                    <div className="text-xs mt-0.5 text-yellow-300">⚡ BO</div>
                                                                                           )}
-                                                                    </motion.div>motion.div>
+                                                                    </motion.div>
                                                                   ))
                           }
-                        </div>div>
+                        </div>
                                             )}
-                                </div>div>
-                      </div>div>
-              </div>div>
-        </div>div>
+                                </div>
+                      </div>
+              </div>
+        </div>
       )
 }
 
@@ -497,12 +497,12 @@ function StatPill({
             const cls = color || (positive ? "text-emerald-400" : "text-red-400")
                 return (
                       <div className="text-center">
-                            <div className="text-xs text-muted-foreground">{label}</div>div>
+                            <div className="text-xs text-muted-foreground">{label}</div>
                             <div className={cn("text-sm font-semibold tabular-nums", cls)}>
                               {isPercent ? (positive ? "+" : "") : ""}
                               {v.toFixed(2)}
                               {isPercent ? "%" : ""}
-                            </div>div>
-                      </div>div>
+                            </div>
+                      </div>
                     )
 }</></></div>
