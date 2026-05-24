@@ -291,13 +291,13 @@ export default function DashboardPage() {
                                                                       <RefreshCw className="h-8 w-8 text-blue-400 mx-auto mb-2 animate-spin" />
                                                                       <p className="text-blue-400 text-sm font-medium">AI scanner running…</p>
                                                                       <p className="text-xs text-muted-foreground mt-1">Top setups will appear here in ~30–60 seconds</p>
-                                                </>>
+                                                </>
                                               ) : (
                                                 <>
                                                                       <Target className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                                                                       <p className="text-muted-foreground text-sm">No setups generated yet for today.</p>
                                                                       <p className="text-xs text-muted-foreground mt-1">Click "Refresh Scan" to run the AI scanner.</p>
-                                                </>>
+                                                </>
                                               )}
                           </Card>
                                                           )}
