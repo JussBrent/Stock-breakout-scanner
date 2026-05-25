@@ -73,6 +73,8 @@ export default function DashboardPage() {
     const [scanning, setScanning]     = useState(false)   // auto-scan in progress
   const [error, setError]           = useState<string | null>(null)
     const [lastUpdated, setLastUpdated] = useState<string>("")
+    const [marketClosed, setMarketClosed] = useState(false)
+    const [dataDate, setDataDate] = useState<string>("")
     const [buyingPower, setBuyingPower] = useState<number | null>(null)
     const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -86,6 +88,8 @@ export default function DashboardPage() {
                 setSectors(data.sectors || [])
                 setSentiment(data.sentiment || null)
                 setLastUpdated(new Date().toLocaleTimeString())
+                setMarketClosed(data.market_closed ?? false)
+                setDataDate(data.data_date ?? "")
                 // If we got real data, stop polling
           const hasData = (data.sectors?.length ?? 0) > 0 || data.sentiment != null
                 if (hasData) {
@@ -173,9 +177,10 @@ export default function DashboardPage() {
                                             <div>
                                                           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
                                                           <p className="text-sm text-muted-foreground mt-0.5">
-                                                                          Daily intelligence · AI-scored setups · Market heatmap
-                                                            {lastUpdated && <span className="ml-2 opacity-60">· Updated {lastUpdated}</span>}
-                                                          </p>
+                                                                          {marketClosed && dataDate
+                                                                              ? <>Last session: {dataDate} · Market closed</>
+                                                                              : <>Daily intelligence · AI-scored setups · Market heatmap</>}
+                      </p>
                                             </div>
                                             <div className="flex gap-2 items-center">
                                               {scanning && (
