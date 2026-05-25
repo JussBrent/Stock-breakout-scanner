@@ -2,12 +2,12 @@
 dashboard_service.py
 
 Builds daily dashboard intelligence:
-  - Top 5 AI-scored setups from a full universe scan
-  - Sector performance heatmap (SPDRs + major ETFs)
-  - Market sentiment (VIX, SPY/QQQ/IWM, A/D ratio)
+- Top 5 AI-scored setups from a full universe scan
+- Sector performance heatmap (SPDRs + major ETFs)
+- Market sentiment (VIX, SPY/QQQ/IWM, A/D ratio)
 
 Filters: leading theme, liquidity, accelerated EPS/sales,
-         ETF group in a setup, extended/sideways flag.
+ETF group in a setup, extended/sideways flag.
 Results cached in Supabase; refreshed on demand or daily cron.
 """
 
@@ -24,29 +24,29 @@ logger = logging.getLogger(__name__)
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "") or os.getenv("SUPABASE_KEY", "")
 
-# ── Sector ETF universe ──────────────────────────────────────────────────────
+# -- Sector ETF universe -----------------------------------------------------
 SECTOR_ETFS = {
-    "Technology":         "XLK",
-    "Healthcare":         "XLV",
-    "Financials":         "XLF",
-    "Consumer Disc.":     "XLY",
-    "Consumer Staples":   "XLP",
-    "Energy":             "XLE",
-    "Industrials":        "XLI",
-    "Materials":          "XLB",
-    "Utilities":          "XLU",
-    "Real Estate":        "XLRE",
+    "Technology": "XLK",
+    "Healthcare": "XLV",
+    "Financials": "XLF",
+    "Consumer Disc.": "XLY",
+    "Consumer Staples": "XLP",
+    "Energy": "XLE",
+    "Industrials": "XLI",
+    "Materials": "XLB",
+    "Utilities": "XLU",
+    "Real Estate": "XLRE",
     "Communication Svcs": "XLC",
-    "Semiconductors":     "SOXX",
-    "Biotech":            "XBI",
-    "Clean Energy":       "ICLN",
-    "AI/Cloud":           "WCLD",
+    "Semiconductors": "SOXX",
+    "Biotech": "XBI",
+    "Clean Energy": "ICLN",
+    "AI/Cloud": "WCLD",
 }
 
-# ── Market breadth proxies ───────────────────────────────────────────────────
+# -- Market breadth proxies --------------------------------------------------
 BREADTH_SYMBOLS = ["SPY", "QQQ", "IWM", "VIX"]
 
-# ── Polygon helpers ──────────────────────────────────────────────────────────
+# -- Polygon helpers ---------------------------------------------------------
 _POLYGON_BASE = "https://api.polygon.io"
 
 
@@ -66,25 +66,51 @@ async def _poly_get(path: str, params: dict | None = None, timeout: int = 15) ->
         resp = await client.get(f"{_POLYGON_BASE}{path}", params=p)
         if resp.status_code == 200:
             return resp.json()
-        logger.warning("Polygon %s → %s", path, resp.status_code)
+        logger.warning("Polygon %s -> %s", path, resp.status_code)
         return {}
 
 
+async def _get_prev_close(symbol: str) -> float:
+    """Fetch the most recent previous close via Polygon /v2/aggs/ticker/{sym}/prev."""
+    data = await _poly_get(f"/v2/aggs/ticker/{symbol.upper()}/prev")
+    results = data.get("results", [])
+    if results:
+        return float(results[0].get("c", 0) or 0)
+    return 0.0
+
+
 async def _get_ticker_snapshot(symbol: str) -> dict:
-    """Get latest price + day change for a symbol."""
+    """Get latest price + day change for a symbol.
+
+    When the market is closed, Polygon snapshot day.c == 0.
+    In that case we fall back to /v2/aggs/ticker/{sym}/prev so that
+    change_pct is 0% (previous close vs previous close) instead of -100%.
+    """
     data = await _poly_get(f"/v2/snapshot/locale/us/markets/stocks/tickers/{symbol.upper()}")
     ticker = data.get("ticker", {})
     day = ticker.get("day", {})
     prev = ticker.get("prevDay", {})
-    prev_close = prev.get("c") or 1
+
     close = day.get("c") or ticker.get("lastTrade", {}).get("p") or 0
+    prev_close = prev.get("c") or 0
+
+    # Market closed: day.c is 0 -- fall back to previous-close aggs endpoint
+    if not close or close == 0:
+        close = await _get_prev_close(symbol)
+        prev_close = close  # same session, 0% change
+
+    # Still no prev_close? use close so we avoid division giving -100%
+    if not prev_close or prev_close == 0:
+        prev_close = close if close else 1
+
     change_pct = round(((close - prev_close) / prev_close) * 100, 2) if prev_close else 0
     volume = day.get("v") or 0
-    avg_v = ticker.get("day", {}).get("vw") or volume
-    rel_vol = round(volume / avg_v, 2) if avg_v else 1.0
+    vwap = ticker.get("day", {}).get("vw") or volume
+    rel_vol = round(volume / vwap, 2) if vwap and vwap != volume else 1.0
+
     return {
         "symbol": symbol,
-        "price": round(close, 4),
+        "price": round(float(close), 4),
         "change_pct": change_pct,
         "volume": int(volume),
         "relative_volume": rel_vol,
@@ -102,7 +128,7 @@ async def _get_ticker_details(symbol: str) -> dict:
     }
 
 
-# ── Supabase helpers ─────────────────────────────────────────────────────────
+# -- Supabase helpers --------------------------------------------------------
 
 def _sb_headers() -> dict:
     return {
@@ -124,7 +150,7 @@ async def _sb_upsert(table: str, rows: list[dict]) -> None:
             headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"},
         )
         if r.status_code not in (200, 201):
-            logger.error("Supabase upsert %s → %s %s", table, r.status_code, r.text[:200])
+            logger.error("Supabase upsert %s -> %s %s", table, r.status_code, r.text[:200])
 
 
 async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
@@ -140,11 +166,11 @@ async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
         r = await client.get(url, params=params or {}, headers=headers)
         if r.status_code == 200:
             return r.json()
-        logger.error("Supabase select %s → %s", table, r.status_code)
+        logger.error("Supabase select %s -> %s %s", table, r.status_code, r.text[:200])
         return []
 
 
-# ── Sector performance ───────────────────────────────────────────────────────
+# -- Sector performance -------------------------------------------------------
 
 async def build_sector_heatmap() -> list[dict]:
     """Fetch all sector ETFs in parallel, score them, save to DB."""
@@ -165,7 +191,10 @@ async def build_sector_heatmap() -> list[dict]:
             "volume": snap.get("volume", 0),
             "relative_volume": snap.get("relative_volume", 1.0),
             "price": snap.get("price", 0),
-            "is_breaking_out": snap.get("relative_volume", 1.0) > 1.5 and snap.get("change_pct", 0) > 0.5,
+            "is_breaking_out": (
+                snap.get("relative_volume", 1.0) > 1.5
+                and snap.get("change_pct", 0) > 0.5
+            ),
         }
         rows.append(row)
 
@@ -173,7 +202,7 @@ async def build_sector_heatmap() -> list[dict]:
     return rows
 
 
-# ── Market sentiment ─────────────────────────────────────────────────────────
+# -- Market sentiment ---------------------------------------------------------
 
 async def build_market_sentiment() -> dict:
     """Compute market sentiment from SPY/QQQ/IWM + VIX."""
@@ -181,7 +210,7 @@ async def build_market_sentiment() -> dict:
     tasks = [_get_ticker_snapshot(s) for s in BREADTH_SYMBOLS]
     results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    snaps = {}
+    snaps: dict = {}
     for sym, res in zip(BREADTH_SYMBOLS, results):
         if not isinstance(res, Exception):
             snaps[sym] = res
@@ -224,7 +253,7 @@ async def build_market_sentiment() -> dict:
     return row
 
 
-# ── Top 5 AI-scored setups ───────────────────────────────────────────────────
+# -- Top 5 AI-scored setups --------------------------------------------------
 
 async def build_top_setups(limit: int = 5) -> list[dict]:
     """
@@ -243,7 +272,6 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
         logger.error("Import error in build_top_setups: %s", exc)
         return []
 
-    # Run scanner
     try:
         raw_results = await scan_universe(None)
     except Exception as exc:
@@ -253,7 +281,6 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
     if not raw_results:
         return []
 
-    # Filter: liquidity + has AI rating
     candidates = []
     for r in raw_results:
         try:
@@ -262,15 +289,13 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
             ai_ratings = getattr(r, "ai_ratings", None)
             if ai_ratings and hasattr(ai_ratings, "opportunity_score"):
                 score = ai_ratings.opportunity_score or 0
-            # liquidity filter: volume > 300k and ai score > 0
             if vol > 300_000 and score > 0:
                 candidates.append((r, score))
         except Exception:
             continue
 
-    # Sort by score descending
     candidates.sort(key=lambda x: x[1], reverse=True)
-    top = candidates[:max(limit * 3, 15)]  # take wider pool for detail enrichment
+    top = candidates[:max(limit * 3, 15)]
 
     ai_svc = get_ai_service()
 
@@ -281,7 +306,6 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
             if not sym:
                 continue
 
-            # Re-score via AI service for richer analysis
             try:
                 ai_ratings_list = await ai_svc.analyze_stocks([result])
                 ai_rating = ai_ratings_list[0] if ai_ratings_list else None
@@ -289,30 +313,34 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
                 logger.warning("AI re-score failed for %s: %s", sym, exc)
                 ai_rating = getattr(result, "ai_ratings", None)
 
-            # Get company details
             details = await _get_ticker_details(sym)
 
-            # Flag extended / sideways from setup type
             setup_type = str(getattr(result, "setup_type", "") or "")
             is_extended = "extended" in setup_type.lower() or "parabolic" in setup_type.lower()
-            is_sideways = "flat" in setup_type.lower() or "sideways" in setup_type.lower() or "base" in setup_type.lower()
+            is_sideways = (
+                "flat" in setup_type.lower()
+                or "sideways" in setup_type.lower()
+                or "base" in setup_type.lower()
+            )
 
-            # Check if sector ETF is also in setup (group breakout signal)
             sector = details.get("sector", "")
             etf_sym = next((v for k, v in SECTOR_ETFS.items() if k.lower() in sector.lower()), None)
             group_breakout = False
             if etf_sym:
                 try:
                     etf_snap = await _get_ticker_snapshot(etf_sym)
-                    group_breakout = etf_snap.get("relative_volume", 1.0) > 1.3 and etf_snap.get("change_pct", 0) > 0.3
+                    group_breakout = (
+                        etf_snap.get("relative_volume", 1.0) > 1.3
+                        and etf_snap.get("change_pct", 0) > 0.3
+                    )
                 except Exception:
                     pass
 
-            ai_score = 0
-            opportunity_score = 0
+            ai_score = 0.0
+            opportunity_score = 0.0
             confidence = ""
             analysis_text = ""
-            key_factors = []
+            key_factors: list = []
             risk_level = ""
             recommendation = ""
 
@@ -358,7 +386,7 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
     return rows
 
 
-# ── Full refresh ─────────────────────────────────────────────────────────────
+# -- Full refresh ------------------------------------------------------------
 
 async def refresh_dashboard() -> dict:
     """Run all three builders in parallel and return summary."""
@@ -378,7 +406,7 @@ async def refresh_dashboard() -> dict:
     }
 
 
-# ── Read helpers (for API endpoints) ─────────────────────────────────────────
+# -- Read helpers (for API endpoints) ----------------------------------------
 
 async def get_today_top_setups() -> list[dict]:
     """Return today's top setups; if none exist (market closed / not yet scanned),
@@ -389,7 +417,7 @@ async def get_today_top_setups() -> list[dict]:
         {"scan_date": f"eq.{today}", "order": "rank.asc", "limit": "10"},
     )
     if not rows:
-        # Market closed or not yet scanned — use most recent session
+        # Market closed or not yet scanned -- use most recent session
         rows = await _sb_select(
             "daily_top_setups",
             {"order": "scan_date.desc,rank.asc", "limit": "10"},
@@ -405,10 +433,19 @@ async def get_today_sectors() -> list[dict]:
         {"scan_date": f"eq.{today}", "order": "change_pct.desc"},
     )
     if not rows:
-        rows = await _sb_select(
+        # Fallback: get most recent scan_date's rows
+        # First find latest scan_date, then fetch all rows for that date
+        latest = await _sb_select(
             "sector_performance",
-            {"order": "scan_date.desc,change_pct.desc", "limit": "20"},
+            {"order": "scan_date.desc", "limit": "1"},
         )
+        if latest:
+            latest_date = latest[0].get("scan_date", "")
+            if latest_date:
+                rows = await _sb_select(
+                    "sector_performance",
+                    {"scan_date": f"eq.{latest_date}", "order": "change_pct.desc"},
+                )
     return rows
 
 
