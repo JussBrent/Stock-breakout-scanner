@@ -76,21 +76,41 @@ async def all_dashboard_data(
     user: dict = Depends(get_current_user),
 ):
     """Return all three data sources in one call.
-    If no data exists for today, auto-trigger a background refresh
-    so the next load will have real data.
+    If no data exists for today, auto-trigger a background refresh.
+    Falls back to most recent session data when market is closed.
     """
     try:
         import asyncio
+        from datetime import date as _date
+        today = str(_date.today())
+
         top_setups, sectors, sentiment = await asyncio.gather(
             get_today_top_setups(),
             get_today_sectors(),
             get_today_sentiment(),
         )
 
-        # Auto-trigger a background scan if we have no sector or sentiment data yet
-        has_data = bool(sectors) or bool(sentiment)
-        if not has_data:
-            logger.info("No dashboard data for today — scheduling auto-refresh")
+        # Determine if data is from today or a previous session
+        data_date = today
+        market_closed = False
+        if top_setups and top_setups[0].get("scan_date"):
+            data_date = top_setups[0]["scan_date"]
+            market_closed = data_date != today
+        elif sectors and sectors[0].get("scan_date"):
+            data_date = sectors[0]["scan_date"]
+            market_closed = data_date != today
+        elif sentiment and sentiment.get("scan_date"):
+            data_date = sentiment["scan_date"]
+            market_closed = data_date != today
+
+        # Auto-trigger a background scan if we have no data for today at all
+        has_today_data = (
+            bool(top_setups and top_setups[0].get("scan_date") == today)
+            or bool(sectors and sectors[0].get("scan_date") == today)
+            or bool(sentiment and sentiment.get("scan_date") == today)
+        )
+        if not has_today_data:
+            logger.info("No today's dashboard data — scheduling auto-refresh")
             background_tasks.add_task(refresh_dashboard)
 
         return {
@@ -98,7 +118,9 @@ async def all_dashboard_data(
             "top_setups": top_setups,
             "sectors": sectors,
             "sentiment": sentiment if sentiment else None,
-            "auto_refresh_triggered": not has_data,
+            "auto_refresh_triggered": not has_today_data,
+            "market_closed": market_closed,
+            "data_date": data_date,
         }
     except Exception as exc:
         logger.error("all_dashboard_data error: %s", exc)
