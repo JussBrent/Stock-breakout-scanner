@@ -381,27 +381,47 @@ async def refresh_dashboard() -> dict:
 # ── Read helpers (for API endpoints) ─────────────────────────────────────────
 
 async def get_today_top_setups() -> list[dict]:
+    """Return today's top setups; if none exist (market closed / not yet scanned),
+    fall back to the most recent session's data."""
     today = str(date.today())
     rows = await _sb_select(
         "daily_top_setups",
         {"scan_date": f"eq.{today}", "order": "rank.asc", "limit": "10"},
     )
+    if not rows:
+        # Market closed or not yet scanned — use most recent session
+        rows = await _sb_select(
+            "daily_top_setups",
+            {"order": "scan_date.desc,rank.asc", "limit": "10"},
+        )
     return rows
 
 
 async def get_today_sectors() -> list[dict]:
+    """Return today's sector heatmap; fall back to most recent session if none."""
     today = str(date.today())
     rows = await _sb_select(
         "sector_performance",
         {"scan_date": f"eq.{today}", "order": "change_pct.desc"},
     )
+    if not rows:
+        rows = await _sb_select(
+            "sector_performance",
+            {"order": "scan_date.desc,change_pct.desc", "limit": "20"},
+        )
     return rows
 
 
 async def get_today_sentiment() -> dict:
+    """Return today's market sentiment; fall back to most recent session if none."""
     today = str(date.today())
     rows = await _sb_select(
         "market_sentiment",
         {"scan_date": f"eq.{today}", "limit": "1"},
     )
+    if not rows:
+        rows = await _sb_select(
+            "market_sentiment",
+            {"order": "scan_date.desc", "limit": "1"},
+        )
     return rows[0] if rows else {}
