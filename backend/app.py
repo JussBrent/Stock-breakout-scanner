@@ -1,4 +1,4 @@
-# Railway redeploy trigger — v2025-05-23
+# Railway redeploy trigger — v2025-05-24
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -11,34 +11,7 @@ import logging
 import os
 
 from config import settings
-import sys as _sys
-_ROUTE_NAMES = ["scan_routes","symbol_routes","results_routes","watchlist_routes","preferences_routes","subscription_routes","momentum_routes","ai_routes","snaptrade_routes","training_routes","trade_routes","push_routes","admin_routes","options_routes","paper_trading_routes","chart_routes","sean_trades_routes","dashboard_routes"]
-_LOADED = {}
-for _rn in _ROUTE_NAMES:
-    try:
-        import importlib as _il
-        _LOADED[_rn] = _il.import_module("api." + _rn)
-    except Exception as _re:
-        print("IMPORT_FAIL:" + _rn + ":" + str(_re), file=_sys.stderr, flush=True)
-        raise
-scan_routes = _LOADED["scan_routes"]
-symbol_routes = _LOADED["symbol_routes"]
-results_routes = _LOADED["results_routes"]
-watchlist_routes = _LOADED["watchlist_routes"]
-preferences_routes = _LOADED["preferences_routes"]
-subscription_routes = _LOADED["subscription_routes"]
-momentum_routes = _LOADED["momentum_routes"]
-ai_routes = _LOADED["ai_routes"]
-snaptrade_routes = _LOADED["snaptrade_routes"]
-training_routes = _LOADED["training_routes"]
-trade_routes = _LOADED["trade_routes"]
-push_routes = _LOADED["push_routes"]
-admin_routes = _LOADED["admin_routes"]
-options_routes = _LOADED["options_routes"]
-paper_trading_routes = _LOADED["paper_trading_routes"]
-chart_routes = _LOADED["chart_routes"]
-sean_trades_routes = _LOADED["sean_trades_routes"]
-dashboard_routes = _LOADED["dashboard_routes"]
+from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes, momentum_routes, ai_routes, snaptrade_routes, training_routes, trade_routes, push_routes, admin_routes, options_routes, paper_trading_routes, chart_routes, sean_trades_routes, dashboard_routes
 from middleware.error_handler import register_error_handlers
 from middleware.rate_limit import setup_rate_limiting
 
@@ -47,65 +20,65 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-        logger.info("Starting Stock Scanner API...")
-        logger.info(f"Polygon API: {'Configured' if settings.POLYGON_API_KEY else 'Missing'}")
-        logger.info(f"Supabase: {'Configured' if os.getenv('SUPABASE_URL') else 'Missing'}")
-        logger.info(f"SnapTrade: {'Configured' if settings.SNAPTRADE_CLIENT_ID else 'Missing'}")
-        yield
-        logger.info("Shutting down Stock Scanner API...")
+    logger.info("Starting Stock Scanner API...")
+    logger.info(f"Polygon API: {'Configured' if settings.POLYGON_API_KEY else 'Missing'}")
+    logger.info(f"Supabase: {'Configured' if os.getenv('SUPABASE_URL') else 'Missing'}")
+    logger.info(f"SnapTrade: {'Configured' if settings.SNAPTRADE_CLIENT_ID else 'Missing'}")
+    yield
+    logger.info("Shutting down Stock Scanner API...")
 
 app = FastAPI(title="Stock Scanner API", description="Breakout pattern scanner with options chain and paper trading", version="2.0.0", lifespan=lifespan)
 
 # CORS — production origins are hardcoded so the app works without env vars on Railway.
 _PRODUCTION_ORIGINS = [
-        "https://www.orbistrading.io",
-        "https://orbistrading.io",
-        # Bryant-max Vercel deployments
-        "https://stock-breakout-scanner-sage.vercel.app",
-        "https://stock-breakout-scanner-git-main-bryant-maxs-projects.vercel.app",
-        # JussBrent Vercel deployments
-        "https://stock-breakout-scanner-jussbrents-projects.vercel.app",
-        "https://jussbrents-projects.vercel.app",
-        "https://stock-breakout-scanner-git-main-jussbrents-projects.vercel.app",
+    "https://www.orbistrading.io",
+    "https://orbistrading.io",
+    # Bryant-max Vercel deployments
+    "https://stock-breakout-scanner-sage.vercel.app",
+    "https://stock-breakout-scanner-git-main-bryant-maxs-projects.vercel.app",
+    # JussBrent Vercel deployments
+    "https://stock-breakout-scanner-jussbrents-projects.vercel.app",
+    "https://jussbrents-projects.vercel.app",
+    "https://stock-breakout-scanner-git-main-jussbrents-projects.vercel.app",
 ]
 
 allowed_origins = list(_PRODUCTION_ORIGINS)
 
 # Settings-based extra origins (comma-separated env var)
 for origin in settings.CORS_ORIGINS.split(","):
-        o = origin.strip()
-        if o and o not in allowed_origins:
-                    allowed_origins.append(o)
+    o = origin.strip()
+    if o and o not in allowed_origins:
+        allowed_origins.append(o)
 
-    # FRONTEND_URL env var adds extra origins (e.g. preview deployments).
-    if settings.FRONTEND_URL and settings.FRONTEND_URL not in allowed_origins:
-            allowed_origins.append(settings.FRONTEND_URL)
+# FRONTEND_URL env var adds extra origins (e.g. preview deployments).
+if settings.FRONTEND_URL and settings.FRONTEND_URL not in allowed_origins:
+    allowed_origins.append(settings.FRONTEND_URL)
 
 if "*" in allowed_origins:
-        raise RuntimeError("CORS misconfiguration: wildcard origin '*' is not allowed with allow_credentials=True.")
+    raise RuntimeError("CORS misconfiguration: wildcard origin '*' is not allowed with allow_credentials=True.")
 
 logger.info("CORS allowed origins: %s", allowed_origins)
 
 app.add_middleware(
-        CORSMiddleware,
-        allow_origins=allowed_origins,
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "User-Agent"],
-        max_age=3600,
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "User-Agent"],
+    max_age=3600,
 )
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-        """Inject security headers into every response."""
+    """Inject security headers into every response."""
 
     async def dispatch(self, request: Request, call_next) -> Response:
-                response = await call_next(request)
-                response.headers["X-Content-Type-Options"] = "nosniff"
-                response.headers["X-Frame-Options"] = "DENY"
-                response.headers["X-XSS-Protection"] = "1; mode=block"
-                response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-                response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-                return response
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+        return response
 
 app.add_middleware(SecurityHeadersMiddleware)
 
@@ -135,23 +108,23 @@ app.include_router(chart_routes.router, prefix="/api/chart", tags=["Chart"])
 _FRONTEND_DIST = Path(__file__).parent.parent / "frontend" / "dist"
 
 if _FRONTEND_DIST.exists():
-        # Serve hashed asset files (JS/CSS/images)
-        app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
+    # Serve hashed asset files (JS/CSS/images)
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
 
 @app.get("/", tags=["Root"])
 async def root():
-        if _FRONTEND_DIST.exists():
-                    return FileResponse(str(_FRONTEND_DIST / "index.html"))
-                return {"name": "Stock Scanner API", "version": "2.0.0", "status": "operational", "docs": "/docs"}
+    if _FRONTEND_DIST.exists():
+        return FileResponse(str(_FRONTEND_DIST / "index.html"))
+    return {"name": "Stock Scanner API", "version": "2.0.0", "status": "operational", "docs": "/docs"}
 
 @app.get("/health", tags=["Health"])
 async def health_alias():
-        """Alias for /api/health — convenient shortcut."""
+    """Alias for /api/health — convenient shortcut."""
     return await health_check()
 
 @app.get("/api/health", tags=["Health"])
 async def health_check():
-        polygon_configured = bool(settings.POLYGON_API_KEY)
+    polygon_configured = bool(settings.POLYGON_API_KEY)
     supabase_configured = bool(os.getenv("SUPABASE_URL"))
     snaptrade_configured = bool(settings.SNAPTRADE_CLIENT_ID)
     status = "healthy" if polygon_configured and supabase_configured else "degraded" if polygon_configured or supabase_configured else "unhealthy"
@@ -159,12 +132,12 @@ async def health_check():
 
 @app.get("/{full_path:path}", tags=["SPA"])
 async def spa_fallback(full_path: str):
-        """Catch-all: serve React app for all non-API routes (SPA client-side routing)."""
+    """Catch-all: serve React app for all non-API routes (SPA client-side routing)."""
     if full_path.startswith("api/") or full_path.startswith("docs") or full_path.startswith("openapi"):
-                from fastapi import HTTPException
-                raise HTTPException(status_code=404, detail="Not Found")
-            if _FRONTEND_DIST.exists():
-                        index = _FRONTEND_DIST / "index.html"
-                        if index.exists():
-                                        return FileResponse(str(index))
-                                return {"name": "Stock Scanner API", "version": "2.0.0", "status": "operational", "docs": "/docs"}
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Not Found")
+    if _FRONTEND_DIST.exists():
+        index = _FRONTEND_DIST / "index.html"
+        if index.exists():
+            return FileResponse(str(index))
+    return {"name": "Stock Scanner API", "version": "2.0.0", "status": "operational", "docs": "/docs"}
