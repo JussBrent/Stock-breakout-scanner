@@ -6,15 +6,15 @@ Builds daily dashboard intelligence:
 - Sector performance heatmap (SPDRs + major ETFs)
 - Market sentiment (VIX, SPY/QQQ/IWM, A/D ratio)
 
-Filters: leading theme, liquidity, accelerated EPS/sales,
-ETF group in a setup, extended/sideways flag.
+Uses Polygon BULK snapshot endpoint to fetch all tickers in ONE call,
+avoiding per-ticker rate limiting on free/starter plans.
 Results cached in Supabase; refreshed on demand or daily cron.
 """
 
 import asyncio
 import logging
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -46,6 +46,9 @@ SECTOR_ETFS = {
 # -- Market breadth proxies --------------------------------------------------
 BREADTH_SYMBOLS = ["SPY", "QQQ", "IWM", "VIX"]
 
+# -- All symbols we need in one batch ----------------------------------------
+_ALL_DASHBOARD_SYMBOLS = list(SECTOR_ETFS.values()) + BREADTH_SYMBOLS
+
 # -- Polygon helpers ---------------------------------------------------------
 _POLYGON_BASE = "https://api.polygon.io"
 
@@ -55,7 +58,7 @@ def _polygon_key() -> str:
     return settings.POLYGON_API_KEY or ""
 
 
-async def _poly_get(path: str, params: dict | None = None, timeout: int = 15) -> dict:
+async def _poly_get(path: str, params: dict | None = None, timeout: int = 20) -> dict:
     """Thin async wrapper for Polygon REST calls."""
     key = _polygon_key()
     if not key:
@@ -70,59 +73,54 @@ async def _poly_get(path: str, params: dict | None = None, timeout: int = 15) ->
         return {}
 
 
-async def _get_prev_two_closes(symbol: str) -> tuple[float, float]:
-    """Return (latest_close, prior_close) using daily OHLCV bars.
-    Works correctly when the market is closed (weekends/holidays) by fetching
-    the last 2 trading sessions so change_pct shows the real last-day move.
+async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
+    """Fetch snapshots for multiple tickers in ONE API call using the bulk endpoint.
+    Returns a dict keyed by uppercase symbol -> snapshot data.
+    This avoids per-ticker rate limiting by using a single request.
     """
-    from datetime import timedelta
-    from_date = str(date.today() - timedelta(days=7))
-    to_date = str(date.today())
+    if not symbols:
+        return {}
+    tickers_param = ",".join(s.upper() for s in symbols)
     data = await _poly_get(
-        f"/v2/aggs/ticker/{symbol.upper()}/range/1/day/{from_date}/{to_date}",
-        {"adjusted": "true", "sort": "desc", "limit": "2"},
+        "/v2/snapshot/locale/us/markets/stocks/tickers",
+        {"tickers": tickers_param},
+        timeout=30,
     )
-    results = data.get("results", [])
-    if len(results) >= 2:
-        return float(results[0].get("c", 0) or 0), float(results[1].get("c", 0) or 0)
-    if len(results) == 1:
-        c = float(results[0].get("c", 0) or 0)
-        return c, c
-    return 0.0, 0.0
+    result: dict[str, dict] = {}
+    for ticker_data in data.get("tickers", []):
+        sym = ticker_data.get("ticker", "").upper()
+        if sym:
+            result[sym] = ticker_data
+    return result
 
 
-async def _get_ticker_snapshot(symbol: str) -> dict:
-    """Get latest price + day change for a symbol.
-
-    When the market is closed, Polygon snapshot day.c == 0.
-    In that case we fall back to /v2/aggs/ticker/{sym}/prev so that
-    change_pct is 0% (previous close vs previous close) instead of -100%.
+def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
+    """Extract price + change_pct from a Polygon snapshot object.
+    Handles market-closed case where day.c == 0.
     """
-    data = await _poly_get(f"/v2/snapshot/locale/us/markets/stocks/tickers/{symbol.upper()}")
-    ticker = data.get("ticker", {})
-    day = ticker.get("day", {})
-    prev = ticker.get("prevDay", {})
+    day = ticker_data.get("day", {})
+    prev = ticker_data.get("prevDay", {})
 
-    close = day.get("c") or ticker.get("lastTrade", {}).get("p") or 0
+    close = day.get("c") or ticker_data.get("lastTrade", {}).get("p") or 0
     prev_close = prev.get("c") or 0
 
-    # Market closed or snapshot missing -- fall back to daily agg bars for real prev-session change
+    # If close is 0 (market closed), try prevDay close as the price
     if not close or close == 0:
-        close, prev_close = await _get_prev_two_closes(symbol)
-        if not close:
-            return {"symbol": symbol, "price": 0.0, "change_pct": 0.0, "volume": 0, "relative_volume": 1.0}
+        close = prev_close if prev_close else 0
 
-    # Protect against prev_close == 0 (IPO day / data gap) to avoid -100% / div-by-zero
+    # Protect against div-by-zero or missing data
     if not prev_close or prev_close == 0:
-        prev_close = close
+        prev_close = close if close else 1
 
-    change_pct = round(((close - prev_close) / prev_close) * 100, 2) if prev_close else 0
+    change_pct = round(((close - prev_close) / prev_close) * 100, 2) if prev_close else 0.0
+
+    # If close == prev_close (market closed, both from prevDay), change_pct == 0 which is correct
     volume = day.get("v") or 0
-    vwap = ticker.get("day", {}).get("vw") or volume
-    rel_vol = round(volume / vwap, 2) if vwap and vwap != volume else 1.0
+    vwap = day.get("vw") or 0
+    rel_vol = round(volume / vwap, 2) if vwap and vwap > 0 and volume > 0 else 1.0
 
     return {
-        "symbol": symbol,
+        "symbol": sym,
         "price": round(float(close), 4),
         "change_pct": change_pct,
         "volume": int(volume),
@@ -185,53 +183,70 @@ async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
 
 # -- Sector performance -------------------------------------------------------
 
-async def build_sector_heatmap() -> list[dict]:
-    """Fetch all sector ETFs in parallel, score them, save to DB."""
+async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list[dict]:
+    """Fetch all sector ETFs via bulk snapshot (1 API call), score them, save to DB.
+    Accepts pre-fetched snapshots dict to avoid redundant API calls.
+    """
     today = str(date.today())
-    tasks = [_get_ticker_snapshot(etf) for etf in SECTOR_ETFS.values()]
-    snapshots = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Use provided snapshots or fetch them
+    if snapshots is None:
+        all_syms = list(SECTOR_ETFS.values())
+        snapshots = await _bulk_snapshots(all_syms)
 
     rows = []
-    for (sector, etf_sym), snap in zip(SECTOR_ETFS.items(), snapshots):
-        if isinstance(snap, Exception):
-            logger.warning("Sector ETF %s failed: %s", etf_sym, snap)
+    for sector, etf_sym in SECTOR_ETFS.items():
+        ticker_data = snapshots.get(etf_sym.upper())
+        if not ticker_data:
+            logger.warning("No snapshot data for sector ETF %s", etf_sym)
             continue
+        snap = _parse_snapshot(etf_sym, ticker_data)
         row = {
             "scan_date": today,
             "sector": sector,
             "etf_symbol": etf_sym,
-            "change_pct": snap.get("change_pct", 0),
-            "volume": snap.get("volume", 0),
-            "relative_volume": snap.get("relative_volume", 1.0),
-            "price": snap.get("price", 0),
+            "change_pct": snap["change_pct"],
+            "volume": snap["volume"],
+            "relative_volume": snap["relative_volume"],
+            "price": snap["price"],
             "is_breaking_out": (
-                snap.get("relative_volume", 1.0) > 1.5
-                and snap.get("change_pct", 0) > 0.5
+                snap["relative_volume"] > 1.5 and snap["change_pct"] > 0.5
             ),
         }
         rows.append(row)
+        logger.info("Sector %s (%s): price=%.2f change=%.2f%%", sector, etf_sym, snap["price"], snap["change_pct"])
 
-    await _sb_upsert("sector_performance", rows)
+    if rows:
+        await _sb_upsert("sector_performance", rows)
     return rows
 
 
 # -- Market sentiment ---------------------------------------------------------
 
-async def build_market_sentiment() -> dict:
-    """Compute market sentiment from SPY/QQQ/IWM + VIX."""
+async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> dict:
+    """Compute market sentiment from SPY/QQQ/IWM + VIX.
+    Accepts pre-fetched snapshots dict to avoid redundant API calls.
+    """
     today = str(date.today())
-    tasks = [_get_ticker_snapshot(s) for s in BREADTH_SYMBOLS]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    snaps: dict = {}
-    for sym, res in zip(BREADTH_SYMBOLS, results):
-        if not isinstance(res, Exception):
-            snaps[sym] = res
+    if snapshots is None:
+        snapshots = await _bulk_snapshots(BREADTH_SYMBOLS)
 
-    spy_chg = snaps.get("SPY", {}).get("change_pct", 0)
-    qqq_chg = snaps.get("QQQ", {}).get("change_pct", 0)
-    iwm_chg = snaps.get("IWM", {}).get("change_pct", 0)
-    vix = snaps.get("VIX", {}).get("price", 20)
+    def _snap(sym: str) -> dict:
+        td = snapshots.get(sym.upper(), {})
+        return _parse_snapshot(sym, td) if td else {"symbol": sym, "price": 0.0, "change_pct": 0.0}
+
+    spy = _snap("SPY")
+    qqq = _snap("QQQ")
+    iwm = _snap("IWM")
+    vix_snap = _snap("VIX")
+
+    spy_chg = spy["change_pct"]
+    qqq_chg = qqq["change_pct"]
+    iwm_chg = iwm["change_pct"]
+    vix = vix_snap["price"] if vix_snap["price"] > 0 else 20.0
+
+    logger.info("Breadth: SPY=%.2f%% QQQ=%.2f%% IWM=%.2f%% VIX=%.2f", spy_chg, qqq_chg, iwm_chg, vix)
 
     # Sentiment score: 50 = neutral, 0 = extreme fear, 100 = extreme greed
     raw = (spy_chg + qqq_chg + iwm_chg) / 3
@@ -271,8 +286,8 @@ async def build_market_sentiment() -> dict:
 async def build_top_setups(limit: int = 5) -> list[dict]:
     """
     1. Run full scanner universe scan
-    2. Filter: volume > 500k, market cap > 500M, AI score >= 70
-    3. AI-score each candidate with get_ai_service
+    2. Filter: volume > 300k, AI score > 0
+    3. Re-score top candidates via AI service
     4. Tag extended/sideways, ETF group alignment
     5. Pick top-N by ai_score, save to DB
     """
@@ -341,11 +356,14 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
             group_breakout = False
             if etf_sym:
                 try:
-                    etf_snap = await _get_ticker_snapshot(etf_sym)
-                    group_breakout = (
-                        etf_snap.get("relative_volume", 1.0) > 1.3
-                        and etf_snap.get("change_pct", 0) > 0.3
-                    )
+                    etf_snaps = await _bulk_snapshots([etf_sym])
+                    etf_td = etf_snaps.get(etf_sym.upper(), {})
+                    if etf_td:
+                        etf_snap = _parse_snapshot(etf_sym, etf_td)
+                        group_breakout = (
+                            etf_snap["relative_volume"] > 1.3
+                            and etf_snap["change_pct"] > 0.3
+                        )
                 except Exception:
                     pass
 
@@ -402,19 +420,40 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
 # -- Full refresh ------------------------------------------------------------
 
 async def refresh_dashboard() -> dict:
-    """Run all three builders in parallel and return summary."""
-    sentiment_task = build_market_sentiment()
-    sectors_task = build_sector_heatmap()
+    """Run all three builders. Fetches ONE bulk snapshot for all symbols,
+    then passes it to sector + sentiment builders to avoid rate limiting.
+    """
+    logger.info("refresh_dashboard: fetching bulk snapshots for %d symbols", len(_ALL_DASHBOARD_SYMBOLS))
+
+    # Single bulk call for all ETFs + breadth symbols
+    try:
+        all_snapshots = await _bulk_snapshots(_ALL_DASHBOARD_SYMBOLS)
+        logger.info("refresh_dashboard: got %d snapshots back", len(all_snapshots))
+    except Exception as exc:
+        logger.error("refresh_dashboard: bulk snapshot failed: %s", exc)
+        all_snapshots = {}
+
+    # Run sector + sentiment with shared snapshots, setups separately
+    sentiment_task = build_market_sentiment(all_snapshots)
+    sectors_task = build_sector_heatmap(all_snapshots)
     setups_task = build_top_setups(5)
 
     sentiment, sectors, setups = await asyncio.gather(
         sentiment_task, sectors_task, setups_task, return_exceptions=True
     )
 
+    if isinstance(sentiment, Exception):
+        logger.error("build_market_sentiment failed: %s", sentiment)
+    if isinstance(sectors, Exception):
+        logger.error("build_sector_heatmap failed: %s", sectors)
+    if isinstance(setups, Exception):
+        logger.error("build_top_setups failed: %s", setups)
+
     return {
         "sentiment": sentiment if not isinstance(sentiment, Exception) else {"error": str(sentiment)},
         "sectors_count": len(sectors) if isinstance(sectors, list) else 0,
         "top_setups_count": len(setups) if isinstance(setups, list) else 0,
+        "snapshot_count": len(all_snapshots),
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -422,15 +461,13 @@ async def refresh_dashboard() -> dict:
 # -- Read helpers (for API endpoints) ----------------------------------------
 
 async def get_today_top_setups() -> list[dict]:
-    """Return today's top setups; if none exist (market closed / not yet scanned),
-    fall back to the most recent session's data."""
+    """Return today's top setups; if none exist, fall back to most recent session."""
     today = str(date.today())
     rows = await _sb_select(
         "daily_top_setups",
         {"scan_date": f"eq.{today}", "order": "rank.asc", "limit": "10"},
     )
     if not rows:
-        # Market closed or not yet scanned -- use most recent session
         rows = await _sb_select(
             "daily_top_setups",
             {"order": "scan_date.desc,rank.asc", "limit": "10"},
@@ -446,8 +483,7 @@ async def get_today_sectors() -> list[dict]:
         {"scan_date": f"eq.{today}", "order": "change_pct.desc"},
     )
     if not rows:
-        # Fallback: get most recent scan_date's rows
-        # First find latest scan_date, then fetch all rows for that date
+        # Find the latest scan_date then fetch all rows for that date
         latest = await _sb_select(
             "sector_performance",
             {"order": "scan_date.desc", "limit": "1"},
