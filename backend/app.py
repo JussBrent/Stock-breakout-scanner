@@ -11,7 +11,34 @@ import logging
 import os
 
 from config import settings
-from api import scan_routes, symbol_routes, results_routes, watchlist_routes, preferences_routes, subscription_routes, momentum_routes, ai_routes, snaptrade_routes, training_routes, trade_routes, push_routes, admin_routes, options_routes, paper_trading_routes, chart_routes, sean_trades_routes, dashboard_routes
+import sys as _sys
+_ROUTE_NAMES = ["scan_routes","symbol_routes","results_routes","watchlist_routes","preferences_routes","subscription_routes","momentum_routes","ai_routes","snaptrade_routes","training_routes","trade_routes","push_routes","admin_routes","options_routes","paper_trading_routes","chart_routes","sean_trades_routes","dashboard_routes"]
+_LOADED = {}
+for _rn in _ROUTE_NAMES:
+    try:
+        import importlib as _il
+        _LOADED[_rn] = _il.import_module("api." + _rn)
+    except Exception as _re:
+        print("IMPORT_FAIL:" + _rn + ":" + str(_re), file=_sys.stderr, flush=True)
+        raise
+scan_routes = _LOADED["scan_routes"]
+symbol_routes = _LOADED["symbol_routes"]
+results_routes = _LOADED["results_routes"]
+watchlist_routes = _LOADED["watchlist_routes"]
+preferences_routes = _LOADED["preferences_routes"]
+subscription_routes = _LOADED["subscription_routes"]
+momentum_routes = _LOADED["momentum_routes"]
+ai_routes = _LOADED["ai_routes"]
+snaptrade_routes = _LOADED["snaptrade_routes"]
+training_routes = _LOADED["training_routes"]
+trade_routes = _LOADED["trade_routes"]
+push_routes = _LOADED["push_routes"]
+admin_routes = _LOADED["admin_routes"]
+options_routes = _LOADED["options_routes"]
+paper_trading_routes = _LOADED["paper_trading_routes"]
+chart_routes = _LOADED["chart_routes"]
+sean_trades_routes = _LOADED["sean_trades_routes"]
+dashboard_routes = _LOADED["dashboard_routes"]
 from middleware.error_handler import register_error_handlers
 from middleware.rate_limit import setup_rate_limiting
 
