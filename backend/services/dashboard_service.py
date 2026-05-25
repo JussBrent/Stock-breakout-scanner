@@ -70,13 +70,25 @@ async def _poly_get(path: str, params: dict | None = None, timeout: int = 15) ->
         return {}
 
 
-async def _get_prev_close(symbol: str) -> float:
-    """Fetch the most recent previous close via Polygon /v2/aggs/ticker/{sym}/prev."""
-    data = await _poly_get(f"/v2/aggs/ticker/{symbol.upper()}/prev")
+async def _get_prev_two_closes(symbol: str) -> tuple[float, float]:
+    """Return (latest_close, prior_close) using daily OHLCV bars.
+    Works correctly when the market is closed (weekends/holidays) by fetching
+    the last 2 trading sessions so change_pct shows the real last-day move.
+    """
+    from datetime import timedelta
+    from_date = str(date.today() - timedelta(days=7))
+    to_date = str(date.today())
+    data = await _poly_get(
+        f"/v2/aggs/ticker/{symbol.upper()}/range/1/day/{from_date}/{to_date}",
+        {"adjusted": "true", "sort": "desc", "limit": "2"},
+    )
     results = data.get("results", [])
-    if results:
-        return float(results[0].get("c", 0) or 0)
-    return 0.0
+    if len(results) >= 2:
+        return float(results[0].get("c", 0) or 0), float(results[1].get("c", 0) or 0)
+    if len(results) == 1:
+        c = float(results[0].get("c", 0) or 0)
+        return c, c
+    return 0.0, 0.0
 
 
 async def _get_ticker_snapshot(symbol: str) -> dict:
@@ -94,14 +106,15 @@ async def _get_ticker_snapshot(symbol: str) -> dict:
     close = day.get("c") or ticker.get("lastTrade", {}).get("p") or 0
     prev_close = prev.get("c") or 0
 
-    # Market closed: day.c is 0 -- fall back to previous-close aggs endpoint
+    # Market closed or snapshot missing -- fall back to daily agg bars for real prev-session change
     if not close or close == 0:
-        close = await _get_prev_close(symbol)
-        prev_close = close  # same session, 0% change
+        close, prev_close = await _get_prev_two_closes(symbol)
+        if not close:
+            return {"symbol": symbol, "price": 0.0, "change_pct": 0.0, "volume": 0, "relative_volume": 1.0}
 
-    # Still no prev_close? use close so we avoid division giving -100%
+    # Protect against prev_close == 0 (IPO day / data gap) to avoid -100% / div-by-zero
     if not prev_close or prev_close == 0:
-        prev_close = close if close else 1
+        prev_close = close
 
     change_pct = round(((close - prev_close) / prev_close) * 100, 2) if prev_close else 0
     volume = day.get("v") or 0
