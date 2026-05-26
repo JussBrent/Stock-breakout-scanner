@@ -20,7 +20,7 @@ from services.dashboard_service import (
     get_today_sectors,
     get_today_sentiment,
     refresh_dashboard,
-    _bulk_snapshots,
+    _get_all_snapshots,
     _parse_snapshot,
     _polygon_key,
 )
@@ -44,7 +44,7 @@ async def debug_polygon():
     error_msg = None
 
     try:
-        snapshots = await _bulk_snapshots(test_symbols)
+        snapshots = await _get_all_snapshots(test_symbols)
         for sym in test_symbols:
             td = snapshots.get(sym.upper(), {})
             raw[sym] = {
@@ -62,6 +62,7 @@ async def debug_polygon():
         "polygon_key_preview": key_preview,
         "symbols_requested": test_symbols,
         "raw_snapshot_fields": raw,
+        "note": "snapshot empty on weekends -- agg fallback should populate parsed_results",
         "parsed_results": parsed,
         "error": error_msg,
     }
