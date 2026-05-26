@@ -169,3 +169,21 @@ async def all_dashboard_data(user: dict = Depends(get_current_user)):
     except Exception as exc:
         logger.error("all_dashboard_data error: %s", exc)
         raise HTTPException(status_code=500, detail=str(exc))
+
+
+@router.get("/force-refresh")
+async def force_refresh_public():
+    """PUBLIC no-auth endpoint to force-refresh dashboard data. Runs synchronously."""
+    try:
+        result = await refresh_dashboard()
+        sectors = await get_today_sectors()
+        sentiment = await get_today_sentiment()
+        return {
+            "success": True,
+            "result": result,
+            "sectors_written": len(sectors),
+            "sentiment_score": sentiment.get("sentiment_score") if sentiment else None,
+            "sectors_sample": sectors[:3] if sectors else [],
+        }
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
