@@ -237,6 +237,19 @@ async def _sb_upsert(table: str, rows: list[dict], on_conflict: str = "") -> Non
             logger.info("Supabase upsert %s: %d rows OK", table, len(rows))
 
 
+
+async def _sb_delete(table: str, scan_date: str) -> None:
+    """Delete all rows for a given scan_date to avoid duplicates before insert."""
+    if not SUPABASE_URL:
+        return
+    url = f"{SUPABASE_URL}/rest/v1/{table}?scan_date=eq.{scan_date}"
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.delete(url, headers=_sb_headers())
+        if r.status_code not in (200, 204):
+            logger.warning("Supabase delete %s scan_date=%s -> %s", table, scan_date, r.status_code)
+        else:
+            logger.info("Supabase delete %s scan_date=%s OK", table, scan_date)
+
 async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
     if not SUPABASE_URL:
         return []
@@ -288,7 +301,8 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
         )
 
     if rows:
-        await _sb_upsert("sector_performance", rows, on_conflict="scan_date,sector")
+        await _sb_delete("sector_performance", today)
+        await _sb_upsert("sector_performance", rows)
     return rows
 
 
@@ -346,7 +360,8 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
         "iwm_change": iwm_chg,
         "market_notes": f"SPY {spy_chg:+.2f}% | QQQ {qqq_chg:+.2f}% | IWM {iwm_chg:+.2f}% | VIX {vix:.1f}",
     }
-    await _sb_upsert("market_sentiment", [row], on_conflict="scan_date")
+    await _sb_delete("market_sentiment", today)
+    await _sb_upsert("market_sentiment", [row])
     return row
 
 
