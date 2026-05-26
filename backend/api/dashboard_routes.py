@@ -144,18 +144,29 @@ async def all_dashboard_data(background_tasks: BackgroundTasks, user: dict = Dep
             get_today_sentiment(),
         )
 
-        from datetime import date as _date
+        from datetime import date as _date, datetime as _dt
+        from zoneinfo import ZoneInfo as _ZI
         today = str(_date.today())
+
+        # Determine data_date from freshest source: sectors > sentiment > setups
+        # Sectors are always refreshed today; setups may lag by days
         data_date = today
-        market_closed = False
-        if top_setups and top_setups[0].get("scan_date"):
-            data_date = top_setups[0]["scan_date"]
-            market_closed = data_date != today
-        elif sectors and sectors[0].get("scan_date"):
+        if sectors and sectors[0].get("scan_date"):
             data_date = sectors[0]["scan_date"]
-            market_closed = data_date != today
         elif sentiment and sentiment.get("scan_date"):
             data_date = sentiment["scan_date"]
+        elif top_setups and top_setups[0].get("scan_date"):
+            data_date = top_setups[0]["scan_date"]
+
+        # Market closed = weekend OR outside 09:30-16:00 US/Eastern on a weekday
+        try:
+            et = _ZI("America/New_York")
+            now_et = _dt.now(et)
+            weekday = now_et.weekday()  # 0=Mon, 6=Sun
+            hhmm = now_et.hour * 100 + now_et.minute
+            market_open = (weekday < 5) and (930 <= hhmm < 1600)
+            market_closed = not market_open
+        except Exception:
             market_closed = data_date != today
 
         # If no data at all, start background refresh
