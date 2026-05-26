@@ -2,15 +2,17 @@
 dashboard_routes.py
 
 Endpoints:
-  GET  /api/dashboard/top-setups      — today's top 5 AI-scored setups
-  GET  /api/dashboard/sectors         — sector heatmap
-  GET  /api/dashboard/sentiment       — market sentiment
-  POST /api/dashboard/refresh         — any authenticated user: trigger full refresh
-  GET  /api/dashboard/all             — all three in one call (auto-refreshes if no data)
+GET  /api/dashboard/top-setups  -- today's top 5 AI-scored setups
+GET  /api/dashboard/sectors     -- sector heatmap
+GET  /api/dashboard/sentiment   -- market sentiment
+POST /api/dashboard/refresh     -- trigger full refresh (runs synchronously, returns result)
+GET  /api/dashboard/all         -- all three in one call
+GET  /api/dashboard/debug       -- PUBLIC: test Polygon key + return raw snapshot (no auth)
 """
 
 import logging
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+import httpx
+from fastapi import APIRouter, Depends, HTTPException
 
 from middleware.auth import get_current_user
 from services.dashboard_service import (
@@ -18,10 +20,51 @@ from services.dashboard_service import (
     get_today_sectors,
     get_today_sentiment,
     refresh_dashboard,
+    _bulk_snapshots,
+    _parse_snapshot,
+    _polygon_key,
 )
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.get("/debug")
+async def debug_polygon():
+    """PUBLIC endpoint -- no auth required.
+    Directly calls Polygon bulk snapshot for XLK, SPY, QQQ and returns raw + parsed data.
+    Use this to verify the API key works and Polygon is returning correct prices.
+    """
+    key = _polygon_key()
+    key_preview = key[:6] + "..." + key[-4:] if len(key) > 10 else ("SET" if key else "MISSING")
+
+    test_symbols = ["XLK", "XLV", "SPY", "QQQ", "IWM"]
+    raw: dict = {}
+    parsed: dict = {}
+    error_msg = None
+
+    try:
+        snapshots = await _bulk_snapshots(test_symbols)
+        for sym in test_symbols:
+            td = snapshots.get(sym.upper(), {})
+            raw[sym] = {
+                "found": bool(td),
+                "day_c": td.get("day", {}).get("c") if td else None,
+                "prevDay_c": td.get("prevDay", {}).get("c") if td else None,
+                "lastTrade_p": td.get("lastTrade", {}).get("p") if td else None,
+            }
+            if td:
+                parsed[sym] = _parse_snapshot(sym, td)
+    except Exception as exc:
+        error_msg = str(exc)
+
+    return {
+        "polygon_key_preview": key_preview,
+        "symbols_requested": test_symbols,
+        "raw_snapshot_fields": raw,
+        "parsed_results": parsed,
+        "error": error_msg,
+    }
 
 
 @router.get("/top-setups")
@@ -58,25 +101,22 @@ async def sentiment_endpoint(user: dict = Depends(get_current_user)):
 
 
 @router.post("/refresh")
-async def refresh_endpoint(
-    background_tasks: BackgroundTasks,
-    user: dict = Depends(get_current_user),
-):
-    """Any authenticated user can trigger a full dashboard refresh in background."""
-    background_tasks.add_task(refresh_dashboard)
-    return {
-        "success": True,
-        "message": "Dashboard refresh started in background. Check back in 30-60s.",
-    }
+async def refresh_endpoint(user: dict = Depends(get_current_user)):
+    """Trigger a full dashboard refresh synchronously and return the result summary.
+    This overwrites sector_performance and market_sentiment in Supabase with fresh data.
+    """
+    try:
+        result = await refresh_dashboard()
+        return {"success": True, "result": result}
+    except Exception as exc:
+        logger.error("refresh_endpoint error: %s", exc)
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/all")
-async def all_dashboard_data(
-    background_tasks: BackgroundTasks,
-    user: dict = Depends(get_current_user),
-):
+async def all_dashboard_data(user: dict = Depends(get_current_user)):
     """Return all three data sources in one call.
-    If no data exists for today, auto-trigger a background refresh.
+    If no data exists for today, auto-trigger a refresh inline.
     Falls back to most recent session data when market is closed.
     """
     try:
@@ -103,22 +143,25 @@ async def all_dashboard_data(
             data_date = sentiment["scan_date"]
             market_closed = data_date != today
 
-        # Auto-trigger a background scan if we have no data for today at all
-        has_today_data = (
-            bool(top_setups and top_setups[0].get("scan_date") == today)
-            or bool(sectors and sectors[0].get("scan_date") == today)
-            or bool(sentiment and sentiment.get("scan_date") == today)
-        )
-        if not has_today_data:
-            logger.info("No today's dashboard data — scheduling auto-refresh")
-            background_tasks.add_task(refresh_dashboard)
+        # If no data at all, run refresh inline so UI gets data on first load
+        has_any_data = bool(top_setups) or bool(sectors) or bool(sentiment)
+        auto_refreshed = False
+        if not has_any_data:
+            logger.info("No dashboard data found -- running inline refresh")
+            await refresh_dashboard()
+            auto_refreshed = True
+            top_setups, sectors, sentiment = await asyncio.gather(
+                get_today_top_setups(),
+                get_today_sectors(),
+                get_today_sentiment(),
+            )
 
         return {
             "success": True,
             "top_setups": top_setups,
             "sectors": sectors,
             "sentiment": sentiment if sentiment else None,
-            "auto_refresh_triggered": not has_today_data,
+            "auto_refresh_triggered": auto_refreshed,
             "market_closed": market_closed,
             "data_date": data_date,
         }
