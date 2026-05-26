@@ -9,7 +9,8 @@ Builds daily dashboard intelligence:
 Polygon data strategy:
 1. Always use agg bars (/v2/aggs/ticker/{sym}/range/1/day/...) for change_pct.
    This works both during market hours AND when market is closed / weekend.
-2. Overlay live volume from bulk snapshot when available (best-effort).
+2. Semaphore=3 to stay within Polygon Starter plan rate limits (5 req/min).
+3. scan_date is always today so DB read helpers always find the freshest data.
 Results cached in Supabase; refreshed on demand or daily cron.
 """
 
@@ -132,7 +133,7 @@ def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
 async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
     """Fetch the last 2 daily bars for a symbol using the aggregates endpoint.
     Returns a dict compatible with Polygon snapshot format (day + prevDay).
-    Used as primary data source to avoid -100% bug with snapshot endpoint.
+    Semaphore limits concurrency to respect Polygon rate limits.
     """
     async with sem:
         from_date = str(date.today() - timedelta(days=7))
@@ -158,10 +159,12 @@ async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
 
 
 async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
-    """Always uses agg bars for reliable close + prev_close (works market hours AND closed).
+    """Always uses agg bars for reliable close + prev_close.
+    Uses semaphore=3 to avoid Polygon Starter plan rate limits.
     Overlays live volume from bulk snapshot when available.
     """
-    sem = asyncio.Semaphore(10)
+    # Use semaphore=3 to stay under Polygon rate limits (Starter: 5 req/min)
+    sem = asyncio.Semaphore(3)
     agg_tasks = [_prev_agg_snapshot(sym, sem) for sym in symbols]
     agg_results = await asyncio.gather(*agg_tasks, return_exceptions=True)
 
@@ -247,7 +250,9 @@ async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
 # -- Sector performance -------------------------------------------------------
 
 async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list[dict]:
-    """Fetch all sector ETFs, score them, save to DB."""
+    """Fetch all sector ETFs, score them, save to DB.
+    Always writes with scan_date = today so read helpers find newest data first.
+    """
     today = str(date.today())
     if snapshots is None:
         snapshots = await _get_all_snapshots(list(SECTOR_ETFS.values()))
@@ -259,10 +264,8 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
             logger.warning("No data for sector ETF %s", etf_sym)
             continue
         snap = _parse_snapshot(etf_sym, ticker_data)
-        source = ticker_data.get("_source", "snapshot")
-        agg_date = ticker_data.get("_agg_date", today)
         row = {
-            "scan_date": agg_date if source == "agg" else today,
+            "scan_date": today,
             "sector": sector,
             "etf_symbol": etf_sym,
             "change_pct": snap["change_pct"],
@@ -273,8 +276,8 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
         }
         rows.append(row)
         logger.info(
-            "Sector %s (%s): $%.2f %+.2f%% [%s]",
-            sector, etf_sym, snap["price"], snap["change_pct"], source,
+            "Sector %s (%s): $%.2f %+.2f%%",
+            sector, etf_sym, snap["price"], snap["change_pct"],
         )
 
     if rows:
@@ -285,7 +288,9 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
 # -- Market sentiment ---------------------------------------------------------
 
 async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> dict:
-    """Compute market sentiment from SPY/QQQ/IWM + VIX."""
+    """Compute market sentiment from SPY/QQQ/IWM + VIX.
+    Always writes with scan_date = today so read helpers find newest data first.
+    """
     today = str(date.today())
     if snapshots is None:
         snapshots = await _get_all_snapshots(BREADTH_SYMBOLS)
@@ -324,11 +329,8 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
     else:
         sentiment = "bearish"
 
-    spy_td = snapshots.get("SPY", {})
-    data_date = spy_td.get("_agg_date", today) if spy_td.get("_source") == "agg" else today
-
     row = {
-        "scan_date": data_date,
+        "scan_date": today,
         "sentiment": sentiment,
         "sentiment_score": round(score, 2),
         "vix": vix,
