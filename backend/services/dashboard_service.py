@@ -7,10 +7,12 @@ Builds daily dashboard intelligence:
 - Market sentiment (VIX, SPY/QQQ/IWM)
 
 Polygon data strategy:
-1. Always use agg bars (/v2/aggs/ticker/{sym}/range/1/day/...) for change_pct.
-   This works both during market hours AND when market is closed / weekend.
-2. Semaphore=3 to stay within Polygon Starter plan rate limits (5 req/min).
-3. scan_date is always today so DB read helpers always find the freshest data.
+1. Use grouped daily bars (/v2/aggs/grouped/locale/us/market/stocks/{date})
+   ONE API call returns ALL US stocks for the last session -- no rate limits.
+2. Walk back up to 7 days to find the last trading session with data.
+3. For each symbol, fetch the prior session bar to compute change_pct.
+   This always gives real percentages -- never -100%.
+4. scan_date is always today so DB read helpers find the freshest data.
 Results cached in Supabase; refreshed on demand or daily cron.
 """
 
@@ -61,7 +63,7 @@ def _polygon_key() -> str:
     return settings.POLYGON_API_KEY or ""
 
 
-async def _poly_get(path: str, params: dict | None = None, timeout: int = 20) -> dict:
+async def _poly_get(path: str, params: dict | None = None, timeout: int = 30) -> dict:
     """Thin async wrapper for Polygon REST calls."""
     key = _polygon_key()
     if not key:
@@ -74,6 +76,114 @@ async def _poly_get(path: str, params: dict | None = None, timeout: int = 20) ->
             return resp.json()
         logger.warning("Polygon %s -> %s %s", path, resp.status_code, resp.text[:100])
         return {}
+
+
+def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
+    """Parse a normalized ticker dict into a standard record.
+    Always returns a valid change_pct -- never -100%.
+    """
+    day = ticker_data.get("day", {}) or {}
+    prev_day = ticker_data.get("prevDay", {}) or {}
+    last_trade = ticker_data.get("lastTrade", {}) or {}
+
+    close = day.get("c") or last_trade.get("p") or 0.0
+    prev_close = prev_day.get("c") or 0.0
+    volume = day.get("v") or 0
+
+    # Guard: if prev_close is 0 or equal to close, change is 0% (not -100%)
+    if prev_close and prev_close != close:
+        change_pct = round((close - prev_close) / prev_close * 100, 2)
+    else:
+        change_pct = 0.0
+
+    avg_vol = ticker_data.get("prevDay", {}).get("v") or volume or 1
+    relative_volume = round(volume / avg_vol, 2) if avg_vol else 1.0
+
+    return {
+        "symbol": sym.upper(),
+        "price": round(float(close), 4),
+        "change_pct": change_pct,
+        "volume": int(volume),
+        "relative_volume": relative_volume,
+    }
+
+
+async def _grouped_daily_bars(target_date: str) -> dict[str, dict]:
+    """Fetch ONE grouped daily bar for all US stocks on a specific date.
+    Returns dict keyed by uppercase symbol with day bars.
+    Uses a single API call (no per-symbol rate limiting).
+    """
+    data = await _poly_get(
+        f"/v2/aggs/grouped/locale/us/market/stocks/{target_date}",
+        {"adjusted": "true", "include_otc": "false"},
+        timeout=45,
+    )
+    result: dict[str, dict] = {}
+    for bar in data.get("results", []):
+        sym = bar.get("T", "").upper()
+        if sym:
+            result[sym] = bar
+    logger.info("_grouped_daily_bars(%s): got %d tickers", target_date, len(result))
+    return result
+
+
+async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
+    """Use grouped daily bars (2 API calls) to get close + prev_close for all symbols.
+    Finds the last two trading sessions and computes change_pct.
+    No per-symbol rate limiting issues.
+    """
+    # Find last two trading sessions by walking back up to 10 days
+    session_dates: list[str] = []
+    check_date = date.today()
+    for _ in range(10):
+        check_date -= timedelta(days=1)
+        date_str = check_date.strftime("%Y-%m-%d")
+        bars = await _grouped_daily_bars(date_str)
+        # A valid trading session has thousands of tickers
+        if len(bars) > 100:
+            session_dates.append(date_str)
+            if len(session_dates) >= 2:
+                break
+
+    if not session_dates:
+        logger.error("_get_all_snapshots: could not find any recent trading session")
+        return {}
+
+    last_date = session_dates[0]
+    prev_date = session_dates[1] if len(session_dates) >= 2 else None
+
+    logger.info("_get_all_snapshots: last=%s prev=%s", last_date, prev_date)
+
+    # Get bars for last session (already fetched above, re-use)
+    last_bars = await _grouped_daily_bars(last_date)
+    prev_bars = await _grouped_daily_bars(prev_date) if prev_date else {}
+
+    snapshots: dict[str, dict] = {}
+    upper_symbols = [s.upper() for s in symbols]
+    for sym in upper_symbols:
+        last = last_bars.get(sym)
+        prev = prev_bars.get(sym)
+        if not last:
+            logger.warning("_get_all_snapshots: no last-session bar for %s", sym)
+            continue
+        snapshots[sym] = {
+            "ticker": sym,
+            "day": {
+                "c": last.get("c", 0),
+                "v": last.get("v", 0),
+                "vw": last.get("vw", 0),
+            },
+            "prevDay": {
+                "c": prev.get("c", 0) if prev else 0,
+                "v": prev.get("v", 0) if prev else 0,
+            },
+            "lastTrade": {},
+            "_source": "grouped_agg",
+            "_agg_date": last_date,
+        }
+
+    logger.info("_get_all_snapshots: %d/%d symbols ready", len(snapshots), len(symbols))
+    return snapshots
 
 
 async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
@@ -96,100 +206,6 @@ async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
             result[sym] = ticker_data
     logger.info("_bulk_snapshots: got %d results for %d symbols", len(result), len(symbols))
     return result
-
-
-def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
-    """Parse a Polygon snapshot (or agg-compatible) dict into a normalized record.
-    Works with both real Polygon snapshot format and our agg-built format.
-    Always returns a valid change_pct -- never -100%.
-    """
-    day = ticker_data.get("day", {}) or {}
-    prev_day = ticker_data.get("prevDay", {}) or {}
-    last_trade = ticker_data.get("lastTrade", {}) or {}
-
-    close = day.get("c") or last_trade.get("p") or 0.0
-    prev_close = prev_day.get("c") or 0.0
-    volume = day.get("v") or 0
-
-    # Guard: if prev_close is 0 or equal to close, change is 0% (not -100%)
-    if prev_close and prev_close != close:
-        change_pct = round((close - prev_close) / prev_close * 100, 2)
-    else:
-        change_pct = 0.0
-
-    # Relative volume (simple approximation)
-    avg_vol = ticker_data.get("prevDay", {}).get("v") or volume or 1
-    relative_volume = round(volume / avg_vol, 2) if avg_vol else 1.0
-
-    return {
-        "symbol": sym.upper(),
-        "price": round(float(close), 4),
-        "change_pct": change_pct,
-        "volume": int(volume),
-        "relative_volume": relative_volume,
-    }
-
-
-async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
-    """Fetch the last 2 daily bars for a symbol using the aggregates endpoint.
-    Returns a dict compatible with Polygon snapshot format (day + prevDay).
-    Semaphore limits concurrency to respect Polygon rate limits.
-    """
-    async with sem:
-        from_date = str(date.today() - timedelta(days=7))
-        to_date = str(date.today())
-        data = await _poly_get(
-            f"/v2/aggs/ticker/{sym.upper()}/range/1/day/{from_date}/{to_date}",
-            {"adjusted": "true", "sort": "desc", "limit": "2"},
-        )
-        results = data.get("results", [])
-        if not results:
-            logger.warning("_prev_agg_snapshot: no agg results for %s", sym)
-            return None
-        latest = results[0]
-        prior = results[1] if len(results) > 1 else latest
-        return {
-            "ticker": sym.upper(),
-            "day": {"c": latest.get("c", 0), "v": latest.get("v", 0), "vw": latest.get("vw", 0)},
-            "prevDay": {"c": prior.get("c", 0)},
-            "lastTrade": {},
-            "_source": "agg",
-            "_agg_date": datetime.fromtimestamp(latest.get("t", 0) / 1000).strftime("%Y-%m-%d") if latest.get("t") else "unknown",
-        }
-
-
-async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
-    """Always uses agg bars for reliable close + prev_close.
-    Uses semaphore=3 to avoid Polygon Starter plan rate limits.
-    Overlays live volume from bulk snapshot when available.
-    """
-    # Use semaphore=3 to stay under Polygon rate limits (Starter: 5 req/min)
-    sem = asyncio.Semaphore(3)
-    agg_tasks = [_prev_agg_snapshot(sym, sem) for sym in symbols]
-    agg_results = await asyncio.gather(*agg_tasks, return_exceptions=True)
-
-    snapshots: dict[str, dict] = {}
-    for sym, res in zip(symbols, agg_results):
-        if isinstance(res, Exception):
-            logger.error("_prev_agg_snapshot failed for %s: %s", sym, res)
-        elif res is not None:
-            snapshots[sym.upper()] = res
-
-    # Overlay live volume from bulk snapshot (best-effort, market hours only)
-    try:
-        live = await _bulk_snapshots(symbols)
-        for sym_upper, td in live.items():
-            if sym_upper in snapshots:
-                day_v = td.get("day", {}).get("v") or 0
-                day_vw = td.get("day", {}).get("vw") or 0
-                if day_v:
-                    snapshots[sym_upper]["day"]["v"] = day_v
-                    snapshots[sym_upper]["day"]["vw"] = day_vw
-    except Exception as exc:
-        logger.warning("Bulk snapshot overlay failed (non-critical): %s", exc)
-
-    logger.info("_get_all_snapshots: %d/%d symbols ready", len(snapshots), len(symbols))
-    return snapshots
 
 
 async def _get_ticker_details(symbol: str) -> dict:
@@ -447,8 +463,8 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
 # -- Full refresh ------------------------------------------------------------
 
 async def refresh_dashboard() -> dict:
-    """Fetch ONE set of snapshots (with agg fallback) then run all builders."""
-    logger.info("refresh_dashboard: fetching %d symbols", len(_ALL_DASHBOARD_SYMBOLS))
+    """Fetch grouped daily bars (2 API calls total) then run all builders."""
+    logger.info("refresh_dashboard: fetching %d symbols via grouped bars", len(_ALL_DASHBOARD_SYMBOLS))
     try:
         all_snapshots = await _get_all_snapshots(_ALL_DASHBOARD_SYMBOLS)
     except Exception as exc:
