@@ -11,7 +11,7 @@ import {
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
-// ── Color helpers ────────────────────────────────────────────────────────────
+// -- Color helpers ------------------------------------------------------------
 
 function chgColor(v: number | null | undefined, text = true): string {
   const val = v ?? 0
@@ -22,13 +22,13 @@ function chgColor(v: number | null | undefined, text = true): string {
 }
 
 function heatCell(pct: number): string {
-  if (pct >= 2)   return "bg-[#166534] text-[#4ade80]"
-  if (pct >= 1)   return "bg-[#14532d] text-[#86efac]"
-  if (pct >= 0.3) return "bg-[#052e16] text-[#bbf7d0]"
-  if (pct >= 0)   return "bg-[#18181b] text-[#71717a]"
-  if (pct >= -0.3)return "bg-[#1c0a0a] text-[#fca5a5]"
-  if (pct >= -1)  return "bg-[#450a0a] text-[#fca5a5]"
-  if (pct >= -2)  return "bg-[#7f1d1d] text-[#fca5a5]"
+  if (pct >= 2)    return "bg-[#166534] text-[#4ade80]"
+  if (pct >= 1)    return "bg-[#14532d] text-[#86efac]"
+  if (pct >= 0.3)  return "bg-[#052e16] text-[#bbf7d0]"
+  if (pct >= 0)    return "bg-[#18181b] text-[#71717a]"
+  if (pct >= -0.3) return "bg-[#1c0a0a] text-[#fca5a5]"
+  if (pct >= -1)   return "bg-[#450a0a] text-[#fca5a5]"
+  if (pct >= -2)   return "bg-[#7f1d1d] text-[#fca5a5]"
   return "bg-[#991b1b] text-white"
 }
 
@@ -41,14 +41,22 @@ function scoreColor(s: number): string {
 
 function sentLabel(s: DashboardSentiment | null): { label: string; color: string } {
   const score = s?.sentiment_score ?? 50
-  if (score >= 70) return { label: "BULLISH", color: "#22c55e" }
+  if (score >= 70) return { label: "BULLISH",            color: "#22c55e" }
   if (score >= 55) return { label: "CAUTIOUSLY BULLISH", color: "#86efac" }
-  if (score >= 45) return { label: "NEUTRAL", color: "#eab308" }
+  if (score >= 45) return { label: "NEUTRAL",            color: "#eab308" }
   if (score >= 30) return { label: "CAUTIOUSLY BEARISH", color: "#f97316" }
-  return { label: "BEARISH", color: "#ef4444" }
+  return             { label: "BEARISH",                 color: "#ef4444" }
 }
 
-// ── Ticker strip ─────────────────────────────────────────────────────────────
+// Returns true when we have real (non-stale) sector data
+function hasRealData(sectors: DashboardSector[], sentiment: DashboardSentiment | null): boolean {
+  if (!sectors.length) return false
+  const hasGoodSector = sectors.some(s => (s.change_pct ?? -100) > -50)
+  const hasGoodSentiment = sentiment !== null && (sentiment.spy_change ?? 0) !== 0
+  return hasGoodSector || hasGoodSentiment
+}
+
+// -- Ticker strip -------------------------------------------------------------
 
 function TickerStrip({ sentiment }: { sentiment: DashboardSentiment | null }) {
   const items = [
@@ -77,40 +85,47 @@ function TickerStrip({ sentiment }: { sentiment: DashboardSentiment | null }) {
   )
 }
 
-// ── Main page ────────────────────────────────────────────────────────────────
+// -- Main page ----------------------------------------------------------------
 
 export default function DashboardPage() {
-  const [setups, setSetups]       = useState<DashboardTopSetup[]>([])
-  const [sectors, setSectors]     = useState<DashboardSector[]>([])
+  const [setups, setSetups] = useState<DashboardTopSetup[]>([])
+  const [sectors, setSectors] = useState<DashboardSector[]>([])
   const [sentiment, setSentiment] = useState<DashboardSentiment | null>(null)
-  const [loading, setLoading]     = useState(true)
-  const [scanning, setScanning]   = useState(false)
-  const [dataDate, setDataDate]   = useState("")
+  const [loading, setLoading] = useState(true)
+  const [scanning, setScanning] = useState(false)
+  const [dataDate, setDataDate] = useState("")
   const [marketClosed, setMarketClosed] = useState(false)
-  const [buyingPower, setBuyingPower]   = useState<number | null>(null)
-  const [error, setError]         = useState<string | null>(null)
+  const [buyingPower, setBuyingPower] = useState<number | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopPolling = useCallback(() => {
+    setScanning(false)
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }, [])
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
     setError(null)
     try {
       const d = await getDashboardAll()
+      const newSectors = d.sectors || []
+      const newSentiment = d.sentiment || null
       setSetups(d.top_setups || [])
-      setSectors(d.sectors || [])
-      setSentiment(d.sentiment || null)
+      setSectors(newSectors)
+      setSentiment(newSentiment)
       setMarketClosed(d.market_closed ?? false)
       setDataDate(d.data_date ?? "")
-      if ((d.sectors?.length ?? 0) > 0 || d.sentiment) {
-        setScanning(false)
-        if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+      // Stop polling as soon as we have real (non-stale) data
+      if (hasRealData(newSectors, newSentiment)) {
+        stopPolling()
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load")
     } finally {
       if (!silent) setLoading(false)
     }
-  }, [])
+  }, [stopPolling])
 
   useEffect(() => {
     const init = async () => {
@@ -118,16 +133,18 @@ export default function DashboardPage() {
       try {
         setScanning(true)
         await refreshDashboard()
+        // Poll every 8s for up to 320s (40 polls = covers the 4-min background refresh)
         let n = 0
         pollRef.current = setInterval(async () => {
-          n++; await load(true)
-          if (n >= 12) { setScanning(false); clearInterval(pollRef.current!); pollRef.current = null }
+          n++
+          await load(true)
+          if (n >= 40) { stopPolling() }
         }, 8000)
       } catch { setScanning(false) }
     }
     init()
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -144,8 +161,9 @@ export default function DashboardPage() {
       let n = 0
       if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = setInterval(async () => {
-        n++; await load(true)
-        if (n >= 12) { setScanning(false); clearInterval(pollRef.current!); pollRef.current = null }
+        n++
+        await load(true)
+        if (n >= 40) { stopPolling() }
       }, 8000)
     } catch { setScanning(false) }
   }
@@ -158,7 +176,7 @@ export default function DashboardPage() {
       <Sidebar />
       <div className="ml-[var(--sidebar-w,60px)] flex flex-col min-h-screen transition-[margin-left] duration-300">
 
-        {/* ── Top bar ── */}
+        {/* -- Top bar -- */}
         <div className="flex items-center justify-between px-4 py-2 bg-[#09090b] border-b border-[#27272a] shrink-0">
           <div className="flex items-center gap-3">
             <h1 className="text-sm font-semibold text-white tracking-wide uppercase">ORBIS Dashboard</h1>
@@ -199,20 +217,20 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* ── Ticker strip ── */}
+        {/* -- Ticker strip -- */}
         <TickerStrip sentiment={sentiment} />
 
-        {/* ── Error banner ── */}
+        {/* -- Error banner -- */}
         {error && (
           <div className="flex items-center gap-2 px-4 py-2 bg-[#450a0a] border-b border-[#7f1d1d] text-xs text-[#fca5a5]">
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />{error}
           </div>
         )}
 
-        {/* ── Main content ── */}
+        {/* -- Main content -- */}
         <div className="flex flex-1 overflow-hidden">
 
-          {/* ── Left: Sentiment + Setups ── */}
+          {/* -- Left: Sentiment + Setups -- */}
           <div className="flex flex-col flex-1 overflow-y-auto">
 
             {/* Sentiment row */}
@@ -289,7 +307,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* ── Right panel ── */}
+          {/* -- Right panel -- */}
           <div className="w-[280px] shrink-0 border-l border-[#27272a] flex flex-col overflow-y-auto">
 
             {/* Best Sectors */}
