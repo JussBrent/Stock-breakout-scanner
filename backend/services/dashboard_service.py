@@ -4,10 +4,14 @@ dashboard_service.py
 Builds daily dashboard intelligence:
 - Top 5 AI-scored setups from a full universe scan
 - Sector performance heatmap (SPDRs + major ETFs)
-- Market sentiment (VIX, SPY/QQQ/IWM, A/D ratio)
+- Market sentiment (VIX, SPY/QQQ/IWM)
 
-Uses Polygon BULK snapshot endpoint to fetch all tickers in ONE call,
-avoiding per-ticker rate limiting on free/starter plans.
+Polygon data strategy:
+  1. Try bulk snapshot (fast, works during market hours)
+  2. If snapshot returns no data (market closed / weekend), fall back to
+     /v2/aggs/ticker/{sym}/prev for each symbol in parallel (max 10 concurrent)
+     This gives the last session close and the prior session close so we can
+     compute a real change_pct instead of showing -100%.
 Results cached in Supabase; refreshed on demand or daily cron.
 """
 
@@ -69,14 +73,14 @@ async def _poly_get(path: str, params: dict | None = None, timeout: int = 20) ->
         resp = await client.get(f"{_POLYGON_BASE}{path}", params=p)
         if resp.status_code == 200:
             return resp.json()
-        logger.warning("Polygon %s -> %s", path, resp.status_code)
+        logger.warning("Polygon %s -> %s %s", path, resp.status_code, resp.text[:100])
         return {}
 
 
 async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
-    """Fetch snapshots for multiple tickers in ONE API call using the bulk endpoint.
-    Returns a dict keyed by uppercase symbol -> snapshot data.
-    This avoids per-ticker rate limiting by using a single request.
+    """Fetch snapshots for multiple tickers in ONE API call.
+    Returns dict keyed by uppercase symbol.
+    NOTE: This endpoint returns empty results on weekends / when market is closed.
     """
     if not symbols:
         return {}
@@ -91,12 +95,72 @@ async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
         sym = ticker_data.get("ticker", "").upper()
         if sym:
             result[sym] = ticker_data
+    logger.info("_bulk_snapshots: got %d results for %d symbols", len(result), len(symbols))
     return result
 
 
+async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
+    """Fetch the last 2 daily bars for a symbol using the aggregates endpoint.
+    Returns a dict compatible with Polygon snapshot format (day + prevDay).
+    Used as fallback when the snapshot endpoint returns no data (market closed).
+    """
+    async with sem:
+        from_date = str(date.today() - timedelta(days=7))
+        to_date = str(date.today())
+        data = await _poly_get(
+            f"/v2/aggs/ticker/{sym.upper()}/range/1/day/{from_date}/{to_date}",
+            {"adjusted": "true", "sort": "desc", "limit": "2"},
+        )
+        results = data.get("results", [])
+        if not results:
+            logger.warning("_prev_agg_snapshot: no agg results for %s", sym)
+            return None
+        # Build a snapshot-compatible object
+        latest = results[0]
+        prior = results[1] if len(results) > 1 else latest
+        return {
+            "ticker": sym.upper(),
+            "day": {"c": latest.get("c", 0), "v": latest.get("v", 0), "vw": latest.get("vw", 0)},
+            "prevDay": {"c": prior.get("c", 0)},
+            "lastTrade": {},
+            "_source": "agg",
+            "_agg_date": datetime.fromtimestamp(latest.get("t", 0) / 1000).strftime("%Y-%m-%d") if latest.get("t") else "unknown",
+        }
+
+
+async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
+    """Smart snapshot fetcher:
+    1. Try bulk snapshot first (1 API call, works during market hours)
+    2. If returns < 50% of symbols (market closed / weekend), fall back to
+       individual prev-agg calls in parallel (max 10 concurrent)
+    """
+    snapshots = await _bulk_snapshots(symbols)
+
+    # If we got most symbols, snapshot is working fine
+    if len(snapshots) >= len(symbols) * 0.5:
+        return snapshots
+
+    # Market closed or weekend — fall back to agg bars
+    logger.info("Snapshot returned only %d/%d symbols -- falling back to agg bars", len(snapshots), len(symbols))
+    missing = [s for s in symbols if s.upper() not in snapshots]
+
+    sem = asyncio.Semaphore(10)  # max 10 concurrent (paid plan handles this fine)
+    tasks = [_prev_agg_snapshot(sym, sem) for sym in missing]
+    results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    for sym, res in zip(missing, results):
+        if isinstance(res, Exception):
+            logger.error("_prev_agg_snapshot failed for %s: %s", sym, res)
+        elif res is not None:
+            snapshots[sym.upper()] = res
+
+    logger.info("After agg fallback: have %d/%d symbols", len(snapshots), len(symbols))
+    return snapshots
+
+
 def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
-    """Extract price + change_pct from a Polygon snapshot object.
-    Handles market-closed case where day.c == 0.
+    """Extract price + change_pct from a Polygon snapshot or agg-fallback object.
+    Never returns -100% -- always safe division.
     """
     day = ticker_data.get("day", {})
     prev = ticker_data.get("prevDay", {})
@@ -104,32 +168,34 @@ def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
     close = day.get("c") or ticker_data.get("lastTrade", {}).get("p") or 0
     prev_close = prev.get("c") or 0
 
-    # If close is 0 (market closed), try prevDay close as the price
+    # If close is 0 (empty day), use prev as the price (market closed)
     if not close or close == 0:
-        close = prev_close if prev_close else 0
+        close = prev_close
 
-    # Protect against div-by-zero or missing data
+    # Still no price -- nothing we can do
+    if not close:
+        return {"symbol": sym, "price": 0.0, "change_pct": 0.0, "volume": 0, "relative_volume": 1.0}
+
+    # Protect against div-by-zero (same-day data where prev==0)
     if not prev_close or prev_close == 0:
-        prev_close = close if close else 1
+        prev_close = close  # 0% change rather than -100%
 
-    change_pct = round(((close - prev_close) / prev_close) * 100, 2) if prev_close else 0.0
-
-    # If close == prev_close (market closed, both from prevDay), change_pct == 0 which is correct
-    volume = day.get("v") or 0
-    vwap = day.get("vw") or 0
-    rel_vol = round(volume / vwap, 2) if vwap and vwap > 0 and volume > 0 else 1.0
+    change_pct = round(((close - prev_close) / prev_close) * 100, 2)
+    volume = int(day.get("v") or 0)
+    vwap = float(day.get("vw") or 0)
+    rel_vol = round(volume / vwap, 2) if vwap > 0 and volume > 0 else 1.0
 
     return {
         "symbol": sym,
         "price": round(float(close), 4),
         "change_pct": change_pct,
-        "volume": int(volume),
+        "volume": volume,
         "relative_volume": rel_vol,
     }
 
 
 async def _get_ticker_details(symbol: str) -> dict:
-    """Fetch company name, sector, market cap, SIC."""
+    """Fetch company name, sector, market cap."""
     data = await _poly_get(f"/v3/reference/tickers/{symbol.upper()}")
     res = data.get("results", {})
     return {
@@ -162,6 +228,8 @@ async def _sb_upsert(table: str, rows: list[dict]) -> None:
         )
         if r.status_code not in (200, 201):
             logger.error("Supabase upsert %s -> %s %s", table, r.status_code, r.text[:200])
+        else:
+            logger.info("Supabase upsert %s: %d rows OK", table, len(rows))
 
 
 async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
@@ -184,37 +252,32 @@ async def _sb_select(table: str, params: dict | None = None) -> list[dict]:
 # -- Sector performance -------------------------------------------------------
 
 async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list[dict]:
-    """Fetch all sector ETFs via bulk snapshot (1 API call), score them, save to DB.
-    Accepts pre-fetched snapshots dict to avoid redundant API calls.
-    """
+    """Fetch all sector ETFs, score them, save to DB."""
     today = str(date.today())
-
-    # Use provided snapshots or fetch them
     if snapshots is None:
-        all_syms = list(SECTOR_ETFS.values())
-        snapshots = await _bulk_snapshots(all_syms)
+        snapshots = await _get_all_snapshots(list(SECTOR_ETFS.values()))
 
     rows = []
     for sector, etf_sym in SECTOR_ETFS.items():
         ticker_data = snapshots.get(etf_sym.upper())
         if not ticker_data:
-            logger.warning("No snapshot data for sector ETF %s", etf_sym)
+            logger.warning("No data for sector ETF %s", etf_sym)
             continue
         snap = _parse_snapshot(etf_sym, ticker_data)
+        source = ticker_data.get("_source", "snapshot")
+        agg_date = ticker_data.get("_agg_date", today)
         row = {
-            "scan_date": today,
+            "scan_date": agg_date if source == "agg" else today,
             "sector": sector,
             "etf_symbol": etf_sym,
             "change_pct": snap["change_pct"],
             "volume": snap["volume"],
             "relative_volume": snap["relative_volume"],
             "price": snap["price"],
-            "is_breaking_out": (
-                snap["relative_volume"] > 1.5 and snap["change_pct"] > 0.5
-            ),
+            "is_breaking_out": snap["relative_volume"] > 1.5 and snap["change_pct"] > 0.5,
         }
         rows.append(row)
-        logger.info("Sector %s (%s): price=%.2f change=%.2f%%", sector, etf_sym, snap["price"], snap["change_pct"])
+        logger.info("Sector %s (%s): $%.2f %+.2f%% [%s]", sector, etf_sym, snap["price"], snap["change_pct"], source)
 
     if rows:
         await _sb_upsert("sector_performance", rows)
@@ -224,13 +287,10 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
 # -- Market sentiment ---------------------------------------------------------
 
 async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> dict:
-    """Compute market sentiment from SPY/QQQ/IWM + VIX.
-    Accepts pre-fetched snapshots dict to avoid redundant API calls.
-    """
+    """Compute market sentiment from SPY/QQQ/IWM + VIX."""
     today = str(date.today())
-
     if snapshots is None:
-        snapshots = await _bulk_snapshots(BREADTH_SYMBOLS)
+        snapshots = await _get_all_snapshots(BREADTH_SYMBOLS)
 
     def _snap(sym: str) -> dict:
         td = snapshots.get(sym.upper(), {})
@@ -246,12 +306,11 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
     iwm_chg = iwm["change_pct"]
     vix = vix_snap["price"] if vix_snap["price"] > 0 else 20.0
 
-    logger.info("Breadth: SPY=%.2f%% QQQ=%.2f%% IWM=%.2f%% VIX=%.2f", spy_chg, qqq_chg, iwm_chg, vix)
+    logger.info("Sentiment inputs: SPY=%+.2f%% QQQ=%+.2f%% IWM=%+.2f%% VIX=%.2f", spy_chg, qqq_chg, iwm_chg, vix)
 
-    # Sentiment score: 50 = neutral, 0 = extreme fear, 100 = extreme greed
     raw = (spy_chg + qqq_chg + iwm_chg) / 3
-    vix_penalty = max(0, (vix - 15) * 1.5)
-    score = max(0, min(100, 50 + raw * 8 - vix_penalty))
+    vix_penalty = max(0.0, (vix - 15) * 1.5)
+    score = max(0.0, min(100.0, 50 + raw * 8 - vix_penalty))
 
     if score >= 70:
         sentiment = "bullish"
@@ -264,19 +323,20 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
     else:
         sentiment = "bearish"
 
+    # Use the agg date if we fell back to agg data
+    spy_td = snapshots.get("SPY", {})
+    data_date = spy_td.get("_agg_date", today) if spy_td.get("_source") == "agg" else today
+
     row = {
-        "scan_date": today,
+        "scan_date": data_date,
         "sentiment": sentiment,
         "sentiment_score": round(score, 2),
         "vix": vix,
         "spy_change": spy_chg,
         "qqq_change": qqq_chg,
         "iwm_change": iwm_chg,
-        "market_notes": (
-            f"SPY {spy_chg:+.2f}% | QQQ {qqq_chg:+.2f}% | IWM {iwm_chg:+.2f}% | VIX {vix:.1f}"
-        ),
+        "market_notes": f"SPY {spy_chg:+.2f}% | QQQ {qqq_chg:+.2f}% | IWM {iwm_chg:+.2f}% | VIX {vix:.1f}",
     }
-
     await _sb_upsert("market_sentiment", [row])
     return row
 
@@ -284,13 +344,7 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
 # -- Top 5 AI-scored setups --------------------------------------------------
 
 async def build_top_setups(limit: int = 5) -> list[dict]:
-    """
-    1. Run full scanner universe scan
-    2. Filter: volume > 300k, AI score > 0
-    3. Re-score top candidates via AI service
-    4. Tag extended/sideways, ETF group alignment
-    5. Pick top-N by ai_score, save to DB
-    """
+    """Run scanner, AI-score top candidates, save to DB."""
     today = str(date.today())
 
     try:
@@ -324,7 +378,6 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
 
     candidates.sort(key=lambda x: x[1], reverse=True)
     top = candidates[:max(limit * 3, 15)]
-
     ai_svc = get_ai_service()
 
     rows = []
@@ -342,50 +395,24 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
                 ai_rating = getattr(result, "ai_ratings", None)
 
             details = await _get_ticker_details(sym)
-
             setup_type = str(getattr(result, "setup_type", "") or "")
             is_extended = "extended" in setup_type.lower() or "parabolic" in setup_type.lower()
-            is_sideways = (
-                "flat" in setup_type.lower()
-                or "sideways" in setup_type.lower()
-                or "base" in setup_type.lower()
-            )
+            is_sideways = any(x in setup_type.lower() for x in ("flat", "sideways", "base"))
 
             sector = details.get("sector", "")
             etf_sym = next((v for k, v in SECTOR_ETFS.items() if k.lower() in sector.lower()), None)
             group_breakout = False
-            if etf_sym:
-                try:
-                    etf_snaps = await _bulk_snapshots([etf_sym])
-                    etf_td = etf_snaps.get(etf_sym.upper(), {})
-                    if etf_td:
-                        etf_snap = _parse_snapshot(etf_sym, etf_td)
-                        group_breakout = (
-                            etf_snap["relative_volume"] > 1.3
-                            and etf_snap["change_pct"] > 0.3
-                        )
-                except Exception:
-                    pass
 
-            ai_score = 0.0
-            opportunity_score = 0.0
-            confidence = ""
-            analysis_text = ""
-            key_factors: list = []
-            risk_level = ""
-            recommendation = ""
+            ai_score = float(getattr(ai_rating, "opportunity_score", 0) or 0) if ai_rating else 0.0
+            opportunity_score = ai_score
+            confidence = str(getattr(ai_rating, "confidence", "") or "") if ai_rating else ""
+            analysis_text = str(getattr(ai_rating, "analysis", "") or "") if ai_rating else ""
+            kf = (getattr(ai_rating, "key_factors", []) or []) if ai_rating else []
+            key_factors = list(kf) if isinstance(kf, (list, tuple)) else [str(kf)]
+            risk_level = str(getattr(ai_rating, "risk_level", "") or "") if ai_rating else ""
+            recommendation = str(getattr(ai_rating, "recommendation", "") or "") if ai_rating else ""
 
-            if ai_rating:
-                ai_score = float(getattr(ai_rating, "opportunity_score", 0) or 0)
-                opportunity_score = ai_score
-                confidence = str(getattr(ai_rating, "confidence", "") or "")
-                analysis_text = str(getattr(ai_rating, "analysis", "") or "")
-                kf = getattr(ai_rating, "key_factors", []) or []
-                key_factors = list(kf) if isinstance(kf, (list, tuple)) else [str(kf)]
-                risk_level = str(getattr(ai_rating, "risk_level", "") or "")
-                recommendation = str(getattr(ai_rating, "recommendation", "") or "")
-
-            row = {
+            rows.append({
                 "scan_date": today,
                 "rank": rank,
                 "symbol": sym,
@@ -407,11 +434,9 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
                 "is_extended": is_extended,
                 "is_sideways": is_sideways,
                 "group_breakout": group_breakout,
-            }
-            rows.append(row)
+            })
         except Exception as exc:
             logger.error("build_top_setups row %s failed: %s", rank, exc)
-            continue
 
     await _sb_upsert("daily_top_setups", rows)
     return rows
@@ -420,26 +445,21 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
 # -- Full refresh ------------------------------------------------------------
 
 async def refresh_dashboard() -> dict:
-    """Run all three builders. Fetches ONE bulk snapshot for all symbols,
-    then passes it to sector + sentiment builders to avoid rate limiting.
-    """
-    logger.info("refresh_dashboard: fetching bulk snapshots for %d symbols", len(_ALL_DASHBOARD_SYMBOLS))
-
-    # Single bulk call for all ETFs + breadth symbols
+    """Fetch ONE set of snapshots (with agg fallback) then run all builders."""
+    logger.info("refresh_dashboard: fetching %d symbols", len(_ALL_DASHBOARD_SYMBOLS))
     try:
-        all_snapshots = await _bulk_snapshots(_ALL_DASHBOARD_SYMBOLS)
-        logger.info("refresh_dashboard: got %d snapshots back", len(all_snapshots))
+        all_snapshots = await _get_all_snapshots(_ALL_DASHBOARD_SYMBOLS)
     except Exception as exc:
-        logger.error("refresh_dashboard: bulk snapshot failed: %s", exc)
+        logger.error("refresh_dashboard snapshot fetch failed: %s", exc)
         all_snapshots = {}
 
-    # Run sector + sentiment with shared snapshots, setups separately
-    sentiment_task = build_market_sentiment(all_snapshots)
-    sectors_task = build_sector_heatmap(all_snapshots)
-    setups_task = build_top_setups(5)
+    logger.info("refresh_dashboard: %d snapshots ready", len(all_snapshots))
 
     sentiment, sectors, setups = await asyncio.gather(
-        sentiment_task, sectors_task, setups_task, return_exceptions=True
+        build_market_sentiment(all_snapshots),
+        build_sector_heatmap(all_snapshots),
+        build_top_setups(5),
+        return_exceptions=True,
     )
 
     if isinstance(sentiment, Exception):
@@ -461,53 +481,28 @@ async def refresh_dashboard() -> dict:
 # -- Read helpers (for API endpoints) ----------------------------------------
 
 async def get_today_top_setups() -> list[dict]:
-    """Return today's top setups; if none exist, fall back to most recent session."""
     today = str(date.today())
-    rows = await _sb_select(
-        "daily_top_setups",
-        {"scan_date": f"eq.{today}", "order": "rank.asc", "limit": "10"},
-    )
+    rows = await _sb_select("daily_top_setups", {"scan_date": f"eq.{today}", "order": "rank.asc", "limit": "10"})
     if not rows:
-        rows = await _sb_select(
-            "daily_top_setups",
-            {"order": "scan_date.desc,rank.asc", "limit": "10"},
-        )
+        rows = await _sb_select("daily_top_setups", {"order": "scan_date.desc,rank.asc", "limit": "10"})
     return rows
 
 
 async def get_today_sectors() -> list[dict]:
-    """Return today's sector heatmap; fall back to most recent session if none."""
     today = str(date.today())
-    rows = await _sb_select(
-        "sector_performance",
-        {"scan_date": f"eq.{today}", "order": "change_pct.desc"},
-    )
+    rows = await _sb_select("sector_performance", {"scan_date": f"eq.{today}", "order": "change_pct.desc"})
     if not rows:
-        # Find the latest scan_date then fetch all rows for that date
-        latest = await _sb_select(
-            "sector_performance",
-            {"order": "scan_date.desc", "limit": "1"},
-        )
+        latest = await _sb_select("sector_performance", {"order": "scan_date.desc", "limit": "1"})
         if latest:
-            latest_date = latest[0].get("scan_date", "")
-            if latest_date:
-                rows = await _sb_select(
-                    "sector_performance",
-                    {"scan_date": f"eq.{latest_date}", "order": "change_pct.desc"},
-                )
+            d = latest[0].get("scan_date", "")
+            if d:
+                rows = await _sb_select("sector_performance", {"scan_date": f"eq.{d}", "order": "change_pct.desc"})
     return rows
 
 
 async def get_today_sentiment() -> dict:
-    """Return today's market sentiment; fall back to most recent session if none."""
     today = str(date.today())
-    rows = await _sb_select(
-        "market_sentiment",
-        {"scan_date": f"eq.{today}", "limit": "1"},
-    )
+    rows = await _sb_select("market_sentiment", {"scan_date": f"eq.{today}", "limit": "1"})
     if not rows:
-        rows = await _sb_select(
-            "market_sentiment",
-            {"order": "scan_date.desc", "limit": "1"},
-        )
+        rows = await _sb_select("market_sentiment", {"order": "scan_date.desc", "limit": "1"})
     return rows[0] if rows else {}
