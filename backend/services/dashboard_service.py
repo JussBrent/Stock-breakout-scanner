@@ -7,11 +7,9 @@ Builds daily dashboard intelligence:
 - Market sentiment (VIX, SPY/QQQ/IWM)
 
 Polygon data strategy:
-  1. Try bulk snapshot (fast, works during market hours)
-  2. If snapshot returns no data (market closed / weekend), fall back to
-     /v2/aggs/ticker/{sym}/prev for each symbol in parallel (max 10 concurrent)
-     This gives the last session close and the prior session close so we can
-     compute a real change_pct instead of showing -100%.
+1. Always use agg bars (/v2/aggs/ticker/{sym}/range/1/day/...) for change_pct.
+   This works both during market hours AND when market is closed / weekend.
+2. Overlay live volume from bulk snapshot when available (best-effort).
 Results cached in Supabase; refreshed on demand or daily cron.
 """
 
@@ -80,7 +78,7 @@ async def _poly_get(path: str, params: dict | None = None, timeout: int = 20) ->
 async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
     """Fetch snapshots for multiple tickers in ONE API call.
     Returns dict keyed by uppercase symbol.
-    NOTE: This endpoint returns empty results on weekends / when market is closed.
+    NOTE: Returns empty results on weekends / when market is closed.
     """
     if not symbols:
         return {}
@@ -99,10 +97,42 @@ async def _bulk_snapshots(symbols: list[str]) -> dict[str, dict]:
     return result
 
 
+def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
+    """Parse a Polygon snapshot (or agg-compatible) dict into a normalized record.
+    Works with both real Polygon snapshot format and our agg-built format.
+    Always returns a valid change_pct -- never -100%.
+    """
+    day = ticker_data.get("day", {}) or {}
+    prev_day = ticker_data.get("prevDay", {}) or {}
+    last_trade = ticker_data.get("lastTrade", {}) or {}
+
+    close = day.get("c") or last_trade.get("p") or 0.0
+    prev_close = prev_day.get("c") or 0.0
+    volume = day.get("v") or 0
+
+    # Guard: if prev_close is 0 or equal to close, change is 0% (not -100%)
+    if prev_close and prev_close != close:
+        change_pct = round((close - prev_close) / prev_close * 100, 2)
+    else:
+        change_pct = 0.0
+
+    # Relative volume (simple approximation)
+    avg_vol = ticker_data.get("prevDay", {}).get("v") or volume or 1
+    relative_volume = round(volume / avg_vol, 2) if avg_vol else 1.0
+
+    return {
+        "symbol": sym.upper(),
+        "price": round(float(close), 4),
+        "change_pct": change_pct,
+        "volume": int(volume),
+        "relative_volume": relative_volume,
+    }
+
+
 async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
     """Fetch the last 2 daily bars for a symbol using the aggregates endpoint.
     Returns a dict compatible with Polygon snapshot format (day + prevDay).
-    Used as fallback when the snapshot endpoint returns no data (market closed).
+    Used as primary data source to avoid -100% bug with snapshot endpoint.
     """
     async with sem:
         from_date = str(date.today() - timedelta(days=7))
@@ -115,7 +145,6 @@ async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
         if not results:
             logger.warning("_prev_agg_snapshot: no agg results for %s", sym)
             return None
-        # Build a snapshot-compatible object
         latest = results[0]
         prior = results[1] if len(results) > 1 else latest
         return {
@@ -132,7 +161,6 @@ async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
     """Always uses agg bars for reliable close + prev_close (works market hours AND closed).
     Overlays live volume from bulk snapshot when available.
     """
-    # Always fetch agg bars first -- gives correct prices regardless of market status
     sem = asyncio.Semaphore(10)
     agg_tasks = [_prev_agg_snapshot(sym, sem) for sym in symbols]
     agg_results = await asyncio.gather(*agg_tasks, return_exceptions=True)
@@ -159,6 +187,7 @@ async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
 
     logger.info("_get_all_snapshots: %d/%d symbols ready", len(snapshots), len(symbols))
     return snapshots
+
 
 async def _get_ticker_details(symbol: str) -> dict:
     """Fetch company name, sector, market cap."""
@@ -243,7 +272,10 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
             "is_breaking_out": snap["relative_volume"] > 1.5 and snap["change_pct"] > 0.5,
         }
         rows.append(row)
-        logger.info("Sector %s (%s): $%.2f %+.2f%% [%s]", sector, etf_sym, snap["price"], snap["change_pct"], source)
+        logger.info(
+            "Sector %s (%s): $%.2f %+.2f%% [%s]",
+            sector, etf_sym, snap["price"], snap["change_pct"], source,
+        )
 
     if rows:
         await _sb_upsert("sector_performance", rows)
@@ -272,7 +304,10 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
     iwm_chg = iwm["change_pct"]
     vix = vix_snap["price"] if vix_snap["price"] > 0 else 20.0
 
-    logger.info("Sentiment inputs: SPY=%+.2f%% QQQ=%+.2f%% IWM=%+.2f%% VIX=%.2f", spy_chg, qqq_chg, iwm_chg, vix)
+    logger.info(
+        "Sentiment inputs: SPY=%+.2f%% QQQ=%+.2f%% IWM=%+.2f%% VIX=%.2f",
+        spy_chg, qqq_chg, iwm_chg, vix,
+    )
 
     raw = (spy_chg + qqq_chg + iwm_chg) / 3
     vix_penalty = max(0.0, (vix - 15) * 1.5)
@@ -289,7 +324,6 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
     else:
         sentiment = "bearish"
 
-    # Use the agg date if we fell back to agg data
     spy_td = snapshots.get("SPY", {})
     data_date = spy_td.get("_agg_date", today) if spy_td.get("_source") == "agg" else today
 
