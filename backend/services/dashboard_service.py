@@ -129,70 +129,36 @@ async def _prev_agg_snapshot(sym: str, sem: asyncio.Semaphore) -> dict | None:
 
 
 async def _get_all_snapshots(symbols: list[str]) -> dict[str, dict]:
-    """Smart snapshot fetcher:
-    1. Try bulk snapshot first (1 API call, works during market hours)
-    2. If returns < 50% of symbols (market closed / weekend), fall back to
-       individual prev-agg calls in parallel (max 10 concurrent)
+    """Always uses agg bars for reliable close + prev_close (works market hours AND closed).
+    Overlays live volume from bulk snapshot when available.
     """
-    snapshots = await _bulk_snapshots(symbols)
+    # Always fetch agg bars first -- gives correct prices regardless of market status
+    sem = asyncio.Semaphore(10)
+    agg_tasks = [_prev_agg_snapshot(sym, sem) for sym in symbols]
+    agg_results = await asyncio.gather(*agg_tasks, return_exceptions=True)
 
-    # If we got most symbols, snapshot is working fine
-    if len(snapshots) >= len(symbols) * 0.5:
-        return snapshots
-
-    # Market closed or weekend — fall back to agg bars
-    logger.info("Snapshot returned only %d/%d symbols -- falling back to agg bars", len(snapshots), len(symbols))
-    missing = [s for s in symbols if s.upper() not in snapshots]
-
-    sem = asyncio.Semaphore(10)  # max 10 concurrent (paid plan handles this fine)
-    tasks = [_prev_agg_snapshot(sym, sem) for sym in missing]
-    results = await asyncio.gather(*tasks, return_exceptions=True)
-
-    for sym, res in zip(missing, results):
+    snapshots: dict[str, dict] = {}
+    for sym, res in zip(symbols, agg_results):
         if isinstance(res, Exception):
             logger.error("_prev_agg_snapshot failed for %s: %s", sym, res)
         elif res is not None:
             snapshots[sym.upper()] = res
 
-    logger.info("After agg fallback: have %d/%d symbols", len(snapshots), len(symbols))
+    # Overlay live volume from bulk snapshot (best-effort, market hours only)
+    try:
+        live = await _bulk_snapshots(symbols)
+        for sym_upper, td in live.items():
+            if sym_upper in snapshots:
+                day_v = td.get("day", {}).get("v") or 0
+                day_vw = td.get("day", {}).get("vw") or 0
+                if day_v:
+                    snapshots[sym_upper]["day"]["v"] = day_v
+                    snapshots[sym_upper]["day"]["vw"] = day_vw
+    except Exception as exc:
+        logger.warning("Bulk snapshot overlay failed (non-critical): %s", exc)
+
+    logger.info("_get_all_snapshots: %d/%d symbols ready", len(snapshots), len(symbols))
     return snapshots
-
-
-def _parse_snapshot(sym: str, ticker_data: dict) -> dict:
-    """Extract price + change_pct from a Polygon snapshot or agg-fallback object.
-    Never returns -100% -- always safe division.
-    """
-    day = ticker_data.get("day", {})
-    prev = ticker_data.get("prevDay", {})
-
-    close = day.get("c") or ticker_data.get("lastTrade", {}).get("p") or 0
-    prev_close = prev.get("c") or 0
-
-    # If close is 0 (empty day), use prev as the price (market closed)
-    if not close or close == 0:
-        close = prev_close
-
-    # Still no price -- nothing we can do
-    if not close:
-        return {"symbol": sym, "price": 0.0, "change_pct": 0.0, "volume": 0, "relative_volume": 1.0}
-
-    # Protect against div-by-zero (same-day data where prev==0)
-    if not prev_close or prev_close == 0:
-        prev_close = close  # 0% change rather than -100%
-
-    change_pct = round(((close - prev_close) / prev_close) * 100, 2)
-    volume = int(day.get("v") or 0)
-    vwap = float(day.get("vw") or 0)
-    rel_vol = round(volume / vwap, 2) if vwap > 0 and volume > 0 else 1.0
-
-    return {
-        "symbol": sym,
-        "price": round(float(close), 4),
-        "change_pct": change_pct,
-        "volume": volume,
-        "relative_volume": rel_vol,
-    }
-
 
 async def _get_ticker_details(symbol: str) -> dict:
     """Fetch company name, sector, market cap."""
