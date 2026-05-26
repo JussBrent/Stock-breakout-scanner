@@ -219,15 +219,17 @@ def _sb_headers() -> dict:
     }
 
 
-async def _sb_upsert(table: str, rows: list[dict]) -> None:
+async def _sb_upsert(table: str, rows: list[dict], on_conflict: str = "") -> None:
     if not rows or not SUPABASE_URL:
         return
     url = f"{SUPABASE_URL}/rest/v1/{table}"
+    if on_conflict:
+        url += f"?on_conflict={on_conflict}"
     async with httpx.AsyncClient(timeout=30) as client:
         r = await client.post(
             url,
             json=rows,
-            headers={**_sb_headers(), "Prefer": "resolution=merge-duplicates,return=minimal"},
+            headers={**_sb_headers(), "Prefer": "return=minimal,resolution=merge-duplicates"},
         )
         if r.status_code not in (200, 201):
             logger.error("Supabase upsert %s -> %s %s", table, r.status_code, r.text[:200])
@@ -286,7 +288,7 @@ async def build_sector_heatmap(snapshots: dict[str, dict] | None = None) -> list
         )
 
     if rows:
-        await _sb_upsert("sector_performance", rows)
+        await _sb_upsert("sector_performance", rows, on_conflict="scan_date,sector")
     return rows
 
 
@@ -344,7 +346,7 @@ async def build_market_sentiment(snapshots: dict[str, dict] | None = None) -> di
         "iwm_change": iwm_chg,
         "market_notes": f"SPY {spy_chg:+.2f}% | QQQ {qqq_chg:+.2f}% | IWM {iwm_chg:+.2f}% | VIX {vix:.1f}",
     }
-    await _sb_upsert("market_sentiment", [row])
+    await _sb_upsert("market_sentiment", [row], on_conflict="scan_date")
     return row
 
 
@@ -445,7 +447,7 @@ async def build_top_setups(limit: int = 5) -> list[dict]:
         except Exception as exc:
             logger.error("build_top_setups row %s failed: %s", rank, exc)
 
-    await _sb_upsert("daily_top_setups", rows)
+    await _sb_upsert("daily_top_setups", rows, on_conflict="scan_date,rank")
     return rows
 
 
