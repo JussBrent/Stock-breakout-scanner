@@ -180,3 +180,99 @@ async def delete_knowledge(request: Request, entry_id: str, admin: dict = Depend
     except Exception as e:
         logger.error(f"Admin delete knowledge error: {e}", exc_info=True)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to delete knowledge entry")
+
+
+# ── Sean's Watch List Models ──────────────────────────────────────────────────
+class WatchItemCreate(BaseModel):
+    symbol: str
+    setup_type: Optional[str] = None
+    priority: str = "medium"
+    notes: Optional[str] = None
+    target_price: Optional[float] = None
+    stop_price: Optional[float] = None
+    is_active: bool = True
+
+
+class WatchItemUpdate(BaseModel):
+    symbol: Optional[str] = None
+    setup_type: Optional[str] = None
+    priority: Optional[str] = None
+    notes: Optional[str] = None
+    target_price: Optional[float] = None
+    stop_price: Optional[float] = None
+    is_active: Optional[bool] = None
+
+
+# ── Sean's Watch List CRUD ────────────────────────────────────────────────────
+@router.get("/watchlist")
+@limiter.limit("30/minute")
+async def get_watchlist(request: Request, admin: dict = Depends(_require_admin)):
+    """Get Sean's watch list (admin only). Used to feed AI training context."""
+    try:
+        result = await supabase.table("sean_watchlist").select("*").order("added_at", desc=True).execute()
+        return result.data or []
+    except Exception as e:
+        logger.error(f"Get watchlist error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/watchlist")
+@limiter.limit("20/minute")
+async def add_watchlist_item(
+    request: Request,
+    item: WatchItemCreate,
+    admin: dict = Depends(_require_admin)
+):
+    """Add a stock to Sean's watch list."""
+    try:
+        row = {
+            "symbol": item.symbol.upper().strip(),
+            "setup_type": item.setup_type,
+            "priority": item.priority,
+            "notes": item.notes,
+            "target_price": item.target_price,
+            "stop_price": item.stop_price,
+            "is_active": item.is_active,
+            "added_at": datetime.now(timezone.utc).isoformat(),
+        }
+        result = await supabase.table("sean_watchlist").insert(row).execute()
+        return result.data[0]
+    except Exception as e:
+        logger.error(f"Add watchlist error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.patch("/watchlist/{item_id}")
+@limiter.limit("20/minute")
+async def update_watchlist_item(
+    request: Request,
+    item_id: str,
+    item: WatchItemUpdate,
+    admin: dict = Depends(_require_admin)
+):
+    """Update a watch list entry."""
+    try:
+        updates = {k: v for k, v in item.model_dump().items() if v is not None}
+        if not updates:
+            raise HTTPException(status_code=400, detail="No fields to update")
+        result = await supabase.table("sean_watchlist").update(updates).eq("id", item_id).execute()
+        return result.data[0]
+    except Exception as e:
+        logger.error(f"Update watchlist error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/watchlist/{item_id}")
+@limiter.limit("20/minute")
+async def delete_watchlist_item(
+    request: Request,
+    item_id: str,
+    admin: dict = Depends(_require_admin)
+):
+    """Delete a watch list entry."""
+    try:
+        await supabase.table("sean_watchlist").delete().eq("id", item_id).execute()
+        return {"ok": True}
+    except Exception as e:
+        logger.error(f"Delete watchlist error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
