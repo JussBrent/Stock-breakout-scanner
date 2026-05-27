@@ -210,7 +210,7 @@ async def get_watchlist(request: Request, admin: dict = Depends(_require_admin))
     """Get Sean's watch list (admin only). Used to feed AI training context."""
     try:
         result = await supabase.table("sean_watchlist").select("*").order("added_at", desc=True).execute()
-        return result.data or []
+        return result or []
     except Exception as e:
         logger.error(f"Get watchlist error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -236,7 +236,7 @@ async def add_watchlist_item(
             "added_at": datetime.now(timezone.utc).isoformat(),
         }
         result = await supabase.table("sean_watchlist").insert(row).execute()
-        return result.data[0]
+        return result[0]
     except Exception as e:
         logger.error(f"Add watchlist error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
@@ -256,7 +256,7 @@ async def update_watchlist_item(
         if not updates:
             raise HTTPException(status_code=400, detail="No fields to update")
         result = await supabase.table("sean_watchlist").update(updates).eq("id", item_id).execute()
-        return result.data[0]
+        return result[0]
     except Exception as e:
         logger.error(f"Update watchlist error: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
