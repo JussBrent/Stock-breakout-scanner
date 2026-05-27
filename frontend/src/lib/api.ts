@@ -542,6 +542,28 @@ export async function snaptradeGetActivities(params?: {
 }
 
 /**
+ * Auto-import closed trades from brokerage into trade_outcomes (last 90 days).
+ * Matches BUY/SELL pairs into win/loss records for AI training.
+ */
+export async function snaptradeImportTrades(): Promise<{
+  imported: number
+  skipped: number
+  message: string
+  errors?: string[]
+}> {
+  const headers = await getAuthHeaders()
+  const response = await apiFetch(`${API_URL}/api/snaptrade/import-trades`, {
+    method: "POST",
+    headers,
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}))
+    throw new Error((error as any).detail || "Failed to import trades from brokerage")
+  }
+  return response.json()
+}
+
+/**
  * Disconnect SnapTrade — revokes all brokerage connections and deletes stored credentials
  */
 export async function snaptradeDisconnect(): Promise<{ status: string }> {
