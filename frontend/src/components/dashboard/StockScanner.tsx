@@ -350,7 +350,7 @@ className="w-full h-10 bg-white/10 hover:bg-white/15 border border-white/15 text
 <div className="" />
 <div className="p-5 space-y-5">
 <div className="flex items-center gap-2">
-<Sparkles className="h-5 w-5 text-primary" />
+<BarChart3 className="h-5 w-5 text-white/50" />
 <h3 className="text-xl font-bold text-white">Sean's Analysis</h3>
 </div>
 <div className="text-white/80 leading-relaxed whitespace-pre-wrap">{contentResult}</div>
@@ -595,7 +595,7 @@ focusAdded
 {/* AI analysis */}
 <div className="space-y-4">
 <div className="flex items-center gap-2">
-<Sparkles className="h-4 w-4 text-primary" />
+<BarChart3 className="h-4 w-4 text-white/50" />
 <h4 className="text-sm font-semibold text-white/80 uppercase tracking-wider">Sean's Analysis</h4>
 </div>
 <p className="text-white/80 leading-relaxed">{symbolResult.analysis}</p>
