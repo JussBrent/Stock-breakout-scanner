@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { Navigate } from "react-router-dom"
 import { BookOpen, Plus, Trash2, Pencil, ToggleLeft, ToggleRight, X, Save, Clock, Tag, Youtube, Loader2, FileText, FlaskConical, ChevronDown, ChevronUp, Sparkles, RefreshCw } from "lucide-react"
 import { AppSidebar } from "@/components/dashboard/Sidebar"
@@ -249,6 +248,7 @@ export default function AiTrainingPage() {
           {([
             { id: "knowledge" as TabId, label: "Knowledge Base" },
             { id: "sean-trades" as TabId, label: "Sean's Trades" },
+            { id: "watchlist" as TabId, label: "Sean's Watch List" },
           ]).map(tab => (
             <button key={tab.id} onClick={() => setActiveTab(tab.id)}
               className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
@@ -271,14 +271,9 @@ export default function AiTrainingPage() {
         {activeTab === "knowledge" && <>
 
         {/* Test Sean Response Panel */}
-        <AnimatePresence>
+        
           {testOpen && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-5 overflow-hidden"
-            >
+            <div className="mb-5 overflow-hidden">
               <div className="p-4 rounded-xl bg-blue-500/6 border border-blue-500/20">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs font-semibold text-blue-400 uppercase tracking-wider">
@@ -297,19 +292,14 @@ export default function AiTrainingPage() {
                   <p className="text-sm text-white/70 whitespace-pre-wrap leading-relaxed">{testResponse}</p>
                 )}
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Phase 3: Pattern Summaries panel */}
-      <AnimatePresence>
+      
         {(summaryResult || summaryError || showSummaries) && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="mb-5 overflow-hidden"
-          >
+          <div className="mb-5 overflow-hidden">
             <div className="p-4 rounded-xl bg-purple-500/6 border border-purple-500/20">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -330,38 +320,28 @@ export default function AiTrainingPage() {
                 <p className="text-xs text-white/30">No summaries yet — add trade data per setup type first.</p>
               ) : null}
             </div>
-          </motion.div>
+          </div>
         )}
-      </AnimatePresence>
+      
 
       {/* Error */}
-        <AnimatePresence>
+        
           {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mb-4"
-            >
+            <div className="mb-4">
               <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center justify-between">
                 {error}
                 <button onClick={() => setError(null)} className="ml-2 hover:text-red-300">
                   <X className="h-4 w-4" />
                 </button>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Form */}
-        <AnimatePresence>
+        
           {isFormOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              className="mb-6 p-5 rounded-xl bg-white/2 border border-white/10"
-            >
+            <div className="mb-6 p-5 rounded-xl bg-white/2 border border-white/10">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-white/80 uppercase tracking-wider">
                   {formMode === "youtube" ? "Import from YouTube" : formMode === "edit" ? "Edit Content" : "Add Content"}
@@ -431,9 +411,9 @@ export default function AiTrainingPage() {
                   </button>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        
 
         {/* Content List */}
         {loading ? (
@@ -449,17 +429,7 @@ export default function AiTrainingPage() {
         ) : (
           <div className="space-y-2">
             {items.map((item) => (
-              <motion.div
-                key={item.id}
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: item.is_active ? 1 : 0.5 }}
-                className={`group p-4 rounded-xl border transition-colors ${
-                  item.is_active
-                    ? "bg-white/2 border-white/8 hover:border-white/15"
-                    : "bg-transparent border-white/5"
-                }`}
-              >
+              <div>
                 <div className="flex items-start gap-3">
                   {/* Source icon */}
                   <div className="mt-0.5 shrink-0">
@@ -523,7 +493,7 @@ export default function AiTrainingPage() {
                     </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
