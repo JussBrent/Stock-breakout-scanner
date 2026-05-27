@@ -1,7 +1,20 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Plus, Trash2, Pencil, X, Save, Loader2, Eye, TrendingUp, AlertCircle, Tag, Calendar } from "lucide-react"
-import { apiFetch } from "@/lib/apiFetch"
+import { supabase } from "@/lib/supabase"
+
+async function adminFetch(path: string, opts?: RequestInit) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  const base = import.meta.env.VITE_API_URL ?? ""
+  const res = await fetch(base + path, {
+    ...opts,
+    headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...opts?.headers },
+  })
+  if (!res.ok) throw new Error(await res.text())
+  if (res.status === 204 || opts?.method === "DELETE") return null as unknown
+  return res.json()
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface WatchItem {
@@ -42,19 +55,19 @@ const BLANK: WatchItemCreate = {
 
 // ── API helpers ───────────────────────────────────────────────────────────────
 async function getWatchList(): Promise<WatchItem[]> {
-  return apiFetch("/api/admin/watchlist")
+  return adminFetch("/api/admin/watchlist")
 }
 
 async function addWatchItem(item: WatchItemCreate): Promise<WatchItem> {
-  return apiFetch("/api/admin/watchlist", { method: "POST", body: JSON.stringify(item) })
+  return adminFetch("/api/admin/watchlist", { method: "POST", body: JSON.stringify(item) })
 }
 
 async function updateWatchItem(id: string, item: Partial<WatchItemCreate>): Promise<WatchItem> {
-  return apiFetch(`/api/admin/watchlist/${id}`, { method: "PATCH", body: JSON.stringify(item) })
+  return adminFetch(`/api/admin/watchlist/${id}`, { method: "PATCH", body: JSON.stringify(item) })
 }
 
 async function deleteWatchItem(id: string): Promise<void> {
-  return apiFetch(`/api/admin/watchlist/${id}`, { method: "DELETE" })
+  return adminFetch(`/api/admin/watchlist/${id}`, { method: "DELETE" })
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
