@@ -732,10 +732,10 @@ R:R {rr}:1
 <Button
 onClick={() => setTradeModalOpen(true)}
 className={cn(
-"h-12 font-semibold text-base shadow-lg transition-all",
+"h-12 font-semibold text-base transition-all border",
 isShort
-? "bg-linear-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 text-white shadow-red-500/25"
-: "bg-linear-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-emerald-500/25"
+? "bg-red-500/15 border-red-500/30 text-red-400 hover:bg-red-500/25 hover:border-red-500/50"
+: "bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 hover:border-emerald-500/50"
 )}
 >
 <Crosshair className="mr-2 h-4 w-4" />
