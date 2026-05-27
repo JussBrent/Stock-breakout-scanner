@@ -12,7 +12,6 @@ AlertCircle,
 Loader,
 X,
 BarChart3,
-Sparkles,
 TrendingUp,
 ShieldAlert,
 Target,
@@ -220,7 +219,7 @@ return (
 </div>
 
 {/* Mode tabs */}
-<div className="flex gap-1 mb-5 p-1 bg-white/5 rounded-xl border border-white/8">
+<div className="flex gap-1 mb-5 p-1 bg-white/5 rounded-lg border border-white/8">
 {([
 { key: "symbol" as const, icon: Search, label: "Stock Symbol" },
 { key: "image" as const, icon: Upload, label: "Chart Image" },
@@ -230,7 +229,7 @@ return (
 key={key}
 onClick={() => switchMode(key)}
 className={cn(
-"flex-1 px-5 py-3 text-sm font-medium rounded-lg transition-all duration-200",
+"flex-1 px-5 py-2.5 text-sm font-medium rounded-md transition-all duration-200",
 mode === key
 ? "bg-white/10 text-white shadow-lg ring-1 ring-white/20"
 : "text-white/60 hover:text-white hover:bg-white/5"
@@ -266,14 +265,14 @@ Sean will analyse trend, EMAs, volume, ADR, and breakout potential using live ma
 <>
 <label className="text-xs font-semibold text-white/70 uppercase tracking-widest">Upload Chart Screenshot</label>
 <div className="relative group">
-<div className="border-2 border-dashed border-white/20 rounded-2xl p-10 text-center hover:border-primary/50 hover:bg-white/5 transition-all cursor-pointer">
+<div className="border border-dashed border-white/20 rounded-lg p-10 text-center hover:border-white/40 hover:bg-white/5 transition-all cursor-pointer">
 <input
 type="file"
 accept="image/*"
 onChange={handleFileUpload}
 className="absolute inset-0 opacity-0 cursor-pointer"
 />
-<div className="inline-block mb-3 p-3 bg-white/5 rounded-xl border border-white/10">
+<div className="inline-block mb-3 p-3 bg-white/5 rounded-lg border border-white/10">
 <Upload className="h-7 w-7 text-white/60" />
 </div>
 <p className="text-white font-medium mb-1">Drop your chart here or click to browse</p>
@@ -320,12 +319,12 @@ Sean will extract key stocks, sentiment, and trade opportunities from the text
 onClick={handleScan}
 disabled={!canScan()}
 size="lg"
-className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm disabled:opacity-50 transition-colors rounded-lg"
+className="w-full h-10 bg-white/10 hover:bg-white/15 border border-white/15 text-white font-semibold text-sm disabled:opacity-30 transition-colors rounded-lg"
 >
 {isScanning ? (
 <><Loader className="mr-2.5 h-5 w-5 animate-spin" />Sean is analysing...</>
 ) : (
-<><Sparkles className="mr-2.5 h-5 w-5" />Start AI Analysis</>
+<><BarChart3 className="mr-2.5 h-5 w-5" />Run Analysis</>
 )}
 </Button>
 </div>
@@ -584,7 +583,7 @@ focusAdded
 <div className="flex items-center gap-2 mb-3">
 <Target className="h-4 w-4 text-emerald-400" />
 <h4 className="text-sm font-semibold text-emerald-400 uppercase tracking-wider">Breakout Setup — {symbolResult.setup_type}</h4>
-<span className="ml-auto text-2xl font-bold text-emerald-400">{((symbolResult.breakout_score ?? 0)/10).toFixed(1)}/10</span>
+<span className="ml-auto text-2xl font-bold text-white/90">{((symbolResult.breakout_score ?? 0)/10).toFixed(1)}/10</span>
 </div>
 <div className="grid grid-cols-2 gap-4 text-sm">
 <div><p className="text-white/50 mb-0.5">Breakout Level</p><p className="font-bold text-white">${symbolResult.trigger_price.toFixed(2)}</p></div>
@@ -613,10 +612,10 @@ focusAdded
 
 {/* Fundamental Analysis — Bull Case */}
 {(symbolResult.bull_case || (symbolResult.fundamental_snapshot && symbolResult.fundamental_snapshot.length > 0)) && (
-<div className="bg-gradient-to-br from-amber-500/8 to-orange-500/5 border border-amber-500/20 rounded-xl p-5 space-y-3">
+<div className="bg-[#0d0d0d] border border-white/10 rounded-xl p-5 space-y-3">
 <div className="flex items-center gap-2">
 <span className="text-base">🌱</span>
-<h4 className="text-sm font-semibold text-amber-400 uppercase tracking-wider">Fundamental Analysis — Bull Case</h4>
+<h4 className="text-sm font-semibold text-white/70 uppercase tracking-wider">Fundamental Analysis — Bull Case</h4>
 </div>
 {symbolResult.bull_case && (
 <p className="text-white/80 text-sm leading-relaxed">{symbolResult.bull_case}</p>
@@ -625,7 +624,7 @@ focusAdded
 <div className="space-y-2 pt-1">
 {symbolResult.fundamental_snapshot.map((point, i) => (
 <div key={i} className="flex items-start gap-2.5 bg-white/4 rounded-lg px-3 py-2">
-<span className="text-amber-400/70 text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
+<span className="text-white/40 text-xs font-bold shrink-0 mt-0.5">{i + 1}</span>
 <span className="text-xs text-white/70 leading-relaxed">{point}</span>
 </div>
 ))}
