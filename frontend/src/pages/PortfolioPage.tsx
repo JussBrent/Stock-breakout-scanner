@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react"
-import { motion } from "framer-motion"
 import { Wallet, Link2, TrendingUp, TrendingDown, DollarSign, RefreshCw, ExternalLink, Clock, ArrowUpRight, ArrowDownRight, Plus, FlaskConical, Zap } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -336,7 +335,7 @@ export default function PortfolioPage() {
           )}
 
           {tab === "paper" && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+            <div>
               <div className="grid grid-cols-3 gap-4">
                 <Card className="bg-amber-500/5 border-amber-500/20 p-6">
                   <div className="flex items-center justify-between mb-1">
@@ -475,11 +474,11 @@ export default function PortfolioPage() {
                   }
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {tab === "options" && (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+            <div>
               <div className="flex items-center gap-4 flex-wrap">
                 <input value={optionsSymbol} onChange={e => setOptionsSymbol(e.target.value.toUpperCase())}
                   className="bg-zinc-900 border border-zinc-700 text-white font-mono text-lg rounded px-4 py-2 w-32 focus:border-emerald-500 focus:outline-none"
@@ -501,7 +500,7 @@ export default function PortfolioPage() {
               <OptionsChain
                 symbol={optionsSymbol}
               />
-            </motion.div>
+            </div>
           )}
         </main>
       </div>
