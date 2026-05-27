@@ -623,38 +623,11 @@ export default function FocusListPage() {
 
       <div className="min-h-screen ml-[var(--sidebar-w,60px)] flex flex-col transition-[margin-left] duration-300 ease-in-out">
         {/* Header */}
-        <header className="fixed top-0 left-[var(--sidebar-w,60px)] right-0 z-50 border-b border-white/5 bg-black/80 backdrop-blur-xl transition-[left] duration-300 ease-in-out">
-          <div className="flex h-16 items-center justify-between px-6">
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-pink-500/15 ring-1 ring-white/10">
-                <Star className="h-5 w-5 text-pink-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white">Focus List</h1>
-                <p className="text-xs text-neutral-400 font-light">{focusItems.length} stocks monitored</p>
-              </div>
-            </motion.div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const syms = focusItems.map(i => i.symbol)
-                  fetchPrices(syms)
-                }}
-                disabled={pricesLoading}
-                className="p-2 text-white/30 hover:text-white transition-colors"
-                title="Refresh prices"
-              >
-                <RefreshCw className={cn("h-4 w-4", pricesLoading && "animate-spin")} />
-              </button>
-              <Button
-                onClick={() => setShowAddForm(s => !s)}
-                className="bg-pink-600 hover:bg-pink-500 text-white h-9 px-4 text-sm"
-              >
-                <Plus className="h-4 w-4 mr-1.5" />
-                Add Stock
-              </Button>
-            </div>
-          </div>
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 h-12 border-b border-white/8 bg-[#0d0d0d] flex items-center px-6 gap-3">
+          <Star className="h-4 w-4 text-white/40 shrink-0" />
+          <span className="text-sm font-semibold text-white tracking-tight">Focus List</span>
+          <span className="text-white/20 text-sm">/</span>
+          <span className="text-xs text-white/40 font-mono">Watchlist · Priority Setups</span>
         </header>
 
         <div className="flex flex-1 pt-16 h-screen">
