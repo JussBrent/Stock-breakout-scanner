@@ -858,3 +858,27 @@ GRANT ALL ON public.ai_knowledge_base TO service_role;
 -- Sequences
 GRANT USAGE, SELECT ON SEQUENCE watchlist_items_id_seq TO authenticated;
 GRANT USAGE, SELECT ON SEQUENCE watchlist_items_id_seq TO service_role;
+
+
+-- ── Sean's Watch List (Admin-only AI Training Data) ──────────────────────────
+-- This table stores tickers Sean is watching. Used to feed AI training context.
+CREATE TABLE IF NOT EXISTS public.sean_watchlist (
+  id          UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  symbol      TEXT NOT NULL,
+  setup_type  TEXT,
+  priority    TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('high','medium','low')),
+  notes       TEXT,
+  target_price NUMERIC(12,4),
+  stop_price   NUMERIC(12,4),
+  is_active   BOOLEAN NOT NULL DEFAULT true,
+  added_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Index for fast active-item lookups
+CREATE INDEX IF NOT EXISTS idx_sean_watchlist_active ON public.sean_watchlist (is_active, added_at DESC);
+
+-- Row-level security: only service_role (backend) can read/write
+ALTER TABLE public.sean_watchlist ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "service_role_only" ON public.sean_watchlist
+  USING (auth.role() = 'service_role')
+  WITH CHECK (auth.role() = 'service_role');
