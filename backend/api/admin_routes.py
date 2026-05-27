@@ -185,22 +185,68 @@ async def delete_knowledge(request: Request, entry_id: str, admin: dict = Depend
 # ── Sean's Watch List Models ──────────────────────────────────────────────────
 class WatchItemCreate(BaseModel):
     symbol: str
+    direction: str = "long"
     setup_type: Optional[str] = None
-    priority: str = "medium"
-    notes: Optional[str] = None
-    target_price: Optional[float] = None
-    stop_price: Optional[float] = None
+    priority: str = "high"
     is_active: bool = True
+    entry_type: str = "breakout"
+    breakout_level: Optional[float] = None
+    ema_level: Optional[str] = None
+    contract_type: Optional[str] = None
+    strike_price: Optional[float] = None
+    expiration_date: Optional[str] = None
+    target1: Optional[float] = None
+    target2: Optional[float] = None
+    target3: Optional[float] = None
+    stop_price: Optional[float] = None
+    session_date: Optional[str] = None
+    notes: Optional[str] = None
+    entry_trigger: Optional[float] = None
+    target_price: Optional[float] = None
+    why_watching: Optional[str] = None
+    catalyst: Optional[str] = None
+    sector_context: Optional[str] = None
+    ideal_entry_notes: Optional[str] = None
+    risk_notes: Optional[str] = None
+    outcome: Optional[str] = None
+    outcome_notes: Optional[str] = None
+    dte_min: Optional[int] = None
+    dte_max: Optional[int] = None
+    delta_target: Optional[float] = None
+    contracts_qty: Optional[int] = None
 
 
 class WatchItemUpdate(BaseModel):
     symbol: Optional[str] = None
+    direction: Optional[str] = None
     setup_type: Optional[str] = None
     priority: Optional[str] = None
-    notes: Optional[str] = None
-    target_price: Optional[float] = None
-    stop_price: Optional[float] = None
     is_active: Optional[bool] = None
+    entry_type: Optional[str] = None
+    breakout_level: Optional[float] = None
+    ema_level: Optional[str] = None
+    contract_type: Optional[str] = None
+    strike_price: Optional[float] = None
+    expiration_date: Optional[str] = None
+    target1: Optional[float] = None
+    target2: Optional[float] = None
+    target3: Optional[float] = None
+    stop_price: Optional[float] = None
+    session_date: Optional[str] = None
+    notes: Optional[str] = None
+    entry_trigger: Optional[float] = None
+    target_price: Optional[float] = None
+    why_watching: Optional[str] = None
+    catalyst: Optional[str] = None
+    sector_context: Optional[str] = None
+    ideal_entry_notes: Optional[str] = None
+    risk_notes: Optional[str] = None
+    outcome: Optional[str] = None
+    outcome_notes: Optional[str] = None
+    dte_min: Optional[int] = None
+    dte_max: Optional[int] = None
+    delta_target: Optional[float] = None
+    contracts_qty: Optional[int] = None
 
 
 # ── Sean's Watch List CRUD ────────────────────────────────────────────────────
@@ -227,12 +273,35 @@ async def add_watchlist_item(
     try:
         row = {
             "symbol": item.symbol.upper().strip(),
+            "direction": item.direction,
             "setup_type": item.setup_type,
             "priority": item.priority,
-            "notes": item.notes,
-            "target_price": item.target_price,
-            "stop_price": item.stop_price,
             "is_active": item.is_active,
+            "entry_type": item.entry_type,
+            "breakout_level": item.breakout_level,
+            "ema_level": item.ema_level,
+            "contract_type": item.contract_type,
+            "strike_price": item.strike_price,
+            "expiration_date": item.expiration_date,
+            "target1": item.target1,
+            "target2": item.target2,
+            "target3": item.target3,
+            "stop_price": item.stop_price,
+            "session_date": item.session_date,
+            "notes": item.notes,
+            "entry_trigger": item.breakout_level,
+            "target_price": item.target1,
+            "why_watching": item.why_watching,
+            "catalyst": item.catalyst,
+            "sector_context": item.sector_context,
+            "ideal_entry_notes": item.ideal_entry_notes,
+            "risk_notes": item.risk_notes,
+            "outcome": item.outcome,
+            "outcome_notes": item.outcome_notes,
+            "dte_min": item.dte_min,
+            "dte_max": item.dte_max,
+            "delta_target": item.delta_target,
+            "contracts_qty": item.contracts_qty,
             "added_at": datetime.now(timezone.utc).isoformat(),
         }
         result = await supabase.table("sean_watchlist").insert(row).execute()
