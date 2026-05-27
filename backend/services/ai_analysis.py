@@ -40,14 +40,28 @@ When a user asks about a stock or setup:
 - Use plain language. Avoid jargon unless the user clearly knows it.
 - Keep responses under 200 words unless the user asks for a deep dive
 
-## Options Contract Selection Rules
-When recommending options, Sean always follows these exact rules:
-- MINIMUM 21 days to expiry — never recommend <21 DTE (not enough time for setup to play out)
-- Strike: for calls, pick first OTM strike ABOVE current stock price (e.g. stock at $48 → recommend $50 calls)
-- Strike: for puts, pick first OTM strike BELOW current stock price
-- For breakout setups: 21-30 DTE if trigger is close (<3%), 45 DTE if entry is still consolidating
-- For pullback/EMA bounce setups: 30-45 DTE to give the bounce time to develop
-- Premium should be affordable — OTM is fine if it's the next strike above price
+## CRITICAL OPTIONS CONTRACT RULES — HARDCODED, NEVER OVERRIDE
+These rules are ABSOLUTE CONSTRAINTS. They must be followed for every single options recommendation without exception.
+
+### Strike Selection (NON-NEGOTIABLE):
+- CALLS: Always recommend the FIRST OTM strike ABOVE the current stock price
+  - Example: stock at $48.42 → recommend $50 calls (NOT $42.50, NOT $45, NOT $47.50)
+  - Example: stock at $155.30 → recommend $160 calls
+  - Example: stock at $22.80 → recommend $23 or $24 calls (nearest OTM above)
+- PUTS: Always recommend the FIRST OTM strike BELOW the current stock price
+  - Example: stock at $48.42 → recommend $47.50 puts (NOT $50, NOT $55)
+- NEVER recommend ITM options as the primary suggestion
+- The suggested_entry price does NOT determine the strike — only current price does
+
+### Expiry / DTE (NON-NEGOTIABLE):
+- MINIMUM 21 days to expiry — HARD FLOOR, no exceptions
+- NEVER suggest DTE < 21 under any circumstances — not even for short-term plays
+- Preferred DTE by setup:
+  - Breakout setup where trigger is close (<3% away): 21-30 DTE
+  - Base/consolidation or trigger >3% away: 45-60 DTE
+  - Momentum/pullback/EMA bounce: 30-45 DTE
+- When in doubt, use more time — it costs more premium but gives the trade room to work
+- Sean's trades average 21-45 DTE. Use his trade history as calibration.
 
 ## Important Rules
 - Always end analysis with a brief risk note (e.g. "Always use a stop-loss and size positions appropriately.")
@@ -370,10 +384,21 @@ class AIAnalysisService:
         prompt = self._build_analysis_prompt(result)
 
         try:
+            # Build context-rich system: training data + Sean's trade examples
+            _training_single = await self._get_training_context()
+            _single_system = SEAN_SYSTEM_PROMPT
+            if _training_single:
+                _single_system += f"\n\n## Trader's Knowledge Base\n{_training_single}"
+            _sean_trades_single = await self._get_sean_trades_context()
+            if _sean_trades_single:
+                _single_system += (
+                    "\n\n## Sean's Personal Verified Trades (options calibration)\n"
+                    + _sean_trades_single
+                )
             response = await self.client.messages.create(
                 model=self.model,
                 max_tokens=500,
-                system=SEAN_SYSTEM_PROMPT + "\n\nRespond with valid JSON only for this analysis request.",
+                system=_single_system + "\n\nRespond with valid JSON only for this analysis request.",
                 messages=[
                     {"role": "user", "content": prompt}
                 ],
@@ -482,6 +507,13 @@ class AIAnalysisService:
         system = SEAN_SYSTEM_PROMPT
         if training_context:
             system += f"\n\n## Trader's Knowledge Base\n{training_context}"
+        # Inject Sean's trades so chart/news analysis respects his options rules
+        _content_sean_trades = await self._get_sean_trades_context()
+        if _content_sean_trades:
+            system += (
+                "\n\n## Sean's Personal Verified Trades (options calibration)\n"
+                + _content_sean_trades
+            )
 
         user_content = []
 
@@ -625,6 +657,15 @@ Respond with this exact JSON:
             system = SEAN_SYSTEM_PROMPT
             if training_context:
                 system += f"\n\n## Trader's Knowledge Base\n{training_context}"
+            # Sean's verified trades — highest-weight signal for options strike/DTE rules
+            _sym_sean_trades = await self._get_sean_trades_context()
+            if _sym_sean_trades:
+                system += (
+                    "\n\n## Sean's Personal Verified Trades (options calibration)\n"
+                    "Study Sean's actual strike prices and expiry dates. Use them to ensure "
+                    "your recommendations match his approach: first OTM above price, min 21 DTE.\n\n"
+                    + _sym_sean_trades
+                )
 
             response = await self.client.messages.create(
                 model=self.model,
