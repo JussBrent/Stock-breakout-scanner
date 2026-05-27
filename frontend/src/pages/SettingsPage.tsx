@@ -21,7 +21,6 @@ import {
   Shield,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
 
 interface SettingsTab {
@@ -251,7 +250,7 @@ export default function SettingsPage() {
         <main className="pt-12 p-8">
           <div className="grid grid-cols-4 gap-6">
             {/* Settings Navigation */}
-            <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="col-span-1">
+            <div>
               <nav className="space-y-1 sticky top-24">
                 {settingsTabs.map((tab) => (
                   <button
@@ -270,13 +269,13 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </nav>
-            </motion.div>
+            </div>
 
             {/* Settings Content */}
             <div className="col-span-3 space-y-6">
               {/* General Settings */}
               {activeTab === "general" && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <div>
                 <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">General Settings</h2>
 
@@ -390,12 +389,12 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </Card>
-                </motion.div>
+                </div>
               )}
 
               {/* Notifications Settings */}
               {activeTab === "notifications" && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <div>
                 <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Notification Preferences</h2>
 
@@ -502,12 +501,12 @@ export default function SettingsPage() {
                     Save Preferences
                   </Button>
                 </Card>
-                </motion.div>
+                </div>
               )}
 
               {/* Security Settings */}
               {activeTab === "security" && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <div>
                 <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Security Settings</h2>
 
@@ -547,12 +546,12 @@ export default function SettingsPage() {
                     </Button>
                   </div>
                 </Card>
-              </motion.div>
+              </div>
               )}
 
               {/* Preferences Settings */}
               {activeTab === "preferences" && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
+                <div>
                 <Card className="bg-white/2 border-white/10 shadow-xl p-8">
                   <h2 className="text-lg font-semibold text-white mb-6">Trading Preferences</h2>
 
@@ -652,7 +651,7 @@ export default function SettingsPage() {
                       Save Preferences
                     </Button>
                   </div>
-                </Card>              </motion.div>              )}
+                </Card>              </div>              )}
             </div>
           </div>
         </main>
