@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -597,7 +596,7 @@ export default function JournalAnalyticsPage() {
             <>
               {/* ── DASHBOARD TAB ── */}
               {activeTab === "dashboard" && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+                <div>
                   {trades.length === 0 ? (
                     <div className="text-center py-24 border border-dashed border-white/8 rounded-2xl">
                       <BookOpen className="h-12 w-12 text-white/10 mx-auto mb-4" />
@@ -672,12 +671,12 @@ export default function JournalAnalyticsPage() {
                       </div>
                     </>
                   )}
-                </motion.div>
+                </div>
               )}
 
               {/* ── TRADES TAB ── */}
               {activeTab === "trades" && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div>
                   {trades.length === 0 ? (
                     <div className="text-center py-24 border border-dashed border-white/8 rounded-2xl text-white/25 text-sm">
                       No trades yet.
@@ -686,12 +685,12 @@ export default function JournalAnalyticsPage() {
                   ) : (
                     <TradeTable trades={trades} onEdit={startEdit} />
                   )}
-                </motion.div>
+                </div>
               )}
 
               {/* ── LOG TRADE TAB ── */}
               {activeTab === "log" && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <div>
                   {showForm ? (
                     <TradeForm
                       key={editTarget?.id ?? "new"}
@@ -720,12 +719,12 @@ export default function JournalAnalyticsPage() {
                       </button>
                     </div>
                   )}
-                </motion.div>
+                </div>
               )}
 
               {/* ── AI QUERIES TAB ── */}
               {activeTab === "ai" && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
+                <div>
                   <div className="grid grid-cols-4 gap-4">
                     {[
                       { label: "Total Queries",  val: queries.length,                                              color: "text-white",       icon: <Search className="h-4 w-4 text-purple-400" /> },
@@ -760,7 +759,7 @@ export default function JournalAnalyticsPage() {
                       ))}
                     </div>
                   )}
-                </motion.div>
+                </div>
               )}
             </>
           )}
