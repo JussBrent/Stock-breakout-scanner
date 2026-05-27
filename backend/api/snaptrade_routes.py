@@ -410,3 +410,265 @@ async def search_symbols(
     service = get_snaptrade_service()
     results = await service.search_symbols(body.query)
     return {"symbols": results or []}
+
+
+# ── Auto-Import Trade Journey from Brokerage ─────────────────────────
+
+@router.post("/import-trades")
+@limiter.limit("5/minute")
+async def import_trades_from_brokerage(
+    request: Request,
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """
+    Pull closed activity from the linked brokerage and auto-populate the user's
+    trade_outcomes table (and optionally sean_trades if the user is admin/Sean).
+    Maps SnapTrade activity records to training-ready trade rows so the AI can
+    learn from real brokerage history without manual data entry.
+    """
+    service = get_snaptrade_service()
+    user_id = user["user_id"]
+    user_secret = await get_user_secret(user_id)
+
+    # Fetch last 90 days of activity
+    from datetime import date, timedelta
+    start = (date.today() - timedelta(days=90)).isoformat()
+    end = date.today().isoformat()
+
+    activities = await service.get_activities(
+        user_id=user_id,
+        user_secret=user_secret,
+        start_date=start,
+        end_date=end,
+    )
+
+    if not activities:
+        return {"imported": 0, "skipped": 0, "message": "No brokerage activity found for the last 90 days"}
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for act in activities:
+        try:
+            # SnapTrade activity types: BUY, SELL, DIV, INT, FEE, etc.
+            act_type = (act.get("type") or act.get("activity_type") or "").upper()
+            symbol = (
+                act.get("symbol") or
+                act.get("universal_symbol", {}).get("symbol") or
+                act.get("currency", {}).get("code") or ""
+            ).upper()
+            price = act.get("price") or act.get("amount") or 0
+            qty = abs(act.get("units") or act.get("quantity") or 0)
+            act_date = (act.get("trade_date") or act.get("settlement_date") or
+                        act.get("date") or end)[:10]
+
+            # Skip non-equity trades, dividends, fees
+            if act_type not in ("BUY", "SELL") or not symbol or not price:
+                skipped += 1
+                continue
+
+            # Check if we already have this activity logged (dedup by symbol + date + price)
+            existing = await supabase.table("trade_outcomes").select("id").eq(
+                "user_id", user_id
+            ).eq("symbol", symbol).eq("entry_price", float(price)).eq(
+                "opened_at", act_date
+            ).execute()
+
+            if existing and len(existing) > 0:
+                skipped += 1
+                continue
+
+            if act_type == "BUY":
+                # Opening a position
+                row = {
+                    "user_id": user_id,
+                    "symbol": symbol,
+                    "direction": "long",
+                    "entry_price": float(price),
+                    "quantity": float(qty),
+                    "outcome": "open",
+                    "opened_at": act_date,
+                    "source": "brokerage_import",
+                }
+                await supabase.table("trade_outcomes").insert([row]).execute()
+                imported += 1
+
+            elif act_type == "SELL":
+                # Try to match with an open position for this symbol
+                open_rows = await supabase.table("trade_outcomes").select(
+                    "id,entry_price"
+                ).eq("user_id", user_id).eq("symbol", symbol).eq(
+                    "outcome", "open"
+                ).order("opened_at", desc=False).limit(1).execute()
+
+                if open_rows and len(open_rows) > 0:
+                    open_row = open_rows[0]
+                    entry = float(open_row["entry_price"])
+                    exit_p = float(price)
+                    gain_pct = ((exit_p - entry) / entry * 100) if entry else None
+                    outcome = "win" if (gain_pct or 0) > 0 else ("loss" if (gain_pct or 0) < 0 else "breakeven")
+                    await supabase.table("trade_outcomes").update({
+                        "exit_price": exit_p,
+                        "gain_pct": round(gain_pct, 2) if gain_pct is not None else None,
+                        "outcome": outcome,
+                        "closed_at": act_date,
+                    }).eq("id", open_row["id"]).execute()
+                else:
+                    # No matching open row — insert as a completed sell
+                    row = {
+                        "user_id": user_id,
+                        "symbol": symbol,
+                        "direction": "long",
+                        "exit_price": float(price),
+                        "quantity": float(qty),
+                        "outcome": "open",
+                        "closed_at": act_date,
+                        "source": "brokerage_import",
+                    }
+                    await supabase.table("trade_outcomes").insert([row]).execute()
+                imported += 1
+
+        except Exception as row_err:
+            logger.warning(f"Skipped activity row: {row_err}")
+            errors.append(str(row_err))
+            skipped += 1
+            continue
+
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "message": f"Imported {imported} trade(s) from brokerage history",
+        "errors": errors[:5] if errors else [],
+    }
+
+
+# ── Auto-Import Trade Journey from Brokerage ───────────────────────
+
+@router.post("/import-trades")
+@limiter.limit("5/minute")
+async def import_trades_from_brokerage(
+    request: Request,
+    user: dict = Security(get_current_user, scopes=[]),
+):
+    """
+    Pull closed activity from the linked brokerage and auto-populate the user's
+    trade_outcomes table so the AI can learn from real brokerage history
+    without manual data entry. Matches BUY/SELL pairs into win/loss trade records.
+    """
+    service = get_snaptrade_service()
+    user_id = user["user_id"]
+    user_secret = await get_user_secret(user_id)
+
+    from datetime import date, timedelta
+    start = (date.today() - timedelta(days=90)).isoformat()
+    end = date.today().isoformat()
+
+    activities = await service.get_activities(
+        user_id=user_id,
+        user_secret=user_secret,
+        start_date=start,
+        end_date=end,
+    )
+
+    if not activities:
+        return {"imported": 0, "skipped": 0, "message": "No brokerage activity found for the last 90 days"}
+
+    imported = 0
+    skipped = 0
+    errors = []
+
+    for act in activities:
+        try:
+            act_type = (act.get("type") or act.get("activity_type") or "").upper()
+            symbol = (
+                act.get("symbol") or
+                (act.get("universal_symbol") or {}).get("symbol") or ""
+            ).upper().strip()
+            price = float(act.get("price") or act.get("amount") or 0)
+            qty = abs(float(act.get("units") or act.get("quantity") or 0))
+            act_date = (
+                act.get("trade_date") or act.get("settlement_date") or
+                act.get("date") or end
+            )[:10]
+
+            # Only process equity BUY/SELL with a valid symbol and price
+            if act_type not in ("BUY", "SELL") or not symbol or price <= 0:
+                skipped += 1
+                continue
+
+            # Dedup: skip if we already have this exact activity
+            existing = await supabase.table("trade_outcomes").select("id").eq(
+                "user_id", user_id
+            ).eq("symbol", symbol).eq("entry_price", price).eq(
+                "opened_at", act_date
+            ).execute()
+
+            if existing and len(existing) > 0:
+                skipped += 1
+                continue
+
+            if act_type == "BUY":
+                row = {
+                    "user_id": user_id,
+                    "symbol": symbol,
+                    "direction": "long",
+                    "entry_price": price,
+                    "quantity": qty,
+                    "outcome": "open",
+                    "opened_at": act_date,
+                    "source": "brokerage_import",
+                }
+                await supabase.table("trade_outcomes").insert([row]).execute()
+                imported += 1
+
+            elif act_type == "SELL":
+                # Try to match with the oldest open BUY for this symbol
+                open_rows = await supabase.table("trade_outcomes").select(
+                    "id,entry_price"
+                ).eq("user_id", user_id).eq("symbol", symbol).eq(
+                    "outcome", "open"
+                ).order("opened_at", desc=False).limit(1).execute()
+
+                if open_rows and len(open_rows) > 0:
+                    open_row = open_rows[0]
+                    entry = float(open_row["entry_price"])
+                    gain_pct = ((price - entry) / entry * 100) if entry else None
+                    outcome = (
+                        "win" if (gain_pct or 0) > 0
+                        else "loss" if (gain_pct or 0) < 0
+                        else "breakeven"
+                    )
+                    await supabase.table("trade_outcomes").update({
+                        "exit_price": price,
+                        "gain_pct": round(gain_pct, 2) if gain_pct is not None else None,
+                        "outcome": outcome,
+                        "closed_at": act_date,
+                    }).eq("id", open_row["id"]).execute()
+                else:
+                    # No matching open row — log as a completed sell with unknown entry
+                    row = {
+                        "user_id": user_id,
+                        "symbol": symbol,
+                        "direction": "long",
+                        "exit_price": price,
+                        "quantity": qty,
+                        "outcome": "open",
+                        "closed_at": act_date,
+                        "source": "brokerage_import",
+                    }
+                    await supabase.table("trade_outcomes").insert([row]).execute()
+                imported += 1
+
+        except Exception as row_err:
+            logger.warning(f"Skipped brokerage activity row: {row_err}")
+            errors.append(str(row_err)[:120])
+            skipped += 1
+            continue
+
+    return {
+        "imported": imported,
+        "skipped": skipped,
+        "message": f"Imported {imported} trade(s) from brokerage history",
+        "errors": errors[:5] if errors else [],
+    }
