@@ -5,7 +5,6 @@ import { Sidebar } from "@/components/dashboard/Sidebar"
 import { getMomentumStocks, MomentumStock } from "@/lib/api"
 import { TrendingUp, TrendingDown, Zap, Activity, Loader2, AlertCircle, RefreshCw, Moon } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { motion } from "framer-motion"
 import { TradeModal } from "@/components/dashboard/TradeModal"
 
 export default function StockMomentumPage() {
@@ -51,12 +50,12 @@ export default function StockMomentumPage() {
         <main className="pt-12 p-6">
           {/* Market closed banner */}
           {!loading && !marketOpen && stocks.length > 0 && (
-            <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
+            <div>
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-500/10 border border-slate-500/20 text-slate-400 text-sm">
                 <Moon className="h-4 w-4 shrink-0" />
                 <span>Market is closed — showing <strong className="text-slate-300">previous session's</strong> data. Scores and volume reflect the last trading day.</span>
               </div>
-            </motion.div>
+            </div>
           )}
 
           {/* Error */}
@@ -74,14 +73,9 @@ export default function StockMomentumPage() {
               <p className="text-white/60">Loading momentum data...</p>
             </div>
           ) : stocks.length > 0 ? (
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="space-y-4">
+            <div>
               {stocks.map((stock, index) => (
-                <motion.div
-                  key={stock.symbol}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + index * 0.05 }}
-                >
+                <div key={stock.symbol}>
                   <Card className="bg-white/2 border-white/10 shadow-xl p-6 hover:border-white/20 transition-all duration-200">
                   <div className="flex items-center justify-between">
                     {/* Left Section - Stock Info */}
@@ -196,9 +190,9 @@ export default function StockMomentumPage() {
                     </div>
                   </div>
                 </Card>
-                </motion.div>
+                </div>
               ))}
-            </motion.div>
+            </div>
           ) : (
             <Card className="bg-white/2 border-white/10 shadow-xl p-12 text-center">
               <Activity className="h-12 w-12 text-white/20 mx-auto mb-4" />
