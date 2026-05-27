@@ -574,41 +574,11 @@ export default function JournalAnalyticsPage() {
       <div className="min-h-screen ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out">
 
         {/* Header */}
-        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 border-b border-white/5 bg-neutral-950/90 backdrop-blur-xl">
-          <div className="flex h-14 items-center justify-between px-6">
-            <div className="flex items-center gap-3">
-              <div className="p-1.5 rounded-lg bg-gradient-to-br from-sky-500/20 to-indigo-500/20 ring-1 ring-white/10">
-                <BookOpen className="h-4 w-4 text-sky-400" />
-              </div>
-              <div>
-                <h1 className="text-base font-semibold text-white leading-tight">Trade Journal</h1>
-                <p className="text-[10px] text-neutral-500 leading-tight">Full performance tracking · P&L analytics · Setup breakdown</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button onClick={load} disabled={loading}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-white/50 hover:text-white hover:bg-white/5 border border-white/8 transition-colors">
-                <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} />Refresh
-              </button>
-              <button onClick={() => { setEditTarget(null); setShowForm(true); setActiveTab("log") }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-sky-600 hover:bg-sky-500 text-white transition-colors font-semibold">
-                <Plus className="h-3.5 w-3.5" />Log Trade
-              </button>
-            </div>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-t border-white/5 px-6">
-            {TABS.map(t => (
-              <button key={t.id} onClick={() => setActiveTab(t.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-xs font-semibold border-b-2 transition-colors ${activeTab === t.id ? "border-sky-500 text-sky-400" : "border-transparent text-white/35 hover:text-white/65"}`}>
-                {t.icon}{t.label}
-                {t.id === "trades" && trades.length > 0 && (
-                  <span className="ml-1 bg-white/10 text-white/50 rounded-full px-1.5 py-0.5 text-[9px] font-mono">{trades.length}</span>
-                )}
-              </button>
-            ))}
-          </div>
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 h-12 border-b border-white/8 bg-[#0d0d0d] flex items-center px-6 gap-3">
+          <BookOpen className="h-4 w-4 text-white/40 shrink-0" />
+          <span className="text-sm font-semibold text-white tracking-tight">Trade Journal</span>
+          <span className="text-white/20 text-sm">/</span>
+          <span className="text-xs text-white/40 font-mono">P&L · Analytics · History</span>
         </header>
 
         <main className="pt-[106px] p-6">
