@@ -17,9 +17,10 @@ import {
 } from "@/lib/api"
 import { callOpenAI } from "@/lib/openai"
 import SeanTradesTab from "@/components/SeanTradesTab"
+import SeanWatchListTab from "@/components/SeanWatchListTab"
 
 type FormMode = "closed" | "manual" | "youtube" | "edit"
-type TabId = "knowledge" | "sean-trades"
+type TabId = "knowledge" | "sean-trades" | "watchlist"
 
 export default function AiTrainingPage() {
   const { isAdmin, loading: authLoading } = useAuth()
@@ -263,7 +264,10 @@ export default function AiTrainingPage() {
         {/* Sean's Trades Tab */}
         {activeTab === "sean-trades" && <SeanTradesTab />}
 
-        {/* Knowledge Base Tab */}
+        {/* Sean's Watch List Tab */}
+      {activeTab === "watchlist" && <SeanWatchListTab />}
+
+      {/* Knowledge Base Tab */}
         {activeTab === "knowledge" && <>
 
         {/* Test Sean Response Panel */}
