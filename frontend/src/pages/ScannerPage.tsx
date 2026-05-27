@@ -1,40 +1,21 @@
 import { Sidebar } from "@/components/dashboard/Sidebar"
 import { StockScanner } from "@/components/dashboard/StockScanner"
 import { Target } from "lucide-react"
-import { motion } from "framer-motion"
 
 export default function ScannerPage() {
   return (
-    <div className="min-h-screen bg-black">
+    <div className="flex min-h-screen bg-[#0a0a0a] text-white">
       <Sidebar />
-
-      <div className="min-h-screen ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out">
+      <div className="flex-1 ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out min-h-screen">
         {/* Header */}
-        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
-          <div className="flex h-16 items-center justify-between px-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="p-2 rounded-lg bg-linear-to-br from-emerald-500/20 to-cyan-500/20 ring-1 ring-white/10">
-                <Target className="h-5 w-5 text-emerald-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">Advanced Scanner</h1>
-                <p className="text-xs text-neutral-400 font-light">
-                  Analyze stocks by name, chart screenshot, or content
-                </p>
-              </div>
-            </motion.div>
-
-          </div>
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 h-12 border-b border-white/8 bg-[#0d0d0d] flex items-center px-6 gap-3">
+          <Target className="h-4 w-4 text-white/40 shrink-0" />
+          <span className="text-sm font-semibold text-white tracking-tight">Scanner</span>
+          <span className="text-white/20 text-sm">/</span>
+          <span className="text-xs text-white/40 font-mono">Stock · Chart · News Analysis</span>
         </header>
-
-        <main className="pt-24 p-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-            <StockScanner />
-          </motion.div>
+        <main className="pt-12 p-6">
+          <StockScanner />
         </main>
       </div>
     </div>
