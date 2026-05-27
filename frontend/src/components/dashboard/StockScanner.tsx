@@ -210,26 +210,17 @@ const isShort = symbolResult?.direction === "Short"
 return (
 <div className="max-w-4xl mx-auto space-y-6">
 {/* Input Card */}
-<Card className="relative overflow-hidden bg-linear-to-br from-white/7 to-white/2 border-white/10 backdrop-blur-xl shadow-2xl">
-<div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-emerald-500/5 pointer-events-none" />
-<div className="relative p-8">
-<div className="flex items-center justify-between mb-8">
-<div className="flex items-center gap-4">
-<div className="relative">
-<div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl" />
-<div className="relative p-3 rounded-2xl bg-linear-to-br from-primary/20 to-primary/10 border border-primary/20">
-<Sparkles className="h-6 w-6 text-primary" />
-</div>
-</div>
-<div>
-<h3 className="text-2xl font-bold text-white tracking-tight">AI Scanner</h3>
-<p className="text-sm text-white/50 mt-0.5">Multi-modal analysis powered by advanced AI</p>
-</div>
-</div>
+<Card className="bg-[#111] border-white/8">
+<div className="p-5">
+<div className="flex items-center gap-3 mb-5 pb-4 border-b border-white/8">
+<Target className="h-4 w-4 text-white/40 shrink-0" />
+<span className="text-sm font-semibold text-white tracking-tight">Scanner</span>
+<span className="text-white/20 text-sm">/</span>
+<span className="text-xs text-white/40 font-mono">Stock · Chart · News</span>
 </div>
 
 {/* Mode tabs */}
-<div className="flex gap-1 mb-8 p-1 bg-white/5 rounded-xl border border-white/10">
+<div className="flex gap-1 mb-5 p-1 bg-white/5 rounded-xl border border-white/8">
 {([
 { key: "symbol" as const, icon: Search, label: "Stock Symbol" },
 { key: "image" as const, icon: Upload, label: "Chart Image" },
@@ -329,7 +320,7 @@ Sean will extract key stocks, sentiment, and trade opportunities from the text
 onClick={handleScan}
 disabled={!canScan()}
 size="lg"
-className="w-full h-14 bg-linear-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-semibold text-base shadow-lg shadow-emerald-500/25 disabled:opacity-50 transition-all"
+className="w-full h-10 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm disabled:opacity-50 transition-colors rounded-lg"
 >
 {isScanning ? (
 <><Loader className="mr-2.5 h-5 w-5 animate-spin" />Sean is analysing...</>
@@ -356,9 +347,9 @@ className="w-full h-14 bg-linear-to-r from-emerald-600 to-emerald-500 hover:from
 
 {/* Content result (image / news) */}
 {contentResult && (
-<Card className="relative overflow-hidden bg-linear-to-br from-white/7 to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
-<div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-primary/5 pointer-events-none" />
-<div className="relative p-8 space-y-6">
+<Card className="relative overflow-hidden bg-[#111] border-white/8 animate-in fade-in slide-in-from-bottom-8 duration-500">
+<div className="" />
+<div className="p-5 space-y-5">
 <div className="flex items-center gap-2">
 <Sparkles className="h-5 w-5 text-primary" />
 <h3 className="text-xl font-bold text-white">Sean's Analysis</h3>
@@ -375,9 +366,9 @@ className="w-full h-14 bg-linear-to-r from-emerald-600 to-emerald-500 hover:from
 )}
 {/* Symbol result */}
 {symbolResult && (
-<Card className="relative overflow-hidden bg-linear-to-br from-white/7 to-white/2 border-white/10 backdrop-blur-xl shadow-2xl animate-in fade-in slide-in-from-bottom-8 duration-500">
-<div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-primary/5 pointer-events-none" />
-<div className="relative p-8 space-y-8">
+<Card className="relative overflow-hidden bg-[#111] border-white/8 animate-in fade-in slide-in-from-bottom-8 duration-500">
+<div className="" />
+<div className="p-5 space-y-5">
 <div className="w-full">
 <TradingViewWidget
 symbol={symbolResult.symbol}
