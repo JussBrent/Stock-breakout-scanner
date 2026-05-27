@@ -41,79 +41,14 @@ export default function StockMomentumPage() {
 
       <div className="min-h-screen ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out">
         {/* Header */}
-        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
-          <div className="flex h-16 items-center justify-between px-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="p-2 rounded-lg bg-linear-to-br from-teal-500/20 to-cyan-500/20 ring-1 ring-white/10">
-                <Activity className="h-5 w-5 text-teal-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">Stock Momentum</h1>
-                <p className="text-xs text-neutral-400 font-light">
-                  Real-time momentum analysis and market trends
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              {/* Gainers / Losers Toggle */}
-              <div className="flex items-center bg-white/5 rounded-lg p-0.5">
-                <button
-                  onClick={() => setDirection("gainers")}
-                  className={cn(
-                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                    direction === "gainers"
-                      ? "bg-emerald-500/20 text-emerald-400"
-                      : "text-white/50 hover:text-white/80"
-                  )}
-                >
-                  Gainers
-                </button>
-                <button
-                  onClick={() => setDirection("losers")}
-                  className={cn(
-                    "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
-                    direction === "losers"
-                      ? "bg-red-500/20 text-red-400"
-                      : "text-white/50 hover:text-white/80"
-                  )}
-                >
-                  Losers
-                </button>
-              </div>
-
-              <button
-                onClick={fetchMomentum}
-                disabled={loading}
-                className="p-2 text-white/50 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
-              </button>
-
-              {marketOpen ? (
-                <Badge className="bg-linear-to-r from-teal-500/20 to-cyan-500/20 text-teal-400 border border-teal-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
-                  <Zap className="h-3.5 w-3.5 mr-1.5" />
-                  Live Data
-                </Badge>
-              ) : (
-                <Badge className="bg-linear-to-r from-slate-500/20 to-slate-400/10 text-slate-400 border border-slate-500/30 px-3 py-1.5 h-fit rounded-lg font-medium">
-                  <Moon className="h-3.5 w-3.5 mr-1.5" />
-                  Previous Close
-                </Badge>
-              )}
-            </motion.div>
-          </div>
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 h-12 border-b border-white/8 bg-[#0d0d0d] flex items-center px-6 gap-3">
+          <Activity className="h-4 w-4 text-white/40 shrink-0" />
+          <span className="text-sm font-semibold text-white tracking-tight">Momentum</span>
+          <span className="text-white/20 text-sm">/</span>
+          <span className="text-xs text-white/40 font-mono">Top Gainers · Losers</span>
         </header>
 
-        <main className="pt-24 p-8">
+        <main className="pt-12 p-6">
           {/* Market closed banner */}
           {!loading && !marketOpen && stocks.length > 0 && (
             <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className="mb-6">
