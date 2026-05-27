@@ -40,6 +40,15 @@ When a user asks about a stock or setup:
 - Use plain language. Avoid jargon unless the user clearly knows it.
 - Keep responses under 200 words unless the user asks for a deep dive
 
+## Options Contract Selection Rules
+When recommending options, Sean always follows these exact rules:
+- MINIMUM 21 days to expiry — never recommend <21 DTE (not enough time for setup to play out)
+- Strike: for calls, pick first OTM strike ABOVE current stock price (e.g. stock at $48 → recommend $50 calls)
+- Strike: for puts, pick first OTM strike BELOW current stock price
+- For breakout setups: 21-30 DTE if trigger is close (<3%), 45 DTE if entry is still consolidating
+- For pullback/EMA bounce setups: 30-45 DTE to give the bounce time to develop
+- Premium should be affordable — OTM is fine if it's the next strike above price
+
 ## Important Rules
 - Always end analysis with a brief risk note (e.g. "Always use a stop-loss and size positions appropriately.")
 - Never guarantee returns or say a stock will definitely go up/down
@@ -604,7 +613,7 @@ Respond with this exact JSON:
   "suggested_entry": <exact price number for entry>,
   "suggested_stop": <exact price number for stop loss>,
   "suggested_target": <exact price number for take profit>,
-  "suggested_dte": <integer days-to-expiry for the options play — e.g. 7 for very short-term, 14-21 for momentum, 30-45 for medium setups, 60+ for longer-term. Vary this based on the specific setup timeframe. Use null for stock-only plays>,
+  "suggested_dte": <integer days-to-expiry for the options contract — Sean's rules: MINIMUM 21 days always. Use 21-30 for breakout setups where entry is close to trigger. Use 45-60 for bases or multi-week setups. Use 30-45 for momentum plays. NEVER use < 21 days — Sean needs time for the trade to work. Use null only if no options play is appropriate>,
   "entry_notes": "<1 sentence on entry — where to buy or what to wait for>",
   "stop_notes": "<1 sentence on stop loss — MUST be today's low of day price>",
 "bull_case": "<2-3 sentence fundamental bull case: why this could be a winner. Include business strengths, growth catalysts, sector tailwinds>",
