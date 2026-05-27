@@ -241,39 +241,14 @@ export default function SettingsPage() {
 
       <div className="min-h-screen ml-[var(--sidebar-w,60px)] transition-[margin-left] duration-300 ease-in-out">
         {/* Header */}
-        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 border-b border-white/5 bg-linear-to-r from-neutral-950 via-neutral-900 to-neutral-950 backdrop-blur-xl">
-          <div className="flex h-16 items-center justify-between px-8">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="p-2 rounded-lg bg-linear-to-br from-purple-500/20 to-indigo-500/20 ring-1 ring-white/10">
-                <Sliders className="h-5 w-5 text-purple-400" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white tracking-tight">Settings</h1>
-                <p className="text-xs text-neutral-400 font-light">
-                  Manage your account and preferences
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-4"
-            >
-              {isSaved && (
-                <Badge className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 animate-in fade-in">
-                  ✓ Settings saved
-                </Badge>
-              )}
-            </motion.div>
-          </div>
+        <header className="fixed top-0 left-[var(--sidebar-w,60px)] transition-[left] duration-300 ease-in-out right-0 z-50 h-12 border-b border-white/8 bg-[#0d0d0d] flex items-center px-6 gap-3">
+          <SettingsIcon className="h-4 w-4 text-white/40 shrink-0" />
+          <span className="text-sm font-semibold text-white tracking-tight">Settings</span>
+          <span className="text-white/20 text-sm">/</span>
+          <span className="text-xs text-white/40 font-mono">Account · Preferences</span>
         </header>
 
-        <main className="pt-24 p-8">
+        <main className="pt-12 p-8">
           <div className="grid grid-cols-4 gap-6">
             {/* Settings Navigation */}
             <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="col-span-1">
