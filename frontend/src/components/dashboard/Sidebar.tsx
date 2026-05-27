@@ -31,7 +31,7 @@ const navSections: NavSection[] = [
     title: "Research",
     items: [
       { icon: <Target className="h-4 w-4" />, label: "Scanner", href: "/scanner" },
-      { icon: <Brain className="h-4 w-4" />, label: "AI Insights", href: "/ai-insights" },
+      { icon: <Brain className="h-4 w-4" />, label: "Sean AI", href: "/ai-insights" },
       { icon: <TrendingUp className="h-4 w-4" />, label: "Momentum", href: "/stock-momentum" },
     ],
   },
@@ -39,8 +39,14 @@ const navSections: NavSection[] = [
     title: "Account",
     items: [
       { icon: <NotebookPen className="h-4 w-4" />, label: "Trade Journal", href: "/analytics" },
-      { icon: <BookOpen className="h-4 w-4" />, label: "AI Training", href: "/ai-training", adminOnly: true },
       { icon: <Settings className="h-4 w-4" />, label: "Settings", href: "/settings" },
+    ],
+  },
+  {
+    title: "Admin",
+    items: [
+      { icon: <BookOpen className="h-4 w-4" />, label: "AI Training", href: "/ai-training", adminOnly: true },
+      { icon: <BarChart3 className="h-4 w-4" />, label: "Admin Panel", href: "/admin", adminOnly: true },
     ],
   },
 ]
