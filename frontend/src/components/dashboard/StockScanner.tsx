@@ -160,22 +160,37 @@ const allContracts: OptionsContract[] = symbolResult.direction === "Short"
 ? (data.puts ?? [])
 : (data.calls ?? [])
 
-// Find closest expiry to suggestedExpiry
+// ── Sean's contract selection rules ──
+// 1. Expiry: prefer AI-suggested; always min 21 days out
+const today = new Date()
 const expirations: string[] = data.expirations ?? []
 const targetExpiry = symbolResult.suggested_expiry
-const bestExpiry = targetExpiry
-? (expirations.find(e => e >= targetExpiry) ?? expirations[0])
-: expirations[0]
-
-// Filter to that expiry
+const validExpiries = expirations.filter(e => {
+  const diff = (new Date(e + 'T00:00:00').getTime() - today.getTime()) / 86400000
+  return diff >= 21
+})
+const expiryPool = validExpiries.length > 0 ? validExpiries : expirations
+let bestExpiry: string
+if (targetExpiry) {
+  bestExpiry = expiryPool.find(e => e >= targetExpiry) ?? expiryPool[0] ?? expirations[0]
+} else {
+  bestExpiry = expiryPool[0] ?? expirations[0]
+}
+// Filter contracts to chosen expiry
 const forExpiry = allContracts.filter((c: OptionsContract) => c.expiration === bestExpiry && c.strike != null)
-
-// Find ATM/OTM strike closest to entry price
-const refPrice = symbolResult.suggested_entry ?? symbolResult.price
-const sorted = [...forExpiry].sort(
-(a: OptionsContract, b: OptionsContract) => Math.abs((a.strike ?? 0) - refPrice) - Math.abs((b.strike ?? 0) - refPrice)
-)
-const recommended = sorted[0] ?? null
+const currentPrice = symbolResult.price
+// 2. Strike: calls = first OTM above price; puts = first OTM below price
+let recommended: OptionsContract | null = null
+if (symbolResult.direction === 'Short') {
+  const otmPuts = [...forExpiry].filter(c => (c.strike ?? 0) < currentPrice).sort((a, b) => (b.strike ?? 0) - (a.strike ?? 0))
+  recommended = otmPuts[0] ?? null
+} else {
+  const otmCalls = [...forExpiry].filter(c => (c.strike ?? 0) > currentPrice).sort((a, b) => (a.strike ?? 0) - (b.strike ?? 0))
+  recommended = otmCalls[0] ?? null
+}
+if (!recommended && forExpiry.length > 0) {
+  recommended = [...forExpiry].sort((a, b) => Math.abs((a.strike ?? 0) - currentPrice) - Math.abs((b.strike ?? 0) - currentPrice))[0] ?? null
+}
 
 setOptionsPanelContract(recommended)
 } catch {
