@@ -80,7 +80,7 @@ async def _pick_live_expiry(symbol: str, desired_dte: int) -> str | None:
     best_diff = float("inf")
     for exp in expirations:
         dte = (date.fromisoformat(exp) - today).days
-        if dte < 5:
+        if dte < 21:
             continue
         diff = abs(dte - desired_dte)
         if diff < best_diff:
@@ -257,7 +257,7 @@ async def ai_scan_symbol(
             # Use the AI's suggested DTE directly — each stock gets its own value based
             # on setup timeframe, giving unique expiry dates per ticker.
             desired_dte = int(result.get("suggested_dte") or 30)
-            desired_dte = max(7, desired_dte)
+            desired_dte = max(21, desired_dte)
             result["suggested_expiry"] = await _pick_live_expiry(body.symbol.upper(), desired_dte)
 
         return {"success": True, "result": result}
