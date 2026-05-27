@@ -72,7 +72,8 @@ export default function SeanTradesTab() {
     setImportResult(null)
     setImportError(null)
     try {
-      const res =const res = await snaptradeImportTrades()mportResult(res)
+      const res = await snaptradeImportTrades()
+      setImportResult(res)
       // Refresh trades list to show newly imported entries
       await fetchTrades()
     } catch (e: unknown) {
